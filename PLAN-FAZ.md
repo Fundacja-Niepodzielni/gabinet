@@ -6,9 +6,25 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
-- Faza: F0 — nie rozpoczęta
-- Blokery zewnętrzne: źródła makiety (dostarczy właściciel); wartość startowa limitu niskopłatnych (zarząd); potwierdzenie „przelewy miesięczne" po rozmowie fundacji
-- Następny krok: wykonać F0 wg listy
+- **Faza: F0 — w toku** (sesja 1, 2026-08-07)
+- Blokery zewnętrzne: źródła makiety (dostarczy właściciel); wartość startowa limitu niskopłatnych (zarząd); potwierdzenie „przelewy miesięczne" po rozmowie fundacji; wybór dostawcy wideo (decyzja właściciela po dokumencie z F0.7)
+
+### Rozpiska zadań F0
+
+| # | Zadanie | Kryterium „zrobione" | Stan |
+|---|---|---|---|
+| F0.1 | Szkielet Laravel 13 (PHP 8.4) w `backend/`, wersje przypięte, lockfile w repo | `composer install` z lockfile'a przechodzi; `php artisan --version` = Laravel 13.x | ⬜ |
+| F0.2 | Docker Compose (dev): app (PHP-FPM 8.4), nginx, PostgreSQL, Redis, Horizon, scheduler | `docker compose up -d` → wszystkie kontenery `healthy`; `GET /up` = 200; Horizon widzi Redis | ⬜ |
+| F0.3 | Pest + Larastan (max) + Pint; test pozytywny i negatywny na szkielecie | `pest`, `larastan`, `pint --test` zielone lokalnie i w kontenerze | ⬜ |
+| F0.4 | CI GitHub Actions: Pint, Larastan, Pest (usługi PG+Redis), gitleaks (`GITLEAKS_LICENSE` z sekretów org) | workflow zielony na pustym szkielecie | ⬜ |
+| F0.5 | `.env.example` — komplet nazw zmiennych bez wartości (Keycloak, 2× Stripe, SMSAPI, poczta, wideo) | brak wartości sekretów; `.env` w `.gitignore`; gitleaks czysty | ⬜ |
+| F0.6 | `docs/DECYZJE.md` — założony rejestr, przeniesione decyzje zapadłe + decyzje tej sesji | plik istnieje, format: data / decyzja / uzasadnienie / skutek | ⬜ |
+| F0.7 | Porównanie **Jitsi self-host vs Whereby** — koszty, ryzyka, rekomendacja | dokument w `docs/analizy/`; rekomendacja jednoznaczna; decyzja właściciela przed F3/F4 | ⬜ |
+| F0.8 | Lokalny Keycloak (stos z repo `konta`) + rejestracja klienta `gabinet` **w repo `konta`** + logowanie testowym kontem wg wzorca `ref-laravel` | test E2E: `test-psycholog`/`test-pacjent` loguje się do Gabinetu, role z access tokena, `aud` walidowane, test negatywny cudzego tokena = 401 | ⬜ |
+| F0.9 | Bramka F0 zielona + **niezależna weryfikacja** (osobny agent, czysty checkout) | raport weryfikatora bez czerwonych | ⬜ |
+| F0.10 | Przypomnienie właścicielowi: wniosek o nadawcę SMS „Niepodzielni" w SMSAPI | wpis w raporcie sesji + w `docs/DECYZJE.md` jako zadanie człowieka | ⬜ |
+
+- Następny krok: F0.1 → F0.7 (backend-first), potem F0.8 (Keycloak) i bramka F0.9.
 
 ## F0 — Fundament (S)
 

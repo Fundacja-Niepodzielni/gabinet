@@ -1,0 +1,21 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Bez tej wtyczki PHPStan nie wie, że `$this` w domknięciu Pesta jest
+    # instancją Tests\TestCase — i zgłasza „undefined method get()" przy
+    # każdym teście HTTP.
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+
+parameters:
+    # Poziom maksymalny od pierwszego dnia. Podniesienie poziomu na projekcie,
+    # który ma już 200 plików, kosztuje wielokrotnie więcej niż utrzymanie go
+    # od pustego szkieletu (docs/DECYZJE.md, D-2026-08-07-05).
+    level: max
+
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+
+    treatPhpDocTypesAsCertain: false

@@ -1,0 +1,203 @@
+# ---------------------------------------------------------------------------
+# Gabinet — stos deweloperski.
+#
+#   cp .env.example .env      # wypełnij DB_PASSWORD
+#   cd backend && php artisan key:generate && cd ..
+#   docker compose up -d
+#   docker compose exec app php artisan migrate
+#   curl -fsS http://localhost:8098/up
+#
+# Nazwa projektu jest USTAWIONA NA SZTYWNO — na maszynie dewelopera stoją inne,
+# niepowiązane projekty Dockera (m.in. `niepodzielni-konta`, `helpdesk`). Każde
+# polecenie z tego pliku dotyka WYŁĄCZNIE zasobów z prefiksem `gabinet`.
+# NIGDY nie używamy tu `docker system prune` ani globalnych `prune`.
+#
+# `GABINET_PREFIX` pozwala postawić DRUGI, niezależny stos z tego samego pliku
+# (używa tego `skrypty/bramka.sh`: prefiks `gabinet-bramka`, własne wolumeny,
+# własne porty). Bez tego bramka kasowałaby kontenery dewelopera — sprawdzone.
+#
+# Wszystkie porty wychodzą wyłącznie na 127.0.0.1 — nic nie jest wystawione
+# publicznie bez świadomej zmiany (CLAUDE.md, „Czego NIE wolno").
+# ---------------------------------------------------------------------------
+name: gabinet
+
+x-logging: &logi
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Trzy role (app / horizon / scheduler) dzielą JEDEN obraz i JEDEN zestaw
+# zmiennych. Worker z innym kodem niż serwer HTTP to klasyczna przyczyna
+# „u mnie działa" — tu jest to konstrukcyjnie niemożliwe.
+x-aplikacja: &aplikacja
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  image: gabinet-app:local
+  restart: unless-stopped
+  # UWAGA: świadomie BEZ `env_file`. Laravel czyta `.env` z zamontowanego
+  # repozytorium sam. Wstrzyknięcie tych samych zmiennych do środowiska procesu
+  # wsadza je do `$_SERVER`, a adapter `$_SERVER` ma w Laravelu pierwszeństwo
+  # przed wszystkim — wtedy blok <php> z `phpunit.xml` przestaje działać i suita
+  # testowa cicho jedzie na bazie deweloperskiej. Zmierzone, nie teoretyczne.
+  # Poniżej idą WYŁĄCZNIE trzy zmienne potrzebne skryptowi startowemu do
+  # odczekania na bazę — żadna z nich nie jest nadpisywana w testach.
+  environment:
+    DB_HOST: ${DB_HOST:-postgres}
+    DB_PORT: ${DB_PORT:-5432}
+    DB_USERNAME: ${DB_USERNAME}
+  volumes:
+    - .:/srv/gabinet
+  working_dir: /srv/gabinet/backend
+  networks: [gabinet]
+  logging: *logi
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+
+  # -------------------------------------------------------------------------
+  # Baza — ta sama wersja co w stosie `konta` (jedna wersja Postgresa w całym
+  # ekosystemie = jedna procedura upgrade'u i jeden format zrzutów).
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    container_name: ${GABINET_PREFIX:-gabinet}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:?brak DB_DATABASE — skopiuj .env.example do .env}
+      POSTGRES_USER: ${DB_USERNAME:?brak DB_USERNAME — skopiuj .env.example do .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?brak DB_PASSWORD — wpisz hasło w .env}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+      LANG: C.UTF-8
+    volumes:
+      # W obrazie postgres:18 PGDATA = /var/lib/postgresql/18/docker,
+      # a deklarowany VOLUME to /var/lib/postgresql — montujemy katalog nadrzędny.
+      - pg-data:/var/lib/postgresql
+      # Wykonuje się tylko przy inicjalizacji pustego wolumenu — zakłada
+      # osobną bazę `gabinet_test` dla suity testowej.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${GABINET_PORT_POSTGRES:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    networks: [gabinet]
+    logging: *logi
+
+  # -------------------------------------------------------------------------
+  # Redis — kolejki (Horizon), cache i sesje.
+  # `appendonly yes`: kolejka przeżywa restart kontenera. Zaplanowane
+  # powiadomienia mają własną tabelę w bazie (F6) — Redis jest transportem,
+  # nie źródłem prawdy.
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    container_name: ${GABINET_PREFIX:-gabinet}-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:${GABINET_PORT_REDIS:-56379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks: [gabinet]
+    logging: *logi
+
+  # -------------------------------------------------------------------------
+  # PHP-FPM
+  # -------------------------------------------------------------------------
+  app:
+    <<: *aplikacja
+    container_name: ${GABINET_PREFIX:-gabinet}-app
+    command: ["php-fpm"]
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(extension_loaded(\"pdo_pgsql\") && extension_loaded(\"redis\") ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  # -------------------------------------------------------------------------
+  # nginx — jedyne wejście HTTP
+  # -------------------------------------------------------------------------
+  web:
+    image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    container_name: ${GABINET_PREFIX:-gabinet}-web
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - .:/srv/gabinet:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:${GABINET_PORT_HTTP:-8088}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/up >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [gabinet]
+    logging: *logi
+
+  # -------------------------------------------------------------------------
+  # Horizon — worker kolejek.
+  # `--timeout=0` NIE występuje: zadanie bez limitu potrafi zawiesić kolejkę
+  # powiadomień na cichy sposób. Limity ustawia config/horizon.php.
+  # -------------------------------------------------------------------------
+  horizon:
+    <<: *aplikacja
+    container_name: ${GABINET_PREFIX:-gabinet}-horizon
+    command: ["php", "artisan", "horizon"]
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan horizon:status | grep -q 'is running'"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 45s
+
+  # -------------------------------------------------------------------------
+  # Scheduler — zadania okresowe (przypomnienia 24 h/2 h, wygaszanie blokad
+  # koszyka, domykanie wizyt po 48 h, awanse z listy rezerwowej — spec M6/4).
+  # -------------------------------------------------------------------------
+  scheduler:
+    <<: *aplikacja
+    container_name: ${GABINET_PREFIX:-gabinet}-scheduler
+    command: ["php", "artisan", "schedule:work"]
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    healthcheck:
+      # `schedule:work` nie ma własnej sondy — sprawdzamy, że proces żyje.
+      # Bez tego kontener „działa" także wtedy, gdy harmonogram padł po starcie,
+      # a zadania okresowe (przypomnienia, wygaszanie blokad) po prostu nie idą.
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+
+networks:
+  gabinet:
+    name: gabinet
+
+volumes:
+  pg-data:
+    name: ${GABINET_PREFIX:-gabinet}-pg-data
+  redis-data:
+    name: ${GABINET_PREFIX:-gabinet}-redis-data

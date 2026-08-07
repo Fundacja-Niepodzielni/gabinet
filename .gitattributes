@@ -1,0 +1,16 @@
+# Pliki wykonywane w kontenerach Linuksa MUSZĄ mieć końce linii LF.
+# Bez tego `core.autocrlf=true` (domyślne na Windows) wstawia CRLF i bash
+# w kontenerze przewraca się na `bad interpreter: /usr/bin/env^M`.
+* text=auto eol=lf
+
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+Dockerfile      text eol=lf
+*.conf          text eol=lf
+.env.example    text eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary

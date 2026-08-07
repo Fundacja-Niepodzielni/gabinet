@@ -1,0 +1,41 @@
+# Konfiguracja gitleaks dla repozytorium Gabinet.
+# Bazujemy na regułach domyślnych i tylko je uzupełniamy — nigdy nie zastępujemy
+# (podmiana zestawu reguł to najczęstszy sposób na „zielony skan bez skanowania").
+
+title = "Gabinet — reguły wykrywania sekretów"
+
+[extend]
+useDefault = true
+
+# --- reguły dodatkowe, specyficzne dla tego projektu ------------------------
+
+[[rules]]
+id = "laravel-app-key"
+description = "Klucz aplikacji Laravela (APP_KEY)"
+regex = '''APP_KEY\s*=\s*base64:[A-Za-z0-9+/]{40,}={0,2}'''
+tags = ["laravel", "klucz"]
+
+[[rules]]
+id = "smsapi-token"
+description = "Token API SMSAPI"
+regex = '''SMSAPI_TOKEN\s*=\s*[A-Za-z0-9]{24,}'''
+tags = ["sms", "token"]
+
+[[rules]]
+id = "keycloak-client-secret"
+description = "Sekret klienta poufnego Keycloak"
+regex = '''KEYCLOAK_(ADMIN_)?CLIENT_SECRET\s*=\s*\S{16,}'''
+tags = ["oidc", "sekret"]
+
+# --- co świadomie pomijamy --------------------------------------------------
+
+[allowlist]
+description = "Ścieżki bez sekretów z definicji"
+paths = [
+  '''backend/vendor/.*''',
+  '''(^|/)\.gitleaks\.toml$''',
+]
+
+# `.env.example` ma same puste przypisania (pilnuje tego test `SekretyTest`),
+# więc nie potrzebuje wyjątku — i celowo go nie dostaje. Gdyby ktoś wpisał tam
+# wartość, MA zapalić skan.

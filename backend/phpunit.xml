@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnDeprecation="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <!-- ==================================================================
+             `force="true"` przy KAŻDEJ zmiennej jest OBOWIĄZKOWE, nie ozdobne.
+
+             Pest podnosi aplikację Laravela (a więc wczytuje `.env`) zanim
+             PHPUnit zdąży zastosować ten blok. Bez `force` PHPUnit pomija
+             każdą zmienną, która już istnieje w środowisku — czyli dokładnie
+             te, które są w `.env`. Zmierzony skutek pominięcia: testy jadą na
+             bazie `gabinet` (deweloperskiej!) zamiast `gabinet_test`, a
+             `RefreshDatabase` kasuje dane dewelopera. Zmienne spoza `.env`
+             (np. BCRYPT_ROUNDS) działają — dlatego usterka wygląda jak
+             „konfiguracja częściowo działa" i łatwo ją przeoczyć.
+
+             Pilnuje tego test `SzkieletTest` → „nie dotyka bazy deweloperskiej".
+             ================================================================== -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+
+        <!-- Testy jadą na PostgreSQL, nie na SQLite. Powód: reguły, które musimy
+             udowodnić, żyją w bazie — unikalne ograniczenie (specjalista, termin),
+             blokada wiersza przy 100 równoczesnych żądaniach (CLAUDE.md §6) oraz
+             dziennik decyzji z odebranym UPDATE/DELETE (§9). Na SQLite te testy
+             albo nie istnieją, albo przechodzą nic nie dowodząc.
+             Host i port biorą się z `.env` — w kontenerze `postgres:5432`,
+             na maszynie dewelopera `127.0.0.1:${GABINET_PORT_POSTGRES}`. -->
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_DATABASE" value="gabinet_test" force="true"/>
+
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+
+        <!-- Twarda blokada wysyłki poza produkcją (CLAUDE.md §10). W testach
+             zostaje włączona świadomie: gdyby ktoś ją tu zdjął, test
+             `blokada-wysylki` zapali się na czerwono. -->
+        <env name="GABINET_BLOKADA_WYSYLKI" value="true" force="true"/>
+    </php>
+</phpunit>

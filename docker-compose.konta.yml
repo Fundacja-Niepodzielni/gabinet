@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Nakładka: podłączenie stosu Gabinetu do LOKALNEGO Keycloaka z repo `konta`.
+#
+#   cd ../niepodzielni-konta/infra && docker compose up -d && ./smoke.sh
+#   cd ../../gabinet
+#   docker compose -f docker-compose.yml -f docker-compose.konta.yml up -d
+#   docker compose exec app php artisan konta:sprawdz
+#
+# Po co osobny plik: stos Gabinetu MUSI dać się postawić bez Kont (bramka F0,
+# CI, świeży klon). Integracja z IdP to świadome dołożenie sieci, nie warunek
+# startu.
+#
+# Sieć `niepodzielni-konta-idp` należy do TAMTEGO projektu — tutaj wyłącznie
+# się do niej podłączamy (`external: true`). Nic w repo `konta` nie jest
+# modyfikowane; zmiany realmu przechodzą wyłącznie przez tamto repo
+# (CLAUDE.md, „Czego NIE wolno").
+# ---------------------------------------------------------------------------
+
+x-siec-idp: &siec-idp
+  networks:
+    - gabinet
+    - idp
+
+services:
+  app:
+    <<: *siec-idp
+  horizon:
+    <<: *siec-idp
+  scheduler:
+    <<: *siec-idp
+
+networks:
+  idp:
+    name: niepodzielni-konta-idp
+    external: true
