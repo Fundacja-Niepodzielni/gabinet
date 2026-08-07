@@ -182,6 +182,36 @@ final class KontaOidc
     }
 
     /**
+     * Odświeżenie tokenów refresh tokenem.
+     *
+     * Decyzja B8: to jest MOMENT, w którym przeliczamy role. Odświeżenie i tak
+     * podtrzymuje sesję, więc przeliczenie kosztuje zero dodatkowych żądań —
+     * a odebranie roli w Keycloaku zaczyna działać najpóźniej w oknie tokenu
+     * (kontrakt: 600 s), zamiast nie działać wcale przez 120 minut sesji.
+     *
+     * Odmowa IdP (konto zablokowane, refresh token cofnięty, sesja
+     * unieważniona) jest sygnałem do ZAKOŃCZENIA sesji, nie do ponowienia.
+     *
+     * @return array{status: int, body: array<string, mixed>}
+     */
+    public function odswiezTokeny(string $refreshToken): array
+    {
+        $metadane = $this->metadane();
+
+        $odpowiedz = $this->klient()->asForm()->post(Typy::napis($metadane['token_endpoint']), [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $refreshToken,
+            'client_id' => $this->clientId(),
+            'client_secret' => $this->clientSecret(),
+        ]);
+
+        /** @var array<string, mixed> $body */
+        $body = is_array($odpowiedz->json()) ? $odpowiedz->json() : [];
+
+        return ['status' => $odpowiedz->status(), 'body' => $body];
+    }
+
+    /**
      * Wymiana kodu na tokeny. Klient POUFNY → uwierzytelnienie sekretem.
      *
      * @return array{status: int, body: array<string, mixed>}

@@ -19,3 +19,21 @@ parameters:
         - tests
 
     treatPhpDocTypesAsCertain: false
+
+
+    # Jedyne wyciszenia — obie dotyczą tarcia Pest <-> PHPStan w PLIKACH TESTÓW,
+    # nie kodu produkcyjnego, i obie są wąsko zakresowane.
+    #
+    # 1. `test()` zwraca unię TestCall|HigherOrderTapProxy; statyka nie widzi na
+    #    niej metod klienta HTTP, choć w czasie działania są. Wersja z typowaną
+    #    funkcją pomocniczą ROZWALA łańcuch wywołań Pest (zmierzone: 5 testów
+    #    przestaje przechodzić), więc lekarstwo byłoby gorsze od choroby.
+    # 2. Nazwy bramek zawierają KROPKĘ (`panel.koordynacji`), więc czytamy je
+    #    jako offset tablicy z `->json('bramki')`, którego typu statyka nie zna.
+    ignoreErrors:
+        -
+            identifier: method.notFound
+            path: tests/*
+        -
+            identifier: offsetAccess.nonOffsetAccessible
+            path: tests/*

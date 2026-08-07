@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Tozsamosc\Bramki;
 use App\Tozsamosc\KontaOidc;
+use App\Tozsamosc\OdswiezanieSesji;
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\WalidatorTokenu;
 use App\Wsparcie\Typy;
@@ -29,7 +30,10 @@ use Illuminate\Support\Str;
  */
 final class LogowanieController extends Controller
 {
-    public function __construct(private readonly KontaOidc $oidc) {}
+    public function __construct(
+        private readonly KontaOidc $oidc,
+        private readonly OdswiezanieSesji $odswiezanie,
+    ) {}
 
     public function zaloguj(Request $request): RedirectResponse
     {
@@ -134,6 +138,13 @@ final class LogowanieController extends Controller
             'role' => Bramki::roleAutoryzujace(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
             'markery' => Bramki::markery(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
             'id_token' => $idToken,
+            // B8: bez refresh tokenu i bez `exp` nie da się przeliczyć ról
+            // przed końcem sesji — a zamrożone role to wada bezpieczeństwa.
+            // Sesja jest szyfrowana (patrz `config/session.php`).
+            'refresh_token' => isset($tokeny['body']['refresh_token'])
+                ? Typy::napis($tokeny['body']['refresh_token'])
+                : null,
+            'access_exp' => Typy::liczba($wynikAccess['claims']['exp'] ?? null),
         ]);
 
         if ($sid !== null) {
@@ -192,11 +203,15 @@ final class LogowanieController extends Controller
     /** Kim jestem i co mi wolno — jedyne źródło prawdy dla frontendu. */
     public function ja(Request $request): JsonResponse
     {
-        $konta = Typy::mapa($request->session()->get('konta'));
+        // B8: role NIE są brane wprost z sesji. `OdswiezanieSesji` przelicza
+        // je z NOWEGO access tokenu, jeśli stary dobiegł końca — dzięki temu
+        // odebranie roli w Keycloaku działa najpóźniej w oknie tokenu, a nie
+        // dopiero przy następnym logowaniu. Odmowa IdP kończy sesję.
+        $konta = $this->odswiezanie->stanKonta($request);
 
         // Sam fakt, że pod kluczem coś leży, nie znaczy „zalogowany".
         // Rozstrzyga obecność `sub` — tożsamości z ID tokenu.
-        if (Typy::napis($konta['sub'] ?? null) === '') {
+        if ($konta === null || Typy::napis($konta['sub'] ?? null) === '') {
             return response()->json(['zalogowany' => false], 401);
         }
 

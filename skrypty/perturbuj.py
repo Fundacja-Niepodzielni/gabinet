@@ -29,6 +29,9 @@ OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
 PEST = KORZEN / "backend/tests/Pest.php"
 OCENA = KORZEN / "backend/app/Reguly/OcenaAnulacji.php"
 SESJA = KORZEN / "backend/config/session.php"
+ODSWIEZANIE = KORZEN / "backend/app/Tozsamosc/OdswiezanieSesji.php"
+WYLOGOWANIE = KORZEN / "backend/app/Http/Controllers/BackchannelLogoutController.php"
+KONTROLER = KORZEN / "backend/app/Http/Controllers/LogowanieController.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 
 
@@ -276,6 +279,60 @@ def sesja_jawna() -> None:
     podmien(SESJA, "'encrypt' => env('SESSION_ENCRYPT', true),", "'encrypt' => env('SESSION_ENCRYPT', false),")
 
 
+def role_zamrozone() -> None:
+    """Przywraca stan sprzed decyzji B8: role zamrozone na cala sesje.
+
+    Wystarczy, ze `stanKonta()` odda zawartosc sesji bez pytania o wiek
+    access tokenu — i odebranie roli w Keycloaku przestaje dzialac przez
+    120 minut. Zmiana wyglada niewinnie i jest dokladnie tym, co znalazla
+    kontrola krzyzowa B8 u huba.
+    """
+    podmien(
+        ODSWIEZANIE,
+        "        if (! $this->wymagaOdswiezenia($konta)) {\n            return $konta;\n        }",
+        "        return $konta;",
+    )
+
+
+def logout_bez_failsafe() -> None:
+    """Usuwa klauzule fail-safe z handlera back-channel logout.
+
+    Bez niej niedostepny IdP daje 500, a SESJA ZYJE DALEJ — w ciszy. To ten
+    sam tryb awarii, ktory back-channel logout ma eliminowac (znalezisko
+    sesji `konta`, standard B8).
+    """
+    podmien(
+        WYLOGOWANIE,
+        "            $sidAwaryjny = WalidatorTokenu::sidNiezweryfikowany($logoutToken);\n"
+        "            $skasowane = $sidAwaryjny !== '' ? RejestrSesji::zakoncz($sidAwaryjny) : 0;",
+        "            $skasowane = 0;",
+    )
+
+
+def role_ze_zlego_zrodla() -> None:
+    """Czyta role z ID TOKENU zamiast z access tokenu.
+
+    Wyostrzenie B2 (wzorzec huba): asercja „role == [koordynator]" przechodzi
+    takze przy odczycie ze zlego zrodla, o ile fixtura kaze obu zrodlom mowic
+    to samo. Ta mutacja sprawdza, czy test pyta „Z KTOREGO ZRODLA", a nie
+    „czy role sa".
+    """
+    # WSZYSTKIE wystapienia, nie pierwsze. Pierwsza wersja tej mutacji
+    # podmieniala tylko `role_surowe`, a autoryzujace `role` szly dalej
+    # z access tokenu — perturbacja meldowala, ze test nie rozroznia zrodel,
+    # podczas gdy nie rozroznial ich sama mutacja.
+    tresc = czytaj(KONTROLER)
+    stare = "Bramki::roleZAccessTokenu($wynikAccess['claims'])"
+
+    if tresc.count(stare) < 3:
+        raise SystemExit(
+            "PERTURBACJA NIEUDANA: oczekiwano co najmniej 3 odczytow rol "
+            f"z access tokenu, znaleziono {tresc.count(stare)}"
+        )
+
+    pisz(KONTROLER, tresc.replace(stare, "Bramki::roleZAccessTokenu($claimsId)"))
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -286,6 +343,9 @@ POLECENIA = {
     "suita-pominieta": suita_pominieta,
     "obietnica-bez-dowodu": obietnica_bez_dowodu,
     "sesja-jawna": sesja_jawna,
+    "role-zamrozone": role_zamrozone,
+    "logout-bez-failsafe": logout_bez_failsafe,
+    "role-ze-zlego-zrodla": role_ze_zlego_zrodla,
     "obietnica-sprzataj": obietnica_sprzataj,
     "suita-pominieta-sprzataj": suita_pominieta_sprzataj,
 }

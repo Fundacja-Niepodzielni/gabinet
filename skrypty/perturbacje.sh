@@ -745,6 +745,66 @@ p_sesja_jawna() {
 	fi
 }
 
+p_role_zamrozone() {
+	naglowek "role zamrożone na całą sesję — odebranie roli nie działa"
+	# Standard B8: ról NIE WOLNO zamrażać na całą sesję. Przed tą zmianą role
+	# szły do sesji przy logowaniu i nie zmieniały się przez 120 minut, a sesja
+	# odnawiała się ruchem — dla aktywnego użytkownika odebranie roli
+	# w Keycloaku nie działało NIGDY.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj role-zamrozone
+
+	dowod_mutacji "sprawdzanie wieku access tokenu zniknęło z kodu" \
+		bash -c "! grep -q 'wymagaOdswiezenia(\$konta)' '$plik'"
+
+	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_logout_failsafe() {
+	naglowek "wylogowanie bez klauzuli fail-safe — 500 z żywą sesją"
+	# Klauzula fail-safe logout (standard B8, znalezisko sesji `konta`):
+	# handler pobiera JWKS, więc sięga po sieć. Bez tej gałęzi niedostępny IdP
+	# dawał kod 500, a SESJA ŻYŁA DALEJ — w ciszy. Dokładnie ten tryb awarii,
+	# który back-channel logout ma eliminować.
+	local plik="backend/app/Http/Controllers/BackchannelLogoutController.php"
+	zachowaj "$plik"
+
+	perturbuj logout-bez-failsafe
+
+	dowod_mutacji "awaryjne zakończenie sesji zniknęło z handlera" \
+		bash -c "! grep -q 'sidNiezweryfikowany' '$plik'"
+
+	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_zrodlo_rol() {
+	naglowek "źródło ról — odczyt z ID tokenu zamiast z access tokenu"
+	# Wyostrzenie B2 (wzorzec huba): asercja „role == [koordynator]" przechodzi
+	# TAKŻE przy odczycie ze złego źródła, o ile fixtura każe obu źródłom mówić
+	# to samo. Test ma pytać „Z KTÓREGO ŹRÓDŁA", nie „czy role są" — a tego
+	# dowodzi wyłącznie perturbacja podmieniająca źródło.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj role-ze-zlego-zrodla
+
+	dowod_mutacji "wszystkie trzy odczyty ról idą teraz z ID tokenu" \
+		bash -c "[ \"\$(grep -c 'roleZAccessTokenu(\$claimsId)' '$plik')\" = '3' ]"
+
+	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -959,7 +1019,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -1021,6 +1081,9 @@ for NAZWA in $WYBRANE; do
 		retencja) p_retencja ;;
 		obietnica) p_obietnica ;;
 		sesja) p_sesja_jawna ;;
+		role_zamrozone) p_role_zamrozone ;;
+		logout_failsafe) p_logout_failsafe ;;
+		zrodlo_rol) p_zrodlo_rol ;;
 		zamek) p_zamek ;;
 		sonda_bazy) p_sonda_bazy ;;
 		zdrowie) p_zdrowie ;;

@@ -37,6 +37,26 @@ pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
  * endpointów, kontrola issuera) — atrapowany jest wyłącznie ruch sieciowy.
  */
 /**
+ * Metadane discovery atrapy IdP — jedno źródło dla wszystkich testów.
+ *
+ * Wydzielone, bo testy przeliczania ról (B8) muszą podstawiać własną atrapę
+ * punktu tokenów, nie tracąc reszty metadanych.
+ *
+ * @return array<string, mixed>
+ */
+function discoveryAtrapy(): array
+{
+    return [
+        'issuer' => FabrykaTokenow::ADRES,
+        'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
+        'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
+        'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
+        'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
+        'userinfo_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/userinfo',
+    ];
+}
+
+/**
  * @param  array<string, mixed>  $nadpisaniaDiscovery
  */
 function udawajIdp(array $nadpisaniaDiscovery = []): void
@@ -50,14 +70,7 @@ function udawajIdp(array $nadpisaniaDiscovery = []): void
         'konta.tolerancja_zegara' => 30,
     ]);
 
-    $discovery = array_merge([
-        'issuer' => FabrykaTokenow::ADRES,
-        'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
-        'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
-        'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
-        'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
-        'userinfo_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/userinfo',
-    ], $nadpisaniaDiscovery);
+    $discovery = array_merge(discoveryAtrapy(), $nadpisaniaDiscovery);
 
     Http::fake([
         'idp.test/*/.well-known/openid-configuration' => Http::response($discovery),

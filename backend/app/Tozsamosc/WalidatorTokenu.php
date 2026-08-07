@@ -142,6 +142,30 @@ final class WalidatorTokenu
     }
 
     /**
+     * `sid` z ładunku tokenu — BEZ WERYFIKACJI PODPISU.
+     *
+     * Jedyne dozwolone zastosowanie: AWARYJNE zakończenie sesji, gdy walidacja
+     * rzuciła wyjątkiem (klauzula fail-safe logout, standard B8). Skutkiem jest
+     * wyłącznie wylogowanie — nie nadaje uprawnień i nie ujawnia danych, więc
+     * zaufanie do niezweryfikowanej wartości ogranicza się tutaj do czynności,
+     * której NADMIAR jest bezpieczniejszy niż jej BRAK.
+     *
+     * Ścieżka jest wąska celowo: wchodzi wyłącznie przy wyjątku (niedostępny
+     * IdP), nigdy przy złym podpisie. Token napastnika z poprawnym formatem,
+     * ale złym podpisem, idzie normalną drogą i kończy się odmową.
+     */
+    public static function sidNiezweryfikowany(string $jwt): string
+    {
+        $rozlozony = self::rozloz($jwt);
+
+        if ($rozlozony === null) {
+            return '';
+        }
+
+        return Typy::napis(Typy::mapa($rozlozony['payload'])['sid'] ?? null);
+    }
+
+    /**
      * `kid` z nagłówka tokenu — BEZ WERYFIKACJI PODPISU.
      *
      * Nazwa metody ma o tym krzyczeć: to dane atakującego. Jedyne dozwolone
