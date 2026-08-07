@@ -35,7 +35,55 @@ Wspólny standard ekosystemu Fundacji Niepodzielni (ten sam co w repo `konta`, `
 3. Implementuj (sam lub delegując wg zasad wyżej); commituj przyrostowo.
 4. Uruchom pełną bramkę fazy (testy + statyka + kryteria akceptacji).
 5. Zleć niezależną weryfikację. Czerwone → napraw albo zarejestruj bloker.
-6. Zaktualizuj `CURRENT WORK` + `docs/DECYZJE.md`; raport dla właściciela: co zrobione (z dowodami), co czerwone, co dalej, czego potrzebujesz od człowieka.
+6. Zaktualizuj `CURRENT WORK` + `docs/DECYZJE.md`; raport dla właściciela: co zrobione (z dowodami), co czerwone, co dalej, **jakie polecenia były sprzeczne i ile kosztuje cofnięcie**, czego potrzebujesz od człowieka.
+
+## Sprzeczne polecenia architekta
+
+Wersja kanoniczna, uzgodniona z zespołem helpdesku (07.08.2026):
+
+> Gdy nowe polecenie architekta koliduje z **wcześniejszym poleceniem** —
+> wykonaj nowsze, ale **zgłoś rozbieżność w raporcie**, podając trzy rzeczy:
+> (a) **co dokładnie się kłóci** — obie wersje wprost, nie „poprzednia
+> decyzja"; (b) **co już zostało wykonane** i w jakim stanie jest system;
+> (c) **koszt cofnięcia**. Nigdy nie wybieraj po cichu.
+>
+> **WYJĄTEK:** sprzeczność z `CLAUDE.md` albo z zamkniętą decyzją w
+> `docs/DECYZJE.md` to **inny przypadek** — tam **pytasz przed wykonaniem**,
+> nie wykonujesz z adnotacją. „Wykonaj nowsze" nie jest furtką do obchodzenia
+> zasad twardych.
+
+Uzasadnienie: orkiestrator bywa niespójny, a sesja jest **ostatnim miejscem**,
+w którym niespójność da się jeszcze wyłapać. Ciche wybranie jednej wersji
+kasuje tę szansę i po miesiącu nikt nie odtworzy, dlaczego system robi to,
+co robi.
+
+Raport kończący fazę ma stałą pozycję: **„jakie polecenia były sprzeczne i ile
+kosztuje cofnięcie"**. Brak sprzeczności zapisujemy wprost („brak"), żeby
+milczenie nie było dwuznaczne.
+
+## Zapis pliku to nie dowód, że plik ma treść
+
+Lekcja zespołu helpdesku (defekt platformy Windows), potwierdzona w tej sesji
+dwa razy:
+
+1. **Ścieżki POSIX na Windows.** Git Bash i Python interpretują `/tmp` (i inne
+   ścieżki POSIX) **różnie**. Skrypt melduje „zapisałem", a plik jest gdzie
+   indziej albo go nie ma. Ta sama klasa błędu co `MSYS_NO_PATHCONV`, która
+   wywróciła `--czysty-klon` u hubu. W tej sesji: heredoc basha zapisał
+   `/tmp/parser.txt`, a Python z tego samego polecenia zgłosił
+   `FileNotFoundError`.
+   **Reguła:** w skryptach mieszających bash i Pythona operacje plikowe
+   robimy **wewnątrz repozytorium albo katalogu roboczego**, nigdy w `/tmp`;
+   albo wszystkie operacje na plikach w **jednym języku**. `/tmp` wewnątrz
+   kontenera linuksowego jest bezpieczne — to prawdziwy POSIX.
+2. **Meta-reguła.** Po każdym zapisie, na którym opiera się kontrola albo
+   decyzja, **przeczytaj plik z powrotem**. „Skrypt się wykonał" ≠ „plik ma
+   treść". U helpdesku commit deklarujący zapis przeszedł, bo reszta zmian
+   była poprawna — a plik był pusty.
+
+To samo dotyczy podmian w kodzie: `sed`/`str.replace`, które nic nie znalazły,
+kończą się **sukcesem**. Dlatego `skrypty/perturbuj.py` ma `podmien()`
+podnoszące błąd przy braku trafienia, a każda perturbacja ma **dowód mutacji**.
 
 ## Czego agentom nie wolno nigdy
 

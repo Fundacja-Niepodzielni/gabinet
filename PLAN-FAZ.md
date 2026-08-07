@@ -7,7 +7,7 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
 - **Faza: F0 — wykonana, z jednym jawnym blokerem** (sesja 1, 2026-08-07)
-- **Bramka: `BRAMKA OK — 18 kroków, 0 nieudanych` na CZYSTYM KLONIE** (kod wyjścia 0)
+- **Bramka na koniec F0: `BRAMKA OK — 18 kroków, 0 nieudanych`** na czystym klonie (stan z sesji 1; dziś bramka ma 21 kroków — patrz „Stan bramki dziś")
 - 9 commitów, `0af30ae` … `a3e7166`. **Nie wypchnięte na `origin`** — czeka na zgodę właściciela.
 
 ### Rozpiska zadań F0 — stan końcowy sesji
@@ -28,7 +28,7 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 ### Blokery i oczekiwania
 
 - **BLK-01** (`docs/BLOKERY.md`): klient `gabinet` nie istnieje w realmie Keycloaka. Nie blokuje F1 ani F2. Gotowe zgłoszenie: `docs/zgloszenia/klient-gabinet-w-realmie.md`.
-- **CI: `bramka` ZIELONA** (`BRAMKA OK — 17 kroków, 0 nieudanych`, przebieg dla `eadf5c5`). Job `sekrety` był czerwony z powodu braku płatnej licencji `gitleaks-action` — **usunięty**, skan sekretów jest krokiem bramki (D-2026-08-07-12).
+- **CI: `bramka` ZIELONA** (`BRAMKA OK — 17 kroków, 0 nieudanych` — przebieg dla `eadf5c5`, czyli ówczesna liczba kroków). Job `sekrety` był czerwony z powodu braku płatnej licencji `gitleaks-action` — **usunięty**, skan sekretów jest krokiem bramki (D-2026-08-07-12).
 - Czeka na człowieka: Z-01 (nadawca SMS), Z-02 (dostawca wideo), Z-04 (przelewy vs Connect), Z-05 (źródła makiety).
 - Z-03 (limit niskopłatnych) **przestał blokować** — wartość rozstrzygnięta: 10 wizyt (D-2026-08-07-08).
 
@@ -59,10 +59,12 @@ Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista
 **Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
 seed o wiarygodnych proporcjach; migracje w górę i w dół.
 
-**Stan bramki dziś:** `BRAMKA OK — 21 kroków, 0 nieudanych`; **138 testów**
-(413 asercji); CI zielone. Granica okna sprawdzona co do sekundy.
-**Perturbacje: `PERTURBACJE OK`** — **17 kontroli** udowodniło, że umie
-zaświecić czerwono (D-2026-08-07-13).
+**Stan bramki dziś:** `BRAMKA OK — 21 kroków, 0 nieudanych`; **151 testów**
+(479 asercji). Granica okna sprawdzona co do sekundy.
+**Perturbacje: `PERTURBACJE OK` — 28 kontroli** udowodniło, że umie zaświecić
+czerwono, w **20 scenariuszach** (D-2026-08-07-13, -18, -19, -20).
+**Powtarzalność perturbacji:** 3 przebiegi z rzędu, identyczny wynik, czyste
+drzewo robocze — `skrypty/perturbacje-powtarzalne.sh` (reguła 4, D-2026-08-07-21).
 
 **Zostało w F1:** seed o wiarygodnych proporcjach (F1.7) — ostatnie zadanie fazy.
 

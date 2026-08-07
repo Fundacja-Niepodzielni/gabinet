@@ -76,10 +76,12 @@ it('każda tabela w bazie jest albo w rejestrze retencji, albo jawnie uznana za 
     // Sedno kontroli: nowa tabela nie może POWSTAĆ bez decyzji o retencji.
     // Bez tego rekord bez ścieżki usunięcia powstaje przez przeoczenie, a nie
     // przez decyzję — i nikt się o tym nie dowie.
-    $wBazie = array_map(
-        static fn (object $w): string => (string) $w->tablename,
-        DB::select("select tablename from pg_tables where schemaname = 'public'")
-    );
+    $wBazie = [];
+
+    foreach (DB::select("select tablename from pg_tables where schemaname = 'public'") as $wiersz) {
+        /** @var object{tablename: string} $wiersz */
+        $wBazie[] = $wiersz->tablename;
+    }
 
     $opisane = [...array_keys(REJESTR_RETENCJI), ...BEZ_DANYCH_OSOBOWYCH];
     sort($wBazie);
