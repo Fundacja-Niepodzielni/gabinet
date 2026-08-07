@@ -34,9 +34,36 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 ### Następny krok
 
-1. Zgoda właściciela na `git push` → uruchomienie CI → domknięcie F0.4.
-2. Zgłoszenie klienta `gabinet` w repo `konta` → domknięcie BLK-01 i F0.8.
-3. **F1 może ruszyć równolegle**: DPIA-checklista PRZED modelem danych. Materiał wejściowy: `docs/specyfikacja/05-DECYZJE-makiety.md` rozdz. 3 (macierz odwołań) i 4 (szkic modelu danych).
+1. ✅ Push + CI zielone (`ee85c83`).
+2. ⏳ Powtórna niezależna weryfikacja — **to ona domyka F0**.
+3. Zgłoszenie klienta `gabinet` w repo `konta` (właściciel / sesja `konta`) → domknięcie BLK-01 i F0.8.
+
+---
+
+## CURRENT WORK — F1 (rozpoczęta 2026-08-07)
+
+Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista.md) (wymagania W-1…W-12),
+`docs/specyfikacja/05-DECYZJE-makiety.md` rozdz. 3 (macierz odwołań) i 4 (szkic modelu danych).
+
+| # | Zadanie | Kryterium „zrobione" | Stan |
+|---|---|---|---|
+| F1.1 | **DPIA-checklista** — art. 9, retencje, dostępy, podprocesorzy | dokument kończy się wymaganiami dla migracji, nie opisem | ✅ |
+| F1.2 | Migracje: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół**; `timestamptz`; kolumny 🔒 szyfrowane | ⬜ |
+| F1.3 | Konfiguracja reguł **z wersjonowaniem i datą obowiązywania** + macierz odwołań **jako dane** | zmiana reguły nie działa wstecz — test na rezerwacji sprzed zmiany | ⬜ |
+| F1.4 | **Jedna funkcja rozstrzygająca** zwrot / możliwość przełożenia / płatność godziny | wołana przez wszystkie moduły; żaden ekran nie decyduje sam | ⬜ |
+| F1.5 | Zamrażanie: `kwota_zamrozona`, `regula_anulacji_zamrozona` (pełny zrzut), wersja regulaminu | test: podwyżka cennika **nie rusza** starej rezerwacji | ⬜ |
+| F1.6 | Strefy czasowe: UTC w bazie, okna liczone w Europe/Warsaw | testy na dobach **23 h i 25 h** (zmiana czasu) | ⬜ |
+| F1.7 | Seed o **wiarygodnych proporcjach**: 111 specjalistów, kilkanaście wizyt/pacjenta | limit **różnicuje** pacjentów; wizyt na pacjenta < 40 (dziennik makiety, rozdz. 15) | ⬜ |
+
+**Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
+seed o wiarygodnych proporcjach; migracje w górę i w dół.
+
+**Wartości startowe reguł** (do tabeli konfiguracji, wszystkie wersjonowane):
+okno bezpłatnego odwołania 24 h · limit przełożeń 2 · najbliższy termin 2 h ·
+kalendarz pacjenta 30 dni · specjalista wystawia 7 dni · przerwa 10 min ·
+blokada koszyka 10 min · link płatności 2 dni · **limit niskopłatnych 10 wizyt**
+(D-2026-08-07-08) · limit podażowy 4 terminy/tydzień/specjalista ·
+kredyt za odsprzedany termin: włączony.
 
 ## F0 — Fundament (S)
 
