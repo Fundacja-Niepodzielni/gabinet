@@ -57,9 +57,25 @@ tego test (`backend/tests/Feature/SekretyTest.php`) oraz gitleaks w CI.
 
 Kończy się `BRAMKA OK` albo `BRAMKA CZERWONA — N nieudanych`. CI
 (`.github/workflows/ci.yml`) woła **dokładnie ten skrypt**, więc przebieg
-lokalny i zdalny nie mogą się rozjechać. Bramka stawia własny stos
-(`gabinet-bramka`, własne wolumeny i porty) i **nigdy nie dotyka kontenerów
-dewelopera**.
+lokalny i zdalny nie mogą się rozjechać. Bramka stawia własny stos: własny
+projekt compose **i własny prefiks nazw** (`GABINET_PREFIX`), czyli osobne
+kontenery, osobną sieć i osobne wolumeny.
+
+Prefiks sieci nie jest kosmetyką: przy nazwie na sztywno oba stosy wpinały się
+w jedną sieć i alias `postgres` rozwiązywał się losowo na jeden z dwóch
+serwerów — bramka trafiała w bazę dewelopera w ~połowie przebiegów. Znalazła to
+niezależna weryfikacja, nie autor.
+
+### Czego pilnują kontrole bramki
+
+| Zasada | Jak jest realizowana |
+|---|---|
+| Kontrola pyta o **stan**, nie o deklarację | `gabinet:zdrowie` wykonuje zapytanie do bazy, PING do Redisa i zapis do cache; nie czyta `.env` |
+| **HTTP 200 to nie tożsamość** | bramka sprawdza znacznik `gabinet-api-v1` pod `/api/wersja`, nie sam kod odpowiedzi |
+| Harmonogram **wykonał zadanie**, nie „proces istnieje" | `gabinet:puls --sprawdz` czyta puls zapisywany co minutę przez samą pętlę harmonogramu |
+| Nic nie wystawione publicznie | dwutorowo: `docker inspect` (każde przypisanie na `127.0.0.1`) **oraz** aktywna próba połączenia z adresu spoza loopbacku |
+| Bramka działa na **czystym klonie** | instalacja zależności jest jawnym krokiem skryptu, a nie efektem ubocznym startu kontenerów |
+| `docker compose port` | **nie używany** — przy wielu przypisaniach zwraca losowe jedno |
 
 Pojedyncze narzędzia:
 

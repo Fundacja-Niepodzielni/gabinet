@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tozsamosc\KontaOidc;
+use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Http;
 use Tests\Wsparcie\FabrykaTokenow;
 
@@ -64,14 +65,17 @@ it('przekierowuje /auth/login do IdP z PKCE, state i nonce', function (): void {
         ->and($parametry['code_challenge'])->not->toBeEmpty()
         // `state` i `nonce` muszą trafić do sesji — inaczej powrót z IdP
         // nie ma się do czego porównać.
-        ->and($parametry['state'])->toBe(session('konta.state'))
-        ->and($parametry['nonce'])->toBe(session('konta.nonce'));
+        ->and($parametry['state'])->toBe(session('oidc_przeplyw.state'))
+        ->and($parametry['nonce'])->toBe(session('oidc_przeplyw.nonce'))
+        // Klucze przepływu MUSZĄ być rozłączne z kluczem tożsamości:
+        // rozpoczęcie logowania nie może uchodzić za zalogowanie.
+        ->and(session('konta'))->toBeNull();
 });
 
 it('odrzuca powrót z IdP z niezgodnym state', function (): void {
     udawajIdp();
 
-    $this->withSession(['konta.state' => 'prawdziwy', 'konta.pkce' => 'x'])
+    $this->withSession(['oidc_przeplyw' => ['state' => 'prawdziwy', 'pkce' => 'x']])
         ->get('/auth/callback?code=abc&state=podstawiony')
         ->assertStatus(400)
         ->assertJsonPath('blad', 'state');
@@ -93,6 +97,102 @@ it('przerywa, gdy discovery zwraca innego issuera niż publiczny', function (): 
 
     expect(fn () => app(KontaOidc::class)->metadane())
         ->toThrow(RuntimeException::class, 'discovery: issuer=https://obcy.test/realms/niepodzielni');
+});
+
+it('przeprowadza pełne logowanie: kod → tokeny → sesja → role → bramki', function (): void {
+    // POZYTYW dla całej ścieżki HTTP. Bez niego mamy komplet testów
+    // negatywnych i żadnego dowodu, że szczęśliwa ścieżka w ogóle działa —
+    // a to jest odwrotność reguły WYTYCZNE §3.
+    udawajIdp();
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId([
+        'iss' => IDP,
+        'nonce' => 'nonce-z-sesji',
+    ]));
+
+    $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
+        'iss' => IDP,
+        'realm_access' => ['roles' => ['psycholog', 'offline_access']],
+    ]));
+
+    Http::fake([
+        'idp.test/*/.well-known/openid-configuration' => Http::response([
+            'issuer' => IDP,
+            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
+            'token_endpoint' => IDP.'/protocol/openid-connect/token',
+            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+        ]),
+        'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
+        'idp.test/*/protocol/openid-connect/token' => Http::response([
+            'access_token' => $accessToken,
+            'id_token' => $idToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 600,
+        ]),
+    ]);
+
+    $this->withSession(['oidc_przeplyw' => [
+        'state' => 'state-z-sesji',
+        'nonce' => 'nonce-z-sesji',
+        'pkce' => 'weryfikator-pkce',
+    ]])->get('/auth/callback?code=kod-autoryzacyjny&state=state-z-sesji')
+        ->assertRedirect('/');
+
+    // Dowód liczony na WARTOŚCIACH, nie na obecności ekranu:
+    $this->getJson('/auth/ja')
+        ->assertOk()
+        ->assertJsonPath('zalogowany', true)
+        ->assertJsonPath('sub', 'sub-abc-123')
+        ->assertJsonPath('login', 'test-psycholog')
+        ->assertJsonPath('role', ['psycholog', 'offline_access']);
+
+    // Bramki mają kropki w nazwach, więc `assertJsonPath` (notacja kropkowa)
+    // by ich nie znalazł — czytamy mapę wprost.
+    $bramki = Typy::mapa($this->getJson('/auth/ja')->json('bramki'));
+
+    expect($bramki['panel.specjalisty'])->toBeTrue()
+        ->and($bramki['panel.koordynacji'])->toBeFalse()
+        ->and($bramki['rozliczenia.akceptuj'])->toBeFalse()
+        ->and($bramki['panel.pacjenta'])->toBeFalse();
+});
+
+it('nie wpuszcza, gdy access token ma cudzą audiencję', function (): void {
+    // Ta sama ścieżka co wyżej, zmieniona DOKŁADNIE w jednym miejscu.
+    udawajIdp();
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
+        'iss' => IDP,
+        'aud' => ['account'],
+        'azp' => 'psychon-web',
+    ]));
+
+    Http::fake([
+        'idp.test/*/.well-known/openid-configuration' => Http::response([
+            'issuer' => IDP,
+            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
+            'token_endpoint' => IDP.'/protocol/openid-connect/token',
+            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+        ]),
+        'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
+        'idp.test/*/protocol/openid-connect/token' => Http::response([
+            'access_token' => $accessToken,
+            'id_token' => $idToken,
+        ]),
+    ]);
+
+    $this->withSession(['oidc_przeplyw' => ['state' => 's', 'nonce' => 'n', 'pkce' => 'p']])
+        ->get('/auth/callback?code=kod&state=s')
+        ->assertStatus(401)
+        ->assertJsonPath('blad', 'access_token')
+        ->assertJsonPath('kontrole.aud', 'fail')
+        // Dowód, że odrzucenie nie wynika z rozsypanej walidacji:
+        ->assertJsonPath('kontrole.signature', 'ok');
+
+    // Sesja MUSI zostać pusta — odrzucony token nie może zalogować.
+    $this->getJson('/auth/ja')->assertStatus(401);
 });
 
 it('odrzuca back-channel logout ze śmieciem zamiast tokenu', function (): void {

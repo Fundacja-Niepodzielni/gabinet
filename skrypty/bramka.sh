@@ -10,15 +10,30 @@
 # lokalna i bramka na GitHubie nie mogą się rozjechać. Reguła przejęta z repo
 # `konta` (scripts/ci-local.sh), gdzie się sprawdziła.
 #
+# ---------------------------------------------------------------------------
+# ZASADY KONTROLI (lekcja zespołu helpdesku + dziennik makiety, rozdz. 15 i 23):
+#
+#  1. Kontrola pyta o STAN, nie o deklarację. Wersję bazy czytamy z żywego
+#     zapytania, nie z `.env`; port z `docker inspect`, nie z `compose config`.
+#  2. HTTP 200 to NIE tożsamość. Sprawdzamy znacznik WŁASNEJ aplikacji —
+#     cudza usługa na zajętym porcie potrafi dać fałszywe zielone.
+#  3. `docker compose port` przy wielu przypisaniach zwraca LOSOWE jedno.
+#     Nie używamy go w kontrolach.
+#  4. „Nic nie wystawione publicznie" sprawdzamy dwutorowo: deklaratywnie
+#     (`docker inspect`) ORAZ aktywnie — każdy port × adres spoza loopbacku.
+#  5. Bramkę testujemy na CZYSTYM KLONIE. Dlatego instalacja zależności jest
+#     JAWNYM krokiem, a nie efektem ubocznym startu kontenerów.
+# ---------------------------------------------------------------------------
+#
 # BEZPIECZEŃSTWO: przebieg dostaje WŁASNY projekt compose (domyślnie
-# `gabinet-bramka`), własne wolumeny i własne porty. Sprzątanie to wyłącznie
-# `docker compose -p <ten projekt> down -v`. Skrypt ODMAWIA startu, gdyby ktoś
-# wskazał projekt `gabinet` — to stos dewelopera i jego danych nie kasujemy.
+# `gabinet-bramka`), własny PREFIKS nazw (kontenery, sieć, wolumeny) i własne
+# porty. Sprzątanie to wyłącznie `docker compose -p <ten projekt> down -v`.
+# Skrypt ODMAWIA startu, gdyby ktoś wskazał projekt `gabinet` — to stos
+# dewelopera i jego danych nie kasujemy.
 # NIGDY nie wołamy globalnych `docker system/volume prune`.
 # ===========================================================================
 set -uo pipefail
 
-# Git Bash zamienia ścieżki kontenerowe na hostowe, zanim dojdą do docker.exe.
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
 
@@ -30,6 +45,7 @@ PROJEKT="${GABINET_BRAMKA_PROJEKT:-gabinet-bramka}"
 PORT_HTTP="${GABINET_BRAMKA_PORT_HTTP:-8099}"
 PORT_PG="${GABINET_BRAMKA_PORT_POSTGRES:-55443}"
 PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
+ZNACZNIK_APLIKACJI="gabinet-api-v1"
 ZOSTAW=0
 TYLKO_KOD=0
 
@@ -38,7 +54,7 @@ while [ $# -gt 0 ]; do
 		--zostaw) ZOSTAW=1; shift ;;
 		--tylko-kod) TYLKO_KOD=1; ZOSTAW=1; shift ;;
 		--projekt) PROJEKT="$2"; shift 2 ;;
-		-h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+		-h|--help) sed -n '2,33p' "$0"; exit 0 ;;
 		*) echo "nieznany argument: $1" >&2; exit 2 ;;
 	esac
 done
@@ -51,10 +67,16 @@ fi
 KROK=0
 NIEUDANE=0
 
-krok()   { KROK=$((KROK + 1)); printf '\n=== [%d] %s\n' "$KROK" "$*"; }
-zle()    { NIEUDANE=$((NIEUDANE + 1)); printf '    ^ KROK NIEUDANY\n'; }
+krok() { KROK=$((KROK + 1)); printf '\n=== [%d] %s\n' "$KROK" "$*"; }
+zle()  { NIEUDANE=$((NIEUDANE + 1)); printf '    ^ KROK NIEUDANY\n'; }
+
+sciezka_hosta() {
+	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$KORZEN/$1"; else echo "$KORZEN/$1"; fi
+}
+
 # Prefiks nazw kontenerów/sieci/wolumenów. Bez niego drugi stos z tego samego
-# pliku zderza się z kontenerami dewelopera po NAZWIE, mimo innego projektu.
+# pliku zderza się z zasobami dewelopera po NAZWIE, mimo innego projektu —
+# a alias `postgres` rozwiązuje się wtedy losowo na jeden z dwóch serwerów.
 dc() {
 	GABINET_PREFIX="$PROJEKT" \
 	GABINET_PORT_HTTP="$PORT_HTTP" \
@@ -63,13 +85,8 @@ dc() {
 		docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
 }
 
-# Pod Git Bash `-f /d/...` nie dochodzi do docker.exe w czytelnej postaci.
-sciezka_hosta() {
-	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$KORZEN/$1"; else echo "$KORZEN/$1"; fi
-}
-
 # ---------------------------------------------------------------------------
-# .env — bramka NIGDY nie używa `.env` dewelopera ani nie nadpisuje go.
+# .env — bramka NIGDY nie nadpisuje pliku dewelopera.
 # ---------------------------------------------------------------------------
 przygotuj_env() {
 	if [ -f .env ]; then
@@ -101,25 +118,38 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	krok "budowanie obrazu aplikacji"
 	dc build app || zle
 
+	# KROK JAWNY, nie efekt uboczny startu. Wcześniej instalację robił
+	# entrypoint we WSZYSTKICH trzech kontenerach naraz, na jednym
+	# bind-mouncie — wyścig przerywany restartami zostawiał katalog
+	# `vendor/` bez `autoload.php`. Objaw: bramka czerwona na czystym
+	# klonie, zielona przy drugim uruchomieniu.
+	krok "instalacja zależności (jeden proces, przed startem stosu)"
+	dc run --rm --no-deps --entrypoint composer app \
+		install --no-interaction --prefer-dist --no-progress || zle
+
 	krok "start stosu (postgres, redis, app, web, horizon, scheduler)"
-	dc up -d --wait --wait-timeout 240 || zle
+	# `--wait` czeka na sondy zdrowia. Scheduler melduje się dopiero po
+	# pierwszym pulsie (do ~2 min) — stąd hojny limit.
+	dc up -d --wait --wait-timeout 300 || zle
 
 	krok "migracje"
 	dc exec -T app php artisan migrate --force || zle
 
-	krok "sonda HTTP /up (przez nginx, port $PORT_HTTP)"
-	# Przekierowanie powłoki, a NIE `curl -o /dev/null`: przy MSYS_NO_PATHCONV=1
-	# Git Bash nie tłumaczy `/dev/null` w argumencie i curl kończy się kodem 23.
-	if curl -fsS "http://127.0.0.1:${PORT_HTTP}/up" >/dev/null; then
-		echo "    /up = 200"
+	krok "stan aplikacji: framework + baza + Redis + cache (nie deklaracje)"
+	dc exec -T app php artisan gabinet:zdrowie || zle
+
+	krok "tożsamość usługi pod portem $PORT_HTTP (nie sam kod 200)"
+	ODPOWIEDZ="$(curl -fsS --max-time 10 "http://127.0.0.1:${PORT_HTTP}/api/wersja" 2>&1)"
+	if printf '%s' "$ODPOWIEDZ" | grep -q "$ZNACZNIK_APLIKACJI"; then
+		echo "    znacznik '$ZNACZNIK_APLIKACJI' obecny — to NASZA usługa"
 	else
+		echo "    pod portem odpowiada coś innego niż Gabinet: $ODPOWIEDZ"
 		zle
 	fi
 
 	krok "Horizon widzi Redis"
-	# Horizon melduje się w Redisie dopiero po starcie nadzorcy głównego, a to
-	# bywa kilka sekund PO tym, jak kontener zgłosi się jako zdrowy. Bez pętli
-	# krok potrafi zapalić się na czerwono z powodu wyścigu, nie usterki.
+	# Horizon melduje się w Redisie dopiero po starcie nadzorcy głównego,
+	# a to bywa kilka sekund PO tym, jak kontener zgłosi się jako zdrowy.
 	HORIZON_OK=0
 	for _ in $(seq 1 20); do
 		HORIZON_WYNIK="$(dc exec -T app php artisan horizon:status 2>&1)"
@@ -131,6 +161,52 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 		sleep 3
 	done
 	[ "$HORIZON_OK" -eq 1 ] || { printf '%s\n' "$HORIZON_WYNIK"; zle; }
+
+	krok "harmonogram realnie WYKONAŁ zadanie (puls, nie sam proces)"
+	PULS_OK=0
+	for _ in $(seq 1 40); do
+		if dc exec -T app php artisan gabinet:puls --sprawdz >/dev/null 2>&1; then
+			PULS_OK=1
+			echo "    $(dc exec -T app php artisan gabinet:puls --sprawdz 2>&1 | tr -d '\r')"
+			break
+		fi
+		sleep 5
+	done
+	[ "$PULS_OK" -eq 1 ] || { echo "    harmonogram nie zapisał pulsu"; zle; }
+
+	# --- „nic nie wystawione publicznie" — dwutorowo ------------------------
+	krok "porty: deklaratywnie (docker inspect) — wszystko na 127.0.0.1"
+	# ŚWIADOMIE bez `docker compose port`: przy wielu przypisaniach zwraca
+	# losowe jedno i potrafi zameldować zieleń o niesprawdzonym porcie.
+	ZLE_BINDY="$(docker inspect $(dc ps -q) \
+		--format '{{.Name}} {{range $p, $b := .HostConfig.PortBindings}}{{range $b}}{{$p}}->{{.HostIp}} {{end}}{{end}}' 2>/dev/null \
+		| grep -vE '(^\S+ *$)|->127\.0\.0\.1' || true)"
+	if [ -z "$ZLE_BINDY" ]; then
+		echo "    każde przypisanie portu wskazuje 127.0.0.1"
+	else
+		echo "    porty wystawione poza loopback:"; printf '%s\n' "$ZLE_BINDY"
+		zle
+	fi
+
+	krok "porty: aktywnie — każdy port × adres hosta spoza loopbacku"
+	ADRES_LAN="$(php -r 'echo gethostbyname(gethostname());' 2>/dev/null)"
+	case "$ADRES_LAN" in
+		127.*|""|*[!0-9.]*) echo "    pominięte: nie ustalono adresu spoza loopbacku (mam: '${ADRES_LAN:-brak}')" ;;
+		*)
+			OSIAGALNE=""
+			for PORT in "$PORT_HTTP" "$PORT_PG" "$PORT_REDIS"; do
+				if curl -s --max-time 3 --connect-timeout 3 -o /dev/null "http://${ADRES_LAN}:${PORT}/" 2>/dev/null; then
+					OSIAGALNE="$OSIAGALNE $PORT"
+				fi
+			done
+			if [ -z "$OSIAGALNE" ]; then
+				echo "    z adresu $ADRES_LAN nie odpowiada żaden port ($PORT_HTTP, $PORT_PG, $PORT_REDIS)"
+			else
+				echo "    OSIĄGALNE Z SIECI:$OSIAGALNE"
+				zle
+			fi
+			;;
+	esac
 fi
 
 krok "format kodu (Pint)"
@@ -141,6 +217,17 @@ dc exec -T app ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress || z
 
 krok "testy (Pest)"
 dc exec -T app ./vendor/bin/pest || zle
+
+krok "sekrety (gitleaks) — ten sam skan co w CI"
+# Skanujemy tryb git (śledzone pliki + historia), czyli to, co realnie
+# trafia do repozytorium. `.env` dewelopera jest gitignorowany i nie wchodzi.
+if docker run --rm -v "$(cygpath -w "$KORZEN" 2>/dev/null || echo "$KORZEN"):/repo" -w /repo \
+	zricethezav/gitleaks:latest detect --source=/repo --config=/repo/.gitleaks.toml \
+	--no-banner --redact 2>&1 | tail -3; then
+	echo "    bez wycieków"
+else
+	zle
+fi
 
 if [ "$ZOSTAW" -eq 0 ]; then
 	krok "sprzątanie (down -v, wyłącznie projekt $PROJEKT)"

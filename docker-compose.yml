@@ -124,11 +124,14 @@ services:
     container_name: ${GABINET_PREFIX:-gabinet}-app
     command: ["php-fpm"]
     healthcheck:
-      test: ["CMD-SHELL", "php -r 'exit(extension_loaded(\"pdo_pgsql\") && extension_loaded(\"redis\") ? 0 : 1);'"]
+      # Pyta o STAN, nie o deklarację: framework musi się wystartować, baza
+      # odpowiedzieć na zapytanie, Redis na PING. Poprzednia wersja sprawdzała
+      # `extension_loaded()` i meldowała „healthy" przy braku `vendor/`.
+      test: ["CMD-SHELL", "php artisan gabinet:zdrowie --cichy"]
       interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 30s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
 
   # -------------------------------------------------------------------------
   # nginx — jedyne wejście HTTP
@@ -183,14 +186,18 @@ services:
     stop_signal: SIGTERM
     stop_grace_period: 30s
     healthcheck:
-      # `schedule:work` nie ma własnej sondy — sprawdzamy, że proces żyje.
-      # Bez tego kontener „działa" także wtedy, gdy harmonogram padł po starcie,
-      # a zadania okresowe (przypomnienia, wygaszanie blokad) po prostu nie idą.
-      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' >/dev/null || exit 1"]
-      interval: 15s
-      timeout: 5s
+      # Sonda czyta PULS zapisywany przez zadanie `gabinet:puls`, uruchamiane
+      # co minutę przez sam harmonogram. To jest STAN: dowodzi, że pętla
+      # harmonogramu realnie wykonała zadanie, a nie że proces istnieje.
+      #
+      # Poprzednia wersja (`pgrep -f 'artisan schedule:work'`) trafiała we
+      # WŁASNY PID 1 kontenera i meldowała „healthy", gdy harmonogram jeszcze
+      # w ogóle nie wystartował — zmierzone przez weryfikatora.
+      test: ["CMD-SHELL", "php artisan gabinet:puls --sprawdz"]
+      interval: 30s
+      timeout: 10s
       retries: 4
-      start_period: 30s
+      start_period: 150s
 
 networks:
   gabinet:

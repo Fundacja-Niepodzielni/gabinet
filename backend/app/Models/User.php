@@ -4,31 +4,27 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+/**
+ * Konto lokalne — odwzorowanie konta z Kont Niepodzielni.
+ *
+ * NIE dziedziczy po `Authenticatable` i nie zna pojęcia hasła: uwierzytelnia
+ * IdP, a Gabinet trzyma tylko wynik (CLAUDE.md §2). Wiązanie po `keycloak_sub`,
+ * nigdy po e-mailu — zmiana adresu w IdP nie może przejąć cudzego rekordu.
+ */
+#[Fillable(['keycloak_sub', 'email', 'email_potwierdzony', 'nazwa_wyswietlana'])]
+class User extends Model
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
-
     /**
-     * Get the attributes that should be cast.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_potwierdzony' => 'boolean',
+            'ostatnie_logowanie_at' => 'datetime',
         ];
     }
 }

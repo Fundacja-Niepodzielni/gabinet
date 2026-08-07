@@ -8,34 +8,66 @@ title = "Gabinet — reguły wykrywania sekretów"
 useDefault = true
 
 # --- reguły dodatkowe, specyficzne dla tego projektu ------------------------
+#
+# UWAGA na `\s` w tych wyrażeniach: obejmuje ZNAK NOWEJ LINII. Pierwsza wersja
+# używała `\s*=\s*\S{16,}` i zapalała się na PUSTYCH przypisaniach w
+# `.env.example`, bo `\S{16,}` łapało treść NASTĘPNEJ linii. Skan kończył się
+# kodem 1 na pliku, który z założenia nie ma żadnych wartości.
+# Dlatego wszędzie: `[ \t]*` zamiast `\s*` i kotwica `$` w trybie wieloliniowym.
 
 [[rules]]
 id = "laravel-app-key"
 description = "Klucz aplikacji Laravela (APP_KEY)"
-regex = '''APP_KEY\s*=\s*base64:[A-Za-z0-9+/]{40,}={0,2}'''
+regex = '''(?m)^[ \t]*APP_KEY[ \t]*=[ \t]*base64:[A-Za-z0-9+/]{40,}={0,2}[ \t]*$'''
 tags = ["laravel", "klucz"]
 
 [[rules]]
 id = "smsapi-token"
 description = "Token API SMSAPI"
-regex = '''SMSAPI_TOKEN\s*=\s*[A-Za-z0-9]{24,}'''
+regex = '''(?m)^[ \t]*SMSAPI_TOKEN[ \t]*=[ \t]*[A-Za-z0-9]{24,}[ \t]*$'''
 tags = ["sms", "token"]
 
 [[rules]]
 id = "keycloak-client-secret"
 description = "Sekret klienta poufnego Keycloak"
-regex = '''KEYCLOAK_(ADMIN_)?CLIENT_SECRET\s*=\s*\S{16,}'''
+regex = '''(?m)^[ \t]*KEYCLOAK_(ADMIN_)?CLIENT_SECRET[ \t]*=[ \t]*[^\s#]{16,}[ \t]*$'''
 tags = ["oidc", "sekret"]
+
+[[rules]]
+id = "haslo-bazy"
+description = "Hasło do bazy danych w pliku środowiskowym"
+regex = '''(?m)^[ \t]*(DB_PASSWORD|POSTGRES_PASSWORD)[ \t]*=[ \t]*[^\s#]{8,}[ \t]*$'''
+tags = ["baza", "haslo"]
 
 # --- co świadomie pomijamy --------------------------------------------------
 
-[allowlist]
+[[allowlists]]
 description = "Ścieżki bez sekretów z definicji"
 paths = [
   '''backend/vendor/.*''',
   '''(^|/)\.gitleaks\.toml$''',
 ]
 
+[[allowlists]]
+description = """
+Heurystyka `generic-api-key` na .env.example — WYŁĄCZONA ŚWIADOMIE i wąsko.
+
+Reguła domyślna gitleaksa ma ten sam problem, który naprawiliśmy w regułach
+własnych: `\\s` obejmuje znak nowej linii, więc na PUSTYM przypisaniu
+(`SMSAPI_TOKEN=`) dopasowuje treść NASTĘPNEJ linii i zgłasza wyciek tam,
+gdzie żadnej wartości nie ma. Zmierzone: `leaks found: 1`, entropia 4.06,
+sekret = nazwa nadawcy SMS z kolejnego wiersza.
+
+Wyłączenie dotyczy JEDNEJ reguły i JEDNEGO pliku. Ten plik nie zostaje bez
+ochrony: obowiązują na nim wszystkie reguły własne wyżej (APP_KEY, token
+SMSAPI, sekret Keycloaka, hasło bazy), a dodatkowo test `SekretyTest`
+sprawdza semantycznie, że KAŻDA zmienna sekretna jest pusta — czego żadna
+heurystyka entropii nie potrafi.
+"""
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)\.env\.example$''']
+
 # `.env.example` ma same puste przypisania (pilnuje tego test `SekretyTest`),
 # więc nie potrzebuje wyjątku — i celowo go nie dostaje. Gdyby ktoś wpisał tam
-# wartość, MA zapalić skan.
+# wartość, MA zapalić skan. Skuteczność tej konfiguracji sprawdza krok bramki
+# „sekrety (gitleaks)" — na obecnym drzewie ORAZ na podstawionej przynęcie.

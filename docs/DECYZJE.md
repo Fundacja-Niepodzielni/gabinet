@@ -42,9 +42,10 @@ i własnym cyklem budowania (61 ekranów, bramka `sprawdz-ekrany`), a nie warstw
 widoków Laravela. Wsadzenie jej w `resources/js` zmusiłoby nas do sklejenia
 dwóch niezależnych procesów budowania w jeden. Ten sam podział ma repo `chat`.
 
-**Skutek.** Wszystkie polecenia PHP uruchamiamy z `backend/`; CI ma
-`working-directory: backend` dla kroków PHP. `docker compose` uruchamiamy
-z korzenia.
+**Skutek.** Wszystkie polecenia PHP uruchamiamy z `backend/` — w praktyce
+przez `docker compose exec app`, bo katalog roboczy kontenera to już
+`/srv/gabinet/backend`. CI nie potrzebuje więc `working-directory`: woła
+`skrypty/bramka.sh` z korzenia, a ten wchodzi do kontenera.
 
 ---
 
@@ -166,12 +167,45 @@ Zmiana IdP albo kontraktu = zmiana w jednym katalogu.
 
 ---
 
+## D-2026-08-07-08 — dziennik makiety źródłem prawdy o REGUŁACH; limit niskopłatnych = 10 wizyt
+
+**Decyzja.** Do repozytorium wchodzi
+[`docs/specyfikacja/05-DECYZJE-makiety.md`](specyfikacja/05-DECYZJE-makiety.md)
+(dziennik decyzji wykonawcy makiety, stan 04.08.2026) wraz z
+[`05a-UWAGI-ARCHITEKTA-do-DECYZJI.md`](specyfikacja/05a-UWAGI-ARCHITEKTA-do-DECYZJI.md).
+Dziennik jest **źródłem prawdy o regułach biznesowych i ich uzasadnieniach**;
+przy sprzeczności z CLAUDE.md wygrywa CLAUDE.md.
+
+**Trzy fragmenty dziennika NADPISANE** (za 05a):
+
+1. Konta pacjentów — nie „konto w tle + magic link + hasło w checkoucie",
+   tylko konta w Keycloaku (rola `pacjent`, tworzenie przez Admin API,
+   action-token zamiast własnego magic linku). Zachowanie widziane przez
+   pacjenta zostaje identyczne jak w makiecie.
+2. **Limit wizyt niskopłatnych: 10 WIZYT na pacjenta** (nie godzin).
+   Wiersze mówiące „4 h na osobę" to niedoczyszczony ślad sprzed podniesienia
+   limitu na wniosek fundacji — ignorujemy je. Liczymy **wizyty** („3 z 10"),
+   nigdy minuty. Wartość wchodzi jako konfiguracja z wersjonowaniem
+   (CLAUDE.md §14), wartość startowa: **10**.
+3. Backend: rozdz. 26 mówi „PHP"; ekosystem doprecyzował — Laravel 13.
+
+**Co z tego wynika dla bramek** (rozdz. 15 i 23 dziennika — klasy błędów
+niewidocznych na ekranie): kontrola statyczna nie zastępuje uruchomienia,
+a dane bez wiarygodnych proporcji nie pokazują reguły, którą ilustrują.
+Obie lekcje są już wpisane w `skrypty/bramka.sh` i w komentarz seedera.
+
+**Zmiana statusu zadania Z-03:** limit niskopłatnych **przestaje być blokerem
+F1** — wartość startowa jest znana (10 wizyt). Zostaje pytanie do zarządu
+wyłącznie o to, czy 10 obowiązuje na starcie produkcji.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |
 |---|---|---|---|
 | **Z-01** | **Złożyć wniosek o alfanumerycznego nadawcę SMS „Niepodzielni" w SMSAPI.** | Rejestracja pola nadawcy u polskich operatorów trwa **od kilku dni do kilku tygodni** i wymaga dokumentów fundacji (spec M5/6). Wniosek złożony przy pierwszym SMS-ie (F6) opóźni całą fazę. Do czasu rejestracji wiadomości wychodzą z losowego numeru — czego reguła prywatności z „Jak działa system" (s. 59) nie dopuszcza. | ⬜ do zrobienia |
 | **Z-02** | **Zatwierdzić dostawcę wideo** (D-2026-08-07-06). | Bez tej decyzji nie da się rzetelnie zacząć zadania „link do spotkania" (spec M5/15). Potrzebne przed F3. | ⬜ czeka na właściciela |
-| **Z-03** | **Wskazać wartość startową limitu wizyt niskopłatnych** (zarząd fundacji). | Steruje budżetem dopłat; spec ma sprzeczność 10 vs 4. Potrzebne przed F1 (model danych i konfiguracja reguł). | ⬜ czeka na zarząd |
+| **Z-03** | **Potwierdzić limit 10 wizyt niskopłatnych na starcie produkcji** (zarząd fundacji). | ROZSTRZYGNIĘTE co do wartości: 10 wizyt (D-2026-08-07-08) — F1 nie jest już zablokowana. Zostaje potwierdzenie, czy 10 wchodzi na produkcję; wartość i tak jest konfiguracją z wersjonowaniem, więc zmiana nie wymaga wdrożenia kodu. | 🟡 nie blokuje |
 | **Z-04** | **Potwierdzić „przelewy miesięczne"** po rozmowie fundacji. | Stripe Connect zmienia **model danych** rozliczeń, nie samą integrację (spec M4/1). Potrzebne przed F4. | ⬜ czeka na fundację |
 | **Z-05** | **Dostarczyć źródła makiety React** (61 ekranów, `DECYZJE.md` wykonawcy makiety §26). | Bez nich F7 nie ma czego podpinać. F0–F6 są od tego niezależne. | ⬜ czeka na właściciela |

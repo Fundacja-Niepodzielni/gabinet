@@ -17,6 +17,19 @@ return [
 
     /*
     |-----------------------------------------------------------------------
+    | Znacznik tożsamości usługi
+    |-----------------------------------------------------------------------
+    | Wystawiany pod `GET /api/wersja`. Bramka i monitoring sprawdzają JEGO,
+    | a nie sam kod 200 — cudza usługa na zajętym porcie potrafi odpowiedzieć
+    | dwusetką i dać fałszywe zielone (lekcja zespołu helpdesku).
+    |
+    | Wartość jest STAŁA, nie z `.env`: znacznik ma identyfikować aplikację,
+    | a nie środowisko. Zmieniamy go tylko przy zmianie kontraktu API.
+    */
+    'znacznik' => 'gabinet-api-v1',
+
+    /*
+    |-----------------------------------------------------------------------
     | Twarda blokada wysyłki mail/SMS
     |-----------------------------------------------------------------------
     | CLAUDE.md §10 i spec M5/18: ze środowisk nieprodukcyjnych nie wychodzi

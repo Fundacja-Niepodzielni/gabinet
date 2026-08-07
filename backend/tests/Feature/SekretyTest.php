@@ -69,14 +69,29 @@ it('trzyma .env.example bez ani jednej wartości sekretu', function (): void {
     }
 });
 
-it('wymienia oba konta Stripe osobno', function (): void {
+it('wymienia oba konta Stripe osobno i nie ma zmiennej jednokontowej', function (): void {
     // CLAUDE.md §3: fundacyjne i komercyjne to dwa niezależne konta —
     // osobne klucze, osobne webhooki, osobna rekoncyliacja.
+    //
+    // Wersja pierwotna liczyła tylko obecność dwóch nazw. Przeszłaby także
+    // wtedy, gdyby ktoś dołożył wspólne `STRIPE_SECRET` i oba konta zaczęły
+    // wskazywać ten sam Stripe — czyli przy dokładnie tej regresji, przed
+    // którą ma chronić.
     $wzorzec = wczytajWzorzecSrodowiska();
 
-    $webhooki = ['STRIPE_FUNDACJA_WEBHOOK_SECRET', 'STRIPE_KOMERCJA_WEBHOOK_SECRET'];
+    $wymagane = [
+        'STRIPE_FUNDACJA_KEY', 'STRIPE_FUNDACJA_SECRET', 'STRIPE_FUNDACJA_WEBHOOK_SECRET',
+        'STRIPE_KOMERCJA_KEY', 'STRIPE_KOMERCJA_SECRET', 'STRIPE_KOMERCJA_WEBHOOK_SECRET',
+    ];
 
-    expect(array_intersect_key($wzorzec, array_flip($webhooki)))->toHaveCount(2);
+    expect(array_intersect_key($wzorzec, array_flip($wymagane)))->toHaveCount(6);
+
+    // NEGATYW: żadnej zmiennej „jednokontowej", która skleiłaby oba konta.
+    $jednokontowe = ['STRIPE_KEY', 'STRIPE_SECRET', 'STRIPE_WEBHOOK_SECRET'];
+
+    foreach ($jednokontowe as $klucz) {
+        expect($wzorzec)->not->toHaveKey($klucz, "Zmienna {$klucz} skleja oba konta Stripe");
+    }
 });
 
 it('ignoruje .env w gitignore', function (): void {

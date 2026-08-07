@@ -12,6 +12,7 @@ use App\Wsparcie\Typy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -36,9 +37,17 @@ final class LogowanieController extends Controller
         $nonce = Str::random(40);
         $weryfikator = Str::random(64);
 
-        $request->session()->put('konta.state', $state);
-        $request->session()->put('konta.nonce', $nonce);
-        $request->session()->put('konta.pkce', $weryfikator);
+        // UWAGA: klucze przepływu MUSZĄ być rozłączne z kluczem tożsamości.
+        // Wersja pierwotna zapisywała je jako `konta.state` / `konta.nonce`,
+        // a Laravel składa zapis z kropką w TABLICĘ pod kluczem `konta` — czyli
+        // pod tym samym, który znaczy „zalogowany". Skutek: samo wejście na
+        // /auth/login sprawiało, że /auth/ja odpowiadał „zalogowany: true"
+        // (z pustą listą ról). Znalazł to test pozytywny pełnej ścieżki.
+        $request->session()->put('oidc_przeplyw', [
+            'state' => $state,
+            'nonce' => $nonce,
+            'pkce' => $weryfikator,
+        ]);
 
         return redirect()->away($this->oidc->adresLogowania($state, $nonce, $weryfikator));
     }
@@ -51,9 +60,10 @@ final class LogowanieController extends Controller
             return redirect('/');
         }
 
-        $state = $request->session()->pull('konta.state');
-        $nonce = $request->session()->pull('konta.nonce');
-        $weryfikator = $request->session()->pull('konta.pkce');
+        $przeplyw = Typy::mapa($request->session()->pull('oidc_przeplyw'));
+        $state = $przeplyw['state'] ?? null;
+        $nonce = $przeplyw['nonce'] ?? null;
+        $weryfikator = $przeplyw['pkce'] ?? null;
 
         if (! is_string($state) || ! hash_equals($state, Typy::napis($request->query('state')))) {
             return response()->json(['ok' => false, 'blad' => 'state'], 400);
@@ -79,10 +89,7 @@ final class LogowanieController extends Controller
         ]);
 
         if (! $wynikId['ok']) {
-            return response()->json([
-                'ok' => false, 'blad' => 'id_token', 'nieudane' => $wynikId['nieudane'],
-                'kontrole' => $wynikId['kontrole'],
-            ], 401);
+            return $this->odmowa('id_token', $wynikId);
         }
 
         // ACCESS token: dowód UPRAWNIEŃ. Role są WYŁĄCZNIE tutaj (kontrakt §2b).
@@ -96,10 +103,7 @@ final class LogowanieController extends Controller
         ]);
 
         if (! $wynikAccess['ok']) {
-            return response()->json([
-                'ok' => false, 'blad' => 'access_token', 'nieudane' => $wynikAccess['nieudane'],
-                'kontrole' => $wynikAccess['kontrole'],
-            ], 401);
+            return $this->odmowa('access_token', $wynikAccess);
         }
 
         $claimsId = $wynikId['claims'];
@@ -141,12 +145,43 @@ final class LogowanieController extends Controller
         return redirect()->away($this->oidc->adresWylogowania($idToken, $this->oidc->redirectUri()));
     }
 
+    /**
+     * Odmowa uwierzytelnienia.
+     *
+     * Mapa kontroli jest bezcenna przy diagnozie i JEDNOCZEŚNIE jest gotowym
+     * oracle'em dla kogoś, kto stroi podrobiony token: odpowiedź mówi wprost,
+     * która kontrola padła, a która przeszła. Dlatego szczegóły wychodzą
+     * WYŁĄCZNIE poza produkcją; na produkcji zostaje sam powód ogólny,
+     * a komplet idzie do logu.
+     *
+     * @param  array{ok: bool, kontrole: array<string, string>, claims: array<string, mixed>, nieudane: list<string>}  $wynik
+     */
+    private function odmowa(string $etap, array $wynik): JsonResponse
+    {
+        Log::warning('Odrzucono token przy logowaniu.', [
+            'etap' => $etap,
+            'nieudane' => $wynik['nieudane'],
+            'kontrole' => $wynik['kontrole'],
+        ]);
+
+        $tresc = ['ok' => false, 'blad' => $etap];
+
+        if (app()->environment('local', 'testing')) {
+            $tresc['nieudane'] = $wynik['nieudane'];
+            $tresc['kontrole'] = $wynik['kontrole'];
+        }
+
+        return response()->json($tresc, 401);
+    }
+
     /** Kim jestem i co mi wolno — jedyne źródło prawdy dla frontendu. */
     public function ja(Request $request): JsonResponse
     {
-        $konta = $request->session()->get('konta');
+        $konta = Typy::mapa($request->session()->get('konta'));
 
-        if (! is_array($konta)) {
+        // Sam fakt, że pod kluczem coś leży, nie znaczy „zalogowany".
+        // Rozstrzyga obecność `sub` — tożsamości z ID tokenu.
+        if (Typy::napis($konta['sub'] ?? null) === '') {
             return response()->json(['zalogowany' => false], 401);
         }
 
