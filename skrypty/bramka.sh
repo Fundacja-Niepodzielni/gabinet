@@ -118,11 +118,6 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	krok "budowanie obrazu aplikacji"
 	dc build app || zle
 
-	# KROK JAWNY, nie efekt uboczny startu. Wcześniej instalację robił
-	# entrypoint we WSZYSTKICH trzech kontenerach naraz, na jednym
-	# bind-mouncie — wyścig przerywany restartami zostawiał katalog
-	# `vendor/` bez `autoload.php`. Objaw: bramka czerwona na czystym
-	# klonie, zielona przy drugim uruchomieniu.
 	krok "start stosu + instalacja zależności (czekamy na SONDY, nie na kod wyjścia)"
 	# Zależności instaluje entrypoint roli `app` — jako JEDYNY (horizon
 	# i scheduler czekają na `vendor/autoload.php`). Gotowość rozstrzyga
