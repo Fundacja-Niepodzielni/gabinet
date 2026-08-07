@@ -6,9 +6,27 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
-- **Faza: F0 — wykonana, z jednym jawnym blokerem** (sesja 1, 2026-08-07)
-- **Bramka na koniec F0: `BRAMKA OK — 18 kroków, 0 nieudanych`** na czystym klonie (stan z sesji 1; dziś bramka ma 21 kroków — patrz „Stan bramki dziś")
-- 9 commitów, `0af30ae` … `a3e7166`. **Nie wypchnięte na `origin`** — czeka na zgodę właściciela.
+- **Faza: F1 w toku** (sesja 2, 2026-08-07). F0 i F1 formalnie OTWARTE do rundy weryfikacji z zerem znalezisk — patrz niżej.
+- **Bramka: `BRAMKA OK — 21 kroków, 0 nieudanych`**, 151 testów / 479 asercji.
+- **Perturbacje: `PERTURBACJE OK` — 28 kontroli w 20 scenariuszach**; powtarzalność 3/3.
+- HEAD: `1204daa`, wypchnięty na `origin/main` (zgoda właściciela z 07.08).
+- **Bramka na koniec F0: `BRAMKA OK — 18 kroków, 0 nieudanych`** na czystym klonie (stan z sesji 1; liczba kroków rosła później).
+
+### Do rozstrzygnięcia w następnej sesji
+
+**Runda 4 weryfikacji na `1204daa`.** Reguła zbieżności (D-2026-08-07-16):
+faza jest zamknięta dopiero, gdy runda na konkretnym SHA kończy się ZEREM
+znalezisk. Runda 3 na `a660753` dała 11 znalezisk — wszystkie naprawione
+(D-2026-08-07-18), ale to naprawy, nie potwierdzenie. **F0 i F1 pozostają
+formalnie otwarte do rundy 4.**
+
+**Zostało w F1:** F1.7 — seed o wiarygodnych proporcjach (111 specjalistów,
+poniżej 40 wizyt na pacjenta, limit niskopłatnych musi RÓŻNICOWAĆ pacjentów).
+
+**Dług O-7 (nowy):** podmiana TREŚCI istniejącego pliku w `vendor/` pozostaje
+niewykryta — Composer nie trzyma sum kontrolnych rozpakowanych plików.
+Wykrycie wymaga podpisanego obrazu i wolumenu tylko do odczytu. Do F9,
+razem z O-1 i hartowaniem obrazu.
 
 ### Rozpiska zadań F0 — stan końcowy sesji
 
