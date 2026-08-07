@@ -21,8 +21,8 @@
 #     Nie używamy go w kontrolach.
 #  4. „Nic nie wystawione publicznie" sprawdzamy dwutorowo: deklaratywnie
 #     (`docker inspect`) ORAZ aktywnie — każdy port × adres spoza loopbacku.
-#  5. Bramkę testujemy na CZYSTYM KLONIE. Dlatego instalacja zależności jest
-#     JAWNYM krokiem, a nie efektem ubocznym startu kontenerów.
+#  5. Bramkę testujemy na CZYSTYM KLONIE. Dlatego gotowość rozstrzygają SONDY
+#     kontenerów, a nie kod wyjścia polecenia instalującego.
 # ---------------------------------------------------------------------------
 #
 # BEZPIECZEŃSTWO: przebieg dostaje WŁASNY projekt compose (domyślnie
@@ -123,28 +123,28 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	# bind-mouncie — wyścig przerywany restartami zostawiał katalog
 	# `vendor/` bez `autoload.php`. Objaw: bramka czerwona na czystym
 	# klonie, zielona przy drugim uruchomieniu.
-	krok "instalacja zależności (jeden proces, przed startem stosu)"
-	# `-T` jest OBOWIĄZKOWE. Bez niego `docker compose run` próbuje przydzielić
-	# pseudoterminal; gdy stdin nie jest terminalem (CI, uruchomienie w tle),
-	# polecenie WRACA NATYCHMIAST, a kontener instaluje dalej w tle. Zmierzone
-	# na czystym klonie: kroki 5–10 poszły przy niekompletnym `vendor/`,
-	# a `php artisan` padał na braku `autoload.php` — przy czym instalacja
-	# w tle kończyła się powodzeniem kilka minut później.
-	dc run --rm -T --no-deps --entrypoint composer app \
-		install --no-interaction --prefer-dist --no-progress || zle
+	krok "start stosu + instalacja zależności (czekamy na SONDY, nie na kod wyjścia)"
+	# Zależności instaluje entrypoint roli `app` — jako JEDYNY (horizon
+	# i scheduler czekają na `vendor/autoload.php`). Gotowość rozstrzyga
+	# sonda `gabinet:zdrowie`, która startuje framework, odpytuje bazę,
+	# pinguje Redis i zapisuje do cache.
+	#
+	# Świadomie NIE używamy tu `docker compose run` do instalacji. Zmierzone
+	# dwukrotnie na czystym klonie: `run` (także z `-T`) wraca NATYCHMIAST,
+	# gdy stdin nie jest terminalem, i zostawia kontener instalujący w tle —
+	# a kolejne kroki lecą przy niekompletnym `vendor/`. `up --wait` nie ma
+	# tej wady, bo czeka na STAN sond, a nie na zakończenie polecenia.
+	#
+	# Limit hojny: `composer install` na bind-mouncie Windows/WSL to minuty.
+	dc up -d --wait --wait-timeout 900 || zle
 
-	# Kontrola pyta o STAN, nie o kod wyjścia poprzedniego polecenia.
-	if dc run --rm -T --no-deps --entrypoint sh app -c 'test -f vendor/autoload.php'; then
+	krok "stan: vendor/autoload.php realnie istnieje"
+	if dc exec -T app test -f vendor/autoload.php; then
 		echo "    vendor/autoload.php istnieje"
 	else
 		echo "    vendor/autoload.php NIE powstał — instalacja nie doszła do końca"
 		zle
 	fi
-
-	krok "start stosu (postgres, redis, app, web, horizon, scheduler)"
-	# `--wait` czeka na sondy zdrowia. Scheduler melduje się dopiero po
-	# pierwszym pulsie (do ~2 min) — stąd hojny limit.
-	dc up -d --wait --wait-timeout 600 || zle
 
 	krok "migracje"
 	dc exec -T app php artisan migrate --force || zle
