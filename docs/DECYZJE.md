@@ -328,6 +328,57 @@ sygnałem, że coś się nie wykonało.
 
 ---
 
+## D-2026-08-07-14 — autoryzuje wyłącznie rola z białej listy; direct grant nie dowodzi 2FA
+
+**Trzy pomiary zespołu hubu na żywym realmie, przyjęte jako wiążące.**
+
+### 1. Kompozyty rozwijają się w tokenie
+
+Access token koordynatora niesie w `realm_access.roles` **`koordynator` ORAZ
+marker `wymaga-2fa`**, obok ról wbudowanych Keycloaka (`offline_access`,
+`uma_authorization`, `default-roles-niepodzielni`).
+
+**Decyzja:** autoryzuje **wyłącznie rola z BIAŁEJ LISTY**
+(`konta.role_autoryzujace` — siedem ról merytorycznych realmu). Nigdy
+„wszystkie role z tokenu".
+
+Filtr siedzi w `Bramki::roleAutoryzujace()` i wykonuje się **wewnątrz**
+`pozwala()` i `dlaRol()`, a nie u wywołującego. Skutek: gdyby ktoś przez
+pomyłkę wpisał marker do mapy bramek, i tak nic nie otworzy. Pilnuje tego
+test, który podmienia konfigurację i sprawdza, że marker dalej nie autoryzuje.
+
+`/auth/ja` rozdziela to jawnie w odpowiedzi: `role` (autoryzujące),
+`markery` (techniczne) i `wymaga_2fa`. Konsument API nie ma jak zbudować
+logiki na „ma jakąś rolę, więc ma dostęp".
+
+**Co się zmieniło w istniejącym zachowaniu:** `/auth/ja` przestał zwracać
+`offline_access` w polu `role`. Test pełnego logowania zaktualizowany.
+
+### 2. Direct grant OMIJA 2FA
+
+`grant_type=password` wolno używać **wyłącznie w testach na dev, do inspekcji
+zawartości tokenu**. Żaden przepływ produkcyjny ani żaden test „pełnego
+logowania" nie może na nim polegać.
+
+Nasza sonda `skrypty/keycloak-sprawdz.sh` używa direct grantu — i to jest
+zgodne z tą regułą, bo sprawdza wyłącznie **zawartość tokenu** (podpis, `iss`,
+`aud`, role), a nie „czy logowanie działa". Test odbiorczy po rejestracji
+klienta `gabinet` (BLK-01) ma być **przeglądarkowy**, a dla ról z markerem
+`wymaga-2fa` — **z TOTP**.
+
+### 3. Z Admin API nie widać obowiązku TOTP
+
+`requiredActions` bywa puste mimo obowiązku drugiego składnika. **Nie
+wnioskujemy o stanie 2FA konta z Admin API.** Ma znaczenie w F3, gdzie konta
+pacjentów zakładamy właśnie przez Admin API — status 2FA czytamy z tokenu
+(marker), nie z konta.
+
+**Perturbacja (D-2026-08-07-13):** zdjęcie filtra białej listy →
+`PERTURBACJE OK`, testy zapalają się na czerwono. Kontrola udowodniła,
+że umie zaświecić.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |

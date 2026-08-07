@@ -58,6 +58,43 @@ return [
 
     /*
     |-----------------------------------------------------------------------
+    | BIAŁA LISTA ról autoryzujących
+    |-----------------------------------------------------------------------
+    | Siedem ról merytorycznych realmu (kontrakt §2). WYŁĄCZNIE one mogą
+    | cokolwiek otworzyć.
+    |
+    | Powód jest zmierzony na żywym realmie: **kompozyty rozwijają się
+    | w tokenie**. Access token koordynatora niesie w `realm_access.roles`
+    | zarówno `koordynator`, jak i marker techniczny `wymaga-2fa` — a obok
+    | nich role wbudowane Keycloaka (`offline_access`, `uma_authorization`,
+    | `default-roles-niepodzielni`).
+    |
+    | Logika oparta na „wszystkich rolach z tokenu" wpuszcza więc markery
+    | techniczne do uprawnień. Biała lista sprawia, że jest to niemożliwe
+    | KONSTRUKCYJNIE, a nie tylko dlatego, że nikt nie wpisał markera do
+    | mapy bramek.
+    */
+    'role_autoryzujace' => [
+        'pacjent',
+        'psycholog',
+        'prowadzacy',
+        'wolontariusz',
+        'koordynator',
+        'redaktor',
+        'admin-fundacja',
+    ],
+
+    /*
+    | Markery techniczne — czytamy je, ale NIGDY nie autoryzują.
+    | `wymaga-2fa` to kompozyt wymuszający drugi składnik po stronie IdP;
+    | dla aplikacji jest informacją o koncie, nie uprawnieniem.
+    */
+    'markery' => [
+        'wymaga-2fa',
+    ],
+
+    /*
+    |-----------------------------------------------------------------------
     | Bramki aplikacji
     |-----------------------------------------------------------------------
     | „IdP mówi kim jesteś, aplikacja decyduje co możesz" (kontrakt §2).

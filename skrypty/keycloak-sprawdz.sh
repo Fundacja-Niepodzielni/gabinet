@@ -46,6 +46,13 @@ krok "1. IdP osiągalny, issuer zgodny, JWKS niepusty"
 dc exec -T app php artisan konta:sprawdz || zle
 
 krok "2. token PRAWDZIWEGO konta testowego (${UZYTKOWNIK}, klient test-cli)"
+# UWAGA: `grant_type=password` (direct grant) **OMIJA 2FA**. Ta sonda używa go
+# świadomie i w jedynym dozwolonym zakresie: do INSPEKCJI ZAWARTOŚCI TOKENU
+# na środowisku deweloperskim (podpis, `iss`, `aud`, role).
+#
+# Direct grant NIE dowodzi, że logowanie działa, i NIE MOŻE być podstawą testu
+# „pełnego logowania". Dla ról z markerem `wymaga-2fa` test odbiorczy jest
+# przeglądarkowy, z TOTP (D-2026-08-07-14).
 # `-k`: lokalny stos używa CA Caddy'ego, którego host nie musi znać. To jedyne
 # miejsce, gdzie pomijamy weryfikację TLS — i wyłącznie po to, żeby POBRAĆ token
 # do dalszych asercji. Sama aplikacja sięga do IdP trasą wewnętrzną po HTTP

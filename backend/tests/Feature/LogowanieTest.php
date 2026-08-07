@@ -145,7 +145,14 @@ it('przeprowadza pełne logowanie: kod → tokeny → sesja → role → bramki'
         ->assertJsonPath('zalogowany', true)
         ->assertJsonPath('sub', 'sub-abc-123')
         ->assertJsonPath('login', 'test-psycholog')
-        ->assertJsonPath('role', ['psycholog', 'offline_access']);
+        // `role` niesie WYŁĄCZNIE role autoryzujące: `offline_access` to rola
+        // wbudowana Keycloaka i nie ma czego otwierać.
+        ->assertJsonPath('role', ['psycholog'])
+        ->assertJsonPath('markery', [])
+        ->assertJsonPath('wymaga_2fa', false);
+
+    $this->getJson('/auth/ja')
+        ->assertJsonPath('role_surowe', null);
 
     // Bramki mają kropki w nazwach, więc `assertJsonPath` (notacja kropkowa)
     // by ich nie znalazł — czytamy mapę wprost.
@@ -155,6 +162,93 @@ it('przeprowadza pełne logowanie: kod → tokeny → sesja → role → bramki'
         ->and($bramki['panel.koordynacji'])->toBeFalse()
         ->and($bramki['rozliczenia.akceptuj'])->toBeFalse()
         ->and($bramki['panel.pacjenta'])->toBeFalse();
+});
+
+it('nie wpuszcza markera wymaga-2fa do uprawnień po zalogowaniu', function (): void {
+    // Kompozyty rozwijają się w tokenie (zmierzone na żywym realmie): token
+    // koordynatora niesie `koordynator` ORAZ `wymaga-2fa`. Ten drugi jest
+    // informacją o koncie, nie uprawnieniem — i `/auth/ja` musi to rozdzielić,
+    // żeby żaden konsument API nie zbudował logiki na „ma jakąś rolę".
+    udawajIdp();
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
+        'iss' => IDP,
+        'realm_access' => ['roles' => [
+            'koordynator', 'wymaga-2fa', 'offline_access',
+            'uma_authorization', 'default-roles-niepodzielni',
+        ]],
+    ]));
+
+    Http::fake([
+        'idp.test/*/.well-known/openid-configuration' => Http::response([
+            'issuer' => IDP,
+            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
+            'token_endpoint' => IDP.'/protocol/openid-connect/token',
+            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+        ]),
+        'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
+        'idp.test/*/protocol/openid-connect/token' => Http::response([
+            'access_token' => $accessToken,
+            'id_token' => $idToken,
+        ]),
+    ]);
+
+    $this->withSession(['oidc_przeplyw' => ['state' => 's', 'nonce' => 'n', 'pkce' => 'p']])
+        ->get('/auth/callback?code=kod&state=s')
+        ->assertRedirect('/');
+
+    $odpowiedz = $this->getJson('/auth/ja')->assertOk();
+
+    $odpowiedz
+        // WYŁĄCZNIE rola merytoryczna — marker i role wbudowane odpadły.
+        ->assertJsonPath('role', ['koordynator'])
+        ->assertJsonPath('markery', ['wymaga-2fa'])
+        ->assertJsonPath('wymaga_2fa', true);
+
+    $bramki = Typy::mapa($odpowiedz->json('bramki'));
+
+    expect($bramki['panel.koordynacji'])->toBeTrue()
+        ->and($bramki['panel.pacjenta'])->toBeFalse();
+});
+
+it('loguje konto bez roli merytorycznej, ale nie otwiera mu niczego', function (): void {
+    // Kontrakt §2: pusta lista ról to POPRAWNY stan konta. Konto ma się
+    // zalogować i nie dostać ani jednej bramki.
+    udawajIdp();
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
+        'iss' => IDP,
+        'realm_access' => ['roles' => ['offline_access', 'uma_authorization', 'default-roles-niepodzielni']],
+    ]));
+
+    Http::fake([
+        'idp.test/*/.well-known/openid-configuration' => Http::response([
+            'issuer' => IDP,
+            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
+            'token_endpoint' => IDP.'/protocol/openid-connect/token',
+            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+        ]),
+        'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
+        'idp.test/*/protocol/openid-connect/token' => Http::response([
+            'access_token' => $accessToken,
+            'id_token' => $idToken,
+        ]),
+    ]);
+
+    $this->withSession(['oidc_przeplyw' => ['state' => 's', 'nonce' => 'n', 'pkce' => 'p']])
+        ->get('/auth/callback?code=kod&state=s')
+        ->assertRedirect('/');
+
+    $odpowiedz = $this->getJson('/auth/ja')->assertOk()
+        ->assertJsonPath('zalogowany', true)
+        ->assertJsonPath('role', [])
+        ->assertJsonPath('wymaga_2fa', false);
+
+    expect(Typy::mapa($odpowiedz->json('bramki')))->each->toBeFalse();
 });
 
 it('nie wpuszcza, gdy access token ma cudzą audiencję', function (): void {

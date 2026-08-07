@@ -143,6 +143,11 @@ W `realm/assert.sh`:
   `skrypty/keycloak-sprawdz.sh` + pełny przepływ authorization code kontem
   personelu; oczekiwany wynik: `aud` **OK** dla tokenu wystawionego klientowi
   `gabinet` i **FAIL** dla tokenu wystawionego komukolwiek innemu.
+- **Test pełnego logowania musi być PRZEGLĄDARKOWY, a dla ról z markerem
+  `wymaga-2fa` — z TOTP.** Direct grant omija drugi składnik, więc token
+  pobrany `grant_type=password` nie dowodzi, że logowanie działa
+  (D-2026-08-07-14). Sonda `keycloak-sprawdz.sh` używa direct grantu
+  wyłącznie do inspekcji zawartości tokenu i nie zastępuje tego testu.
 
 ## 7. Czego NIE prosimy teraz (żeby nie rozdymać zmiany)
 

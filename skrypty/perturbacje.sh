@@ -267,6 +267,19 @@ p_puls() {
 	# Harmonogram zapisze puls sam, w ciągu minuty.
 }
 
+p_biala_lista() {
+	naglowek "biała lista ról — autoryzacja „wszystkimi rolami z tokenu\""
+	local plik="backend/app/Tozsamosc/Bramki.php"
+	zachowaj "$plik"
+
+	# Zdejmujemy filtr białej listy — dokładnie ten błąd, który wpuszcza
+	# marker `wymaga-2fa` i role wbudowane Keycloaka do uprawnień.
+	sed -i 's/return array_values(array_intersect(\$roleZTokenu, \$biala));/return $roleZTokenu;/' "$plik"
+
+	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" 		dc exec -T app ./vendor/bin/pest --filter="marker"
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
@@ -283,7 +296,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita statyka format sekrety hasla zdrowie tozsamosc puls zamrozenie"
+WSZYSTKIE="testy pusta_suita statyka format sekrety hasla zdrowie tozsamosc puls zamrozenie biala_lista"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -309,6 +322,7 @@ for NAZWA in $WYBRANE; do
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;
 		zamrozenie) p_zamrozenie ;;
+		biala_lista) p_biala_lista ;;
 		*) pominieta "$NAZWA" "nieznana perturbacja" ;;
 	esac
 done

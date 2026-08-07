@@ -117,7 +117,13 @@ final class LogowanieController extends Controller
             'login' => isset($claimsId['preferred_username']) ? Typy::napis($claimsId['preferred_username']) : null,
             'email' => isset($claimsId['email']) ? Typy::napis($claimsId['email']) : null,
             'email_potwierdzony' => Typy::prawda($claimsId['email_verified'] ?? null),
-            'role' => Bramki::roleZAccessTokenu($wynikAccess['claims']),
+            // Zapisujemy OBIE listy: surową (do logów i diagnozy) i tę, która
+            // realnie autoryzuje. Rozdzielenie jest celowe — kompozyty
+            // rozwijają się w tokenie i marker `wymaga-2fa` przyjeżdża razem
+            // z rolą merytoryczną.
+            'role_surowe' => Bramki::roleZAccessTokenu($wynikAccess['claims']),
+            'role' => Bramki::roleAutoryzujace(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
+            'markery' => Bramki::markery(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
             'id_token' => $idToken,
         ]);
 
@@ -185,7 +191,11 @@ final class LogowanieController extends Controller
             return response()->json(['zalogowany' => false], 401);
         }
 
+        // `role` to WYŁĄCZNIE role autoryzujące. Markery techniczne idą osobno,
+        // żeby żaden konsument tego API nie mógł zbudować logiki na „ma jakąś
+        // rolę, więc ma dostęp".
         $role = Typy::listaNapisow($konta['role'] ?? null);
+        $markery = Typy::listaNapisow($konta['markery'] ?? null);
 
         return response()->json([
             'zalogowany' => true,
@@ -194,6 +204,8 @@ final class LogowanieController extends Controller
             'email' => $konta['email'] ?? null,
             // Pusta lista ról to POPRAWNY stan konta, nie błąd (kontrakt §2).
             'role' => $role,
+            'markery' => $markery,
+            'wymaga_2fa' => Bramki::wymaga2fa($markery),
             'bramki' => Bramki::dlaRol($role),
         ]);
     }
