@@ -46,6 +46,17 @@ sciezka_hosta() {
 
 dc() { docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"; }
 
+# Liczba testów z wyjścia pesta — DOKŁADNIE ta sama procedura co w bramce.
+# Pest koloruje wynik nawet przy NO_COLOR, a `[32;1m` zawiera cyfry, więc
+# bez usunięcia pełnych sekwencji ANSI parser wyłuskuje „39" albo zero.
+policz_testy() {
+	local liczba
+	liczba="$(printf '%s' "$1" \
+		| sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' \
+		| sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
+	printf '%s' "${liczba:-0}"
+}
+
 # --- przywracanie stanu ----------------------------------------------------
 # Lista plików, których kopie zrobiliśmy. `trap` przywraca je zawsze:
 # przy sukcesie, przy błędzie i przy Ctrl-C.
@@ -125,13 +136,33 @@ p_pusta_suita() {
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 
-	# Podłoga: symulujemy wynik z zerem testów i sprawdzamy, że warunek pada.
-	liczba="$(printf 'Tests:  0 passed' | sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*/\1/p')"
-	if [ "${liczba:-0}" -lt 100 ]; then
-		printf '    ✓ podłoga 100 testów odrzuca wynik z %s testami\n' "${liczba:-0}"
+	# Podłoga liczona na PRAWDZIWYM wyjściu pesta, nie na napisie ułożonym
+	# w skrypcie. Pierwsza wersja tej perturbacji porównywała czysty ciąg
+	# „Tests: 0 passed" — i przechodziła, podczas gdy realny parser bramki
+	# gubił się na kodach ANSI i widział 0 przy 107 zielonych testach.
+	# CI zapaliło się na czerwono, perturbacja nie. Perturbacja MUSI
+	# obserwować dokładnie to, co obserwuje kontrola.
+	liczba="$(policz_testy "$wynik")"
+
+	if [ "$liczba" -lt 100 ]; then
+		printf '    ✓ podłoga 100 testów odrzuca pusty przebieg (policzono: %s)\n' "$liczba"
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ podłoga nie odrzuca pustego wyniku\n'
+		printf '    ✗ podłoga nie odrzuca pustego wyniku (policzono: %s)\n' "$liczba"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	# Kierunek odwrotny — bez niego „0 przy pustce" przechodzi także wtedy,
+	# gdy parser ZAWSZE zwraca zero. Dokładnie ten błąd popełniliśmy.
+	local pelny pelna_liczba
+	pelny="$(dc exec -T app ./vendor/bin/pest 2>&1)"
+	pelna_liczba="$(policz_testy "$pelny")"
+
+	if [ "$pelna_liczba" -ge 100 ]; then
+		printf '    ✓ parser widzi pełny przebieg (%s testów) — nie zwraca zawsze zera\n' "$pelna_liczba"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ parser NIE widzi pełnego przebiegu (policzył: %s)\n' "$pelna_liczba"
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 }

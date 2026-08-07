@@ -271,7 +271,11 @@ krok "testy realnie SIĘ WYKONAŁY (podłoga: ${MINIMUM_TESTOW})"
 # Dlatego liczymy testy i porównujemy z podłogą. Podłoga rośnie razem
 # z suitą; jej obniżenie ma być świadomą zmianą w repozytorium, a nie
 # efektem ubocznym skasowanego pliku.
-LICZBA_TESTOW="$(printf '%s' "$WYNIK_TESTOW" | tr -d '' | sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*//p' | tail -1)"
+# Usuwamy PEŁNE sekwencje ANSI, nie sam znak ESC. Pest koloruje wynik nawet
+	# przy NO_COLOR, a `[32;1m` zawiera cyfry — parser bez tego czyszczenia
+	# wyłuskiwał „39" albo zero zamiast liczby testów. Zmierzone: CI zapaliło
+	# się na czerwono przy 107 zielonych testach, bo kontrola widziała 0.
+	LICZBA_TESTOW="$(printf '%s' "$WYNIK_TESTOW" | sed -e 's/\[[0-9;]*[A-Za-z]//g' | sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
 LICZBA_TESTOW="${LICZBA_TESTOW:-0}"
 
 if [ "$LICZBA_TESTOW" -ge "$MINIMUM_TESTOW" ]; then
