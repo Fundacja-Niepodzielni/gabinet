@@ -95,6 +95,21 @@ niezależna weryfikacja, nie autor.
 | Bramka działa na **czystym klonie** | instalacja zależności jest jawnym krokiem skryptu, a nie efektem ubocznym startu kontenerów |
 | `docker compose port` | **nie używany** — przy wielu przypisaniach zwraca losowe jedno |
 
+### Perturbacje — dowód, że kontrole umieją zaświecić czerwono
+
+```bash
+./skrypty/perturbacje.sh            # wszystkie
+./skrypty/perturbacje.sh --lista    # co jest sprawdzane
+./skrypty/perturbacje.sh testy      # jedna, po nazwie
+```
+
+Zasada D-2026-08-07-13: **asercja bez dowodu, że umie zaświecić na czerwono,
+jest traktowana jak nieistniejąca.** Skrypt łamie po kolei każdą regułę,
+sprawdza, że odpowiednia kontrola pada, i przywraca stan wyjściowy.
+
+Uruchamiamy przed zamknięciem fazy i po każdej zmianie w bramce — nie
+w każdym przebiegu CI, bo perturbacje mutują pliki i restartują kontenery.
+
 Pojedyncze narzędzia:
 
 ```bash

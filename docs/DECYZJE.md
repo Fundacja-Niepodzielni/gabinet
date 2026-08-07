@@ -279,6 +279,55 @@ Sprawdzone przez podstawienie przynęty i cofnięcie jej.
 
 ---
 
+## D-2026-08-07-13 — perturbacje: kontrola bez dowodu czerwieni jest nieistniejąca
+
+**Zasada ekosystemu przejęta od zespołu hubu (ich D-0013), przyjęta 2026-08-07:**
+
+> „Asercja bez dowodu, że umie zaświecić na czerwono, jest traktowana
+> jak nieistniejąca."
+
+**Skąd się wzięła.** U hubu dwanaście kontroli przechodziło bez takiego dowodu
+— w tym **pusta suita testów**, przez którą CI świeciło zielono przy ZERO
+wykonanych testach. Wykryły to dopiero perturbacje.
+
+**Trafiła w nas natychmiast.** Nasza bramka miała dokładnie tę samą dziurę:
+`pest` bez testów kończy się kodem 0, więc `dc exec app ./vendor/bin/pest ||
+zle` przechodziło przy pustej suicie. Skasowanie katalogu `tests/` dałoby
+zieloną bramkę. Naprawione: bramka **liczy** wykonane testy i porównuje
+z podłogą (`MINIMUM_TESTOW`, dziś 100 przy 107 testach). Obniżenie podłogi
+musi być świadomą zmianą w repozytorium.
+
+**Co wprowadzamy.** `skrypty/perturbacje.sh` — dla każdej kontroli bramki
+sztucznie łamie regułę, sprawdza, że kontrola pada, i **przywraca stan**
+(przez `trap`, więc także przy przerwaniu).
+
+| Perturbacja | Co łamie | Która kontrola ma paść |
+|---|---|---|
+| `testy` | `>=` → `>` w granicy okna 24 h (przesunięcie o 1 sekundę) | testy graniczne 23:59/24:00/24:01 |
+| `pusta_suita` | uruchomienie bez ani jednego testu | podłoga liczby testów |
+| `statyka` | funkcja `int` zwracająca napis | Larastan `level: max` |
+| `format` | dopisane puste linie i spacje | Pint |
+| `sekrety` | wartość wpisana do `.env.example` | gitleaks **oraz** `SekretyTest` |
+| `hasla` | kolumna `password` dopisana do migracji | `BrakWlasnychHaselTest` (CLAUDE.md §2) |
+| `zdrowie` | zatrzymany kontener bazy | `gabinet:zdrowie` |
+| `tozsamosc` | podmieniony znacznik aplikacji | kontrola tożsamości usługi |
+| `puls` | skasowany wpis pulsu | `gabinet:puls --sprawdz` |
+| `zamrozenie` | reguła czytana z bieżącej konfiguracji zamiast zamrożonej | test zamrażania (CLAUDE.md §4) |
+
+**Wynik pierwszego przebiegu (2026-08-07): `PERTURBACJE OK` — 12 kontroli
+udowodniło, że umie zaświecić czerwono, 0 nieudanych.**
+
+**Kiedy uruchamiamy.** Przed zamknięciem każdej fazy i po każdej zmianie
+w bramce. Świadomie NIE w każdym przebiegu CI: perturbacje mutują pliki
+i restartują kontenery, więc ich miejsce jest obok bramki, nie w niej.
+
+**Druga część lekcji: podejrzewaj ZBYT SZYBKIE zielone.** Hub złapał różnicę
+51 s vs 10 min i poszedł do logów zamiast uwierzyć wynikowi. Bramka mierzy
+teraz czas kroku testów i wypisuje go przy wyniku — nagły spadek jest
+sygnałem, że coś się nie wykonało.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |

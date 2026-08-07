@@ -46,6 +46,9 @@ PORT_HTTP="${GABINET_BRAMKA_PORT_HTTP:-8099}"
 PORT_PG="${GABINET_BRAMKA_PORT_POSTGRES:-55443}"
 PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
 ZNACZNIK_APLIKACJI="gabinet-api-v1"
+# Podłoga liczby testów. Rośnie razem z suitą — obniżenie MUSI być świadomą
+# zmianą w repozytorium (zasada D-0013: pusta suita to zielone CI bez testów).
+MINIMUM_TESTOW="${GABINET_MINIMUM_TESTOW:-100}"
 ZOSTAW=0
 TYLKO_KOD=0
 
@@ -247,7 +250,37 @@ krok "statyka (Larastan, level max)"
 dc exec -T app ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress || zle
 
 krok "testy (Pest)"
-dc exec -T app ./vendor/bin/pest || zle
+# Mierzymy czas: ZBYT SZYBKIE zielone jest równie podejrzane co czerwone
+# (lekcja zespołu hubu — u nich 51 s zamiast 10 min oznaczało, że kontrola
+# nic nie robiła).
+SEKUNDY_PRZED=$(date +%s)
+WYNIK_TESTOW="$(dc exec -T app ./vendor/bin/pest 2>&1)"
+KOD_TESTOW=$?
+CZAS_TESTOW=$(( $(date +%s) - SEKUNDY_PRZED ))
+printf '%s
+' "$WYNIK_TESTOW"
+echo "    czas testów: ${CZAS_TESTOW}s"
+[ "$KOD_TESTOW" -eq 0 ] || zle
+
+krok "testy realnie SIĘ WYKONAŁY (podłoga: ${MINIMUM_TESTOW})"
+# Zasada D-0013 (zespół hubu): „asercja bez dowodu, że umie zaświecić na
+# czerwono, jest traktowana jak nieistniejąca". U nich PUSTA SUITA dawała
+# zielone CI przy ZERO wykonanych testach — `pest` bez testów kończy się
+# kodem 0, więc sam kod wyjścia niczego nie dowodzi.
+#
+# Dlatego liczymy testy i porównujemy z podłogą. Podłoga rośnie razem
+# z suitą; jej obniżenie ma być świadomą zmianą w repozytorium, a nie
+# efektem ubocznym skasowanego pliku.
+LICZBA_TESTOW="$(printf '%s' "$WYNIK_TESTOW" | tr -d '' | sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*//p' | tail -1)"
+LICZBA_TESTOW="${LICZBA_TESTOW:-0}"
+
+if [ "$LICZBA_TESTOW" -ge "$MINIMUM_TESTOW" ]; then
+	echo "    wykonano $LICZBA_TESTOW testów (podłoga: $MINIMUM_TESTOW)"
+else
+	echo "    wykonano tylko $LICZBA_TESTOW testów przy podłodze $MINIMUM_TESTOW"
+	echo "    — suita skurczyła się albo w ogóle się nie uruchomiła"
+	zle
+fi
 
 krok "sekrety (gitleaks) — ten sam skan co w CI"
 # Skanujemy tryb git (śledzone pliki + historia), czyli to, co realnie
