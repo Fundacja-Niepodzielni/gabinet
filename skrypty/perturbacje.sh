@@ -687,6 +687,64 @@ p_suita_pominieta() {
 	fi
 }
 
+p_obietnica() {
+	naglowek "obietnica w komentarzu bez testu, który ją nazywa"
+	# Rdzeń „podejrzewaj przyrząd", dopełnienie: DOKUMENTACJA O KODZIE TEŻ JEST
+	# PRZYRZĄDEM I TEŻ KŁAMIE — ciszej niż kod, bo nikt jej nie uruchamia.
+	# W jednej partii napraw złapano u nas trzy takie obietnice, wszystkie
+	# nieprawdziwe wobec kodu: „każda zmiana jest cofana" (W-11),
+	# „PHP_INT_MAX obsłużony" (W-5), „najpierw zatrzymujemy harmonogram" (W-15).
+	local plik="backend/app/Reguly/OcenaAnulacji.php"
+	zachowaj "$plik"
+
+	perturbuj obietnica-bez-dowodu
+
+	dowod_mutacji "kod produkcyjny powołuje się na naprawę W-777" \
+		grep -q "W-777" "$plik"
+
+	oczekuj_czerwone "kontrola wykrywa obietnicę bez testu, który ją nazywa" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/ObietniceKomentarzyTest.php
+
+	perturbuj obietnica-sprzataj
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	# Kierunek odwrotny: bez obietnicy kontrola wraca na zielone.
+	if dc exec -T app ./vendor/bin/pest tests/Feature/ObietniceKomentarzyTest.php >/dev/null 2>&1; then
+		printf '    ✓ po usunięciu obietnicy kontrola wraca na zielone\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ kontrola pozostaje czerwona mimo braku obietnicy bez dowodu\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
+p_sesja_jawna() {
+	naglowek "magazyn sesji — dane osobowe bez szyfrowania"
+	# Kontrola krzyżowa B7 z weryfikacji F1 huba, zmierzona u nas i potwierdzona:
+	# sesja trzyma e-mail, login i CAŁY ID token, sterownik `redis` utrwala dane
+	# na dysku, a `SESSION_ENCRYPT` miało domyślnie `false`.
+	local plik="backend/config/session.php"
+	zachowaj "$plik"
+
+	perturbuj sesja-jawna
+
+	dowod_mutacji "szyfrowanie sesji wyłączone w konfiguracji" \
+		grep -q "SESSION_ENCRYPT', false" "$plik"
+
+	oczekuj_czerwone "test znajduje e-mail i ID token JAWNIE w Redisie" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/SesjaBezJawnychDanychTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	if dc exec -T app ./vendor/bin/pest tests/Feature/SesjaBezJawnychDanychTest.php >/dev/null 2>&1; then
+		printf '    ✓ po włączeniu szyfrowania kontrola wraca na zielone\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ kontrola pozostaje czerwona mimo włączonego szyfrowania\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -808,12 +866,68 @@ p_tozsamosc() {
 p_puls() {
 	naglowek "puls harmonogramu — usunięty wpis"
 	# Sonda ma wykrywać BRAK wykonanych zadań, nie brak procesu.
+	#
+	# W-15 z rundy 4 — KŁAMSTWO DOKUMENTACJI. Nagłówek tego pliku twierdził:
+	# „U NAS trafiło to w `p_puls`… Naprawa: najpierw ZATRZYMUJEMY harmonogram,
+	# dopiero potem psujemy puls". W kodzie nie było ANI JEDNEGO zatrzymania —
+	# było `Cache::forget` i natychmiastowe sprawdzenie. Harmonogram zapisuje
+	# puls co 60 s, więc perturbacja była wyścigiem i w kilku procentach
+	# przebiegów mierzyła tempo samonaprawy zamiast czujności kontroli.
+	# Komentarz opisywał naprawę, której nikt nie napisał.
+	#
+	# Teraz naprawa naprawdę istnieje: zatrzymujemy harmonogram, więc
+	# naruszenie przeżywa tak długo, jak trzeba.
+	dc stop scheduler >/dev/null 2>&1
+
 	dc exec -T app php artisan tinker --execute="Cache::forget('gabinet:puls-harmonogramu');" >/dev/null 2>&1
+
+	# Dowód mutacji: puls NAPRAWDĘ zniknął, a nie „pewnie zniknął".
+	#
+	# Czytamy WARTOŚĆ, nie kod wyjścia tinkera: `exit()` wewnątrz `--execute`
+	# nie propaguje się do powłoki, więc pierwsza wersja tego dowodu meldowała
+	# „mutacja nie weszła w życie" przy poprawnie wykonanej mutacji. Znowu
+	# przyrząd, nie system — i znowu wykryte dopiero uruchomieniem.
+	local stan_pulsu
+	stan_pulsu="$(dc exec -T app php artisan tinker \
+		--execute="echo Cache::has('gabinet:puls-harmonogramu') ? 'JEST' : 'BRAK';" 2>/dev/null \
+		| tr -d '[:space:]')"
+
+	if [ "$stan_pulsu" = "BRAK" ]; then
+		printf '    · dowód mutacji: wpis pulsu zniknął z cache’u\n'
+	else
+		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: puls nadal w cache’u (%s) — perturbacja nierozstrzygająca\n' "$stan_pulsu"
+		NIEUDANE=$((NIEUDANE + 1))
+		dc start scheduler >/dev/null 2>&1
+
+		return
+	fi
 
 	oczekuj_czerwone "gabinet:puls --sprawdz wykrywa brak pulsu" \
 		dc exec -T app php artisan gabinet:puls --sprawdz
 
-	# Harmonogram zapisze puls sam, w ciągu minuty.
+	dc start scheduler >/dev/null 2>&1
+
+	# Kierunek odwrotny: po powrocie harmonogramu kontrola MUSI wrócić na
+	# zielone. Bez tego „czerwono przy braku pulsu" przechodzi także dla
+	# kontroli, która świeci czerwono zawsze.
+	local wrocil=0
+
+	for _ in $(seq 1 45); do
+		if dc exec -T app php artisan gabinet:puls --sprawdz >/dev/null 2>&1; then
+			wrocil=1
+			break
+		fi
+
+		sleep 2
+	done
+
+	if [ "$wrocil" -eq 1 ]; then
+		printf '    ✓ po powrocie harmonogramu kontrola wraca na zielone\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ kontrola pozostaje czerwona mimo działającego harmonogramu\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
 }
 
 p_biala_lista() {
@@ -845,7 +959,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -905,6 +1019,8 @@ for NAZWA in $WYBRANE; do
 		lockfile) p_lockfile ;;
 		vendor) p_vendor_niekompletny ;;
 		retencja) p_retencja ;;
+		obietnica) p_obietnica ;;
+		sesja) p_sesja_jawna ;;
 		zamek) p_zamek ;;
 		sonda_bazy) p_sonda_bazy ;;
 		zdrowie) p_zdrowie ;;

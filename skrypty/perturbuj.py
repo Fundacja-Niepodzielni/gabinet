@@ -27,6 +27,8 @@ MODEL = KORZEN / "backend/app/Models/Personel.php"
 WALIDATOR = KORZEN / "backend/app/Tozsamosc/WalidatorTokenu.php"
 OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
 PEST = KORZEN / "backend/tests/Pest.php"
+OCENA = KORZEN / "backend/app/Reguly/OcenaAnulacji.php"
+SESJA = KORZEN / "backend/config/session.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 
 
@@ -245,6 +247,35 @@ def suita_pominieta_sprzataj() -> None:
     pisz(PEST, tresc.replace(ZNACZNIK_POMINIECIA, "").rstrip(chr(10)) + chr(10))
 
 
+OBIETNICA = "\n// Naprawa W-777: OBIETNICA bez zadnego testu, ktory ja nazywa.\n"
+
+
+def obietnica_bez_dowodu() -> None:
+    """Dopisuje do kodu produkcyjnego komentarz obiecujacy naprawe bez testu.
+
+    Odtwarza klase bledu z rundy 4: trzy komentarze obiecywaly wiecej, niz kod
+    robil („zmiana cofana", „PHP_INT_MAX obsluzony", „zatrzymujemy harmonogram").
+    Komentarz myli nastepnego czytelnika ciszej niz kod, bo nikt go nie uruchamia.
+    """
+    pisz(OCENA, czytaj(OCENA) + OBIETNICA)
+
+
+def obietnica_sprzataj() -> None:
+    tresc = czytaj(OCENA)
+
+    if OBIETNICA in tresc:
+        pisz(OCENA, tresc.replace(OBIETNICA, "").rstrip(chr(10)) + chr(10))
+
+
+def sesja_jawna() -> None:
+    """Wylacza szyfrowanie sesji — kontrola krzyzowa B7 z weryfikacji huba.
+
+    Sesja Gabinetu trzyma e-mail, login i CALY ID token; sterownik redis
+    utrwala dane na dysku. Bez szyfrowania e-mail pacjenta lezy jawnie.
+    """
+    podmien(SESJA, "'encrypt' => env('SESSION_ENCRYPT', true),", "'encrypt' => env('SESSION_ENCRYPT', false),")
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -253,6 +284,9 @@ POLECENIA = {
     "lockfile-rozjazd": lockfile_rozjazd,
     "wzmacniacz-zadan": wzmacniacz_zadan,
     "suita-pominieta": suita_pominieta,
+    "obietnica-bez-dowodu": obietnica_bez_dowodu,
+    "sesja-jawna": sesja_jawna,
+    "obietnica-sprzataj": obietnica_sprzataj,
     "suita-pominieta-sprzataj": suita_pominieta_sprzataj,
 }
 

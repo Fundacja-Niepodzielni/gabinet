@@ -49,7 +49,19 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    // KONTROLA KRZYŻOWA z weryfikacji F1 huba (B7), zastosowana u nas.
+    //
+    // Sesja Gabinetu trzyma `email`, `preferred_username` ORAZ CAŁY ID TOKEN
+    // (potrzebny do `id_token_hint` przy wylogowaniu). Sterownik to `redis`,
+    // który utrwala dane na dysku — więc przy `encrypt => false` e-mail
+    // pacjenta leżał w magazynie sesji JAWNIE. W systemie przetwarzającym dane
+    // o zdrowiu (RODO art. 9) to nie jest ustawienie „domyślne z frameworka",
+    // tylko decyzja. Dowód: `SesjaBezJawnychDanychTest` szuka WARTOŚCI
+    // w surowej zawartości Redisa, nie nazw kluczy.
+    //
+    // Domyślna wartość to TRUE. `env()` może to tylko potwierdzić — wyłączenie
+    // wymaga świadomego wpisu w środowisku i jest widoczne w `.env.example`.
+    'encrypt' => env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------

@@ -156,6 +156,31 @@ compose**, nie na drzewie roboczym. Do czasu przeniesienia: własny projekt
 compose już jest wymuszony, a commit robimy **dopiero po zakończeniu
 perturbacji i po sprawdzeniu, że drzewo wróciło do stanu sprzed przebiegu**.
 
+**Dokumentacja o kodzie też jest przyrządem — i też kłamie.** Komentarz,
+nagłówek pliku i wpis w dzienniku decyzji („naprawione", „robi X") myli
+następnego czytelnika i weryfikatora **ciszej niż sam kod**, bo nikt go nie
+uruchamia. W jednej partii napraw złapaliśmy trzy takie obietnice, wszystkie
+nieprawdziwe wobec kodu: „każda zmiana jest cofana" (W-11), „PHP_INT_MAX
+obsłużony" (W-5), „najpierw zatrzymujemy harmonogram" (W-15).
+
+Przy oznaczaniu czegokolwiek jako „zamknięte" sprawdzaj więc **także, czy
+komentarz nie obiecuje więcej, niż kod robi**. Egzekwowane maszynowo w części,
+w której da się: `ObietniceKomentarzyTest` wymaga, by każde znalezisko powołane
+w kodzie produkcyjnym („U-7", „W-5") było NAZWANE w co najmniej jednym teście.
+Obietnica bez dowodu zapala bramkę.
+
+**Jednorodny ciąg wniosków w jedną stronę jest sam podejrzany.** Gdy każde
+kolejne znalezisko wskazuje tę samą przyczynę — a zwłaszcza przyczynę wygodną
+dla Ciebie („to wina przyrządu, nie systemu") — to sam wzorzec jest sygnałem.
+Zespół helpdesku sformułował to wprost: „osiem instancji pod rząd »winny
+przyrząd, nie system« to podejrzanie jednorodny wynik".
+
+**Atrybucji wygodnej nie obali ten, komu ona służy.** Dlatego pytanie zadajemy
+weryfikatorowi WPROST, jako osobne zadanie rundy: *czy część znalezisk
+zaklasyfikowanych jako wada przyrządu nie jest w rzeczywistości wadą systemu
+przebraną za wadę przyrządu*. Pytanie ma trafić do zlecenia rundy, nie do
+naszej samooceny — samoocena tu z definicji nie działa.
+
 **Nasze instancje** (rosną — dopisuj):
 
 1. `skrypty/perturbacje-powtarzalne.sh` dawał **fałszywe zielone**: podsumowanie
