@@ -222,6 +222,17 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	krok "migracje"
 	dc exec -T app php artisan migrate --force || zle
 
+	krok "migracje odwracalne (w dół i z powrotem w górę)"
+	# Wymóg bramki F1. Migracja bez działającego `down()` to migracja, której
+	# nie da się wycofać na produkcji — a wtedy jedyną drogą wstecz jest
+	# odtworzenie z kopii.
+	if dc exec -T app php artisan migrate:rollback --force >/dev/null 2>&1 		&& dc exec -T app php artisan migrate --force >/dev/null 2>&1; then
+		echo "    rollback i ponowna migracja przeszły"
+	else
+		echo "    migracje NIE są odwracalne"
+		zle
+	fi
+
 	krok "stan aplikacji: framework + baza + Redis + cache (nie deklaracje)"
 	dc exec -T app php artisan gabinet:zdrowie || zle
 

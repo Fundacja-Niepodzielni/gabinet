@@ -51,18 +51,20 @@ Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista
 | F1.3 | Konfiguracja reguł **z wersjonowaniem i datą obowiązywania** + macierz odwołań **jako dane** | zmiana reguły nie działa wstecz — test na rezerwacji sprzed zmiany | ✅ |
 | F1.4 | **Jedna funkcja rozstrzygająca** zwrot / możliwość przełożenia / płatność godziny | czysta funkcja, bez bazy i bez „teraz"; 8 sytuacji macierzy jako dane | ✅ |
 | F1.6 | Strefy czasowe: UTC w bazie, okna liczone w Europe/Warsaw | doby **23 h i 25 h** + ten sam werdykt w 4 strefach | ✅ |
-| F1.2 | Migracje domenowe: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół**; `timestamptz`; kolumny 🔒 szyfrowane | ⬜ **następne** |
-| F1.5 | Zamrażanie w rezerwacji: `kwota_zamrozona`, `regula_anulacji_zamrozona`, wersja regulaminu | mechanizm gotowy (`ZestawRegul` + `RejestrRegul`, testy zielone); brakuje tabeli `rezerwacja` | 🟡 |
+| F1.2 | Migracje domenowe: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół** (krok bramki); `timestamptz`; kolumny 🔒 szyfrowane sprawdzane na SUROWYM wierszu | ✅ |
+| F1.5 | Zamrażanie w rezerwacji: `kwota_zamrozona`, `regula_anulacji_zamrozona`, wersja regulaminu, konto Stripe i prowizja | test: podwyżka cennika i zmiana reguł **nie ruszają** starej rezerwacji; zrzut przeżywa skasowanie konfiguracji | ✅ |
 | F1.7 | Seed o **wiarygodnych proporcjach**: 111 specjalistów, kilkanaście wizyt/pacjenta | limit **różnicuje** pacjentów; wizyt na pacjenta < 40 (dziennik makiety, rozdz. 15) | ⬜ |
 | F1.8 | **Dług O-2/O-4/O-5** z weryfikacji rundy 2 (timeout bazy, rozjazd lockfile, zamek bramki) | każdy z perturbacją dowodzącą czerwieni | ✅ |
 
 **Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
 seed o wiarygodnych proporcjach; migracje w górę i w dół.
 
-**Stan bramki dziś:** `BRAMKA OK — 19 kroków, 0 nieudanych`; **125 testów**
-(369 asercji); CI zielone. Granica okna sprawdzona co do sekundy.
+**Stan bramki dziś:** `BRAMKA OK — 21 kroków, 0 nieudanych`; **138 testów**
+(413 asercji); CI zielone. Granica okna sprawdzona co do sekundy.
 **Perturbacje: `PERTURBACJE OK`** — **17 kontroli** udowodniło, że umie
 zaświecić czerwono (D-2026-08-07-13).
+
+**Zostało w F1:** seed o wiarygodnych proporcjach (F1.7) — ostatnie zadanie fazy.
 
 **Weryfikacja niezależna:** runda 1 (`0af30ae`) — 5 twierdzeń obalonych;
 runda 2 (`eadf5c5`) — 4 obalone, w tym dwa dotyczące bezpieczeństwa;
