@@ -6,25 +6,37 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
-- **Faza: F0 — w toku** (sesja 1, 2026-08-07)
-- Blokery zewnętrzne: źródła makiety (dostarczy właściciel); wartość startowa limitu niskopłatnych (zarząd); potwierdzenie „przelewy miesięczne" po rozmowie fundacji; wybór dostawcy wideo (decyzja właściciela po dokumencie z F0.7)
+- **Faza: F0 — wykonana, z jednym jawnym blokerem** (sesja 1, 2026-08-07)
+- Commity: `0af30ae` (szkielet), `5045066` (naprawa po weryfikacji), `f4304c6` (izolacja sieci)
+- **Nie wypchnięte na `origin`** — czeka na zgodę właściciela (patrz „Pytania").
 
-### Rozpiska zadań F0
+### Rozpiska zadań F0 — stan końcowy sesji
 
-| # | Zadanie | Kryterium „zrobione" | Stan |
+| # | Zadanie | Stan | Dowód |
 |---|---|---|---|
-| F0.1 | Szkielet Laravel 13 (PHP 8.4) w `backend/`, wersje przypięte, lockfile w repo | `composer install` z lockfile'a przechodzi; `php artisan --version` = Laravel 13.x | ⬜ |
-| F0.2 | Docker Compose (dev): app (PHP-FPM 8.4), nginx, PostgreSQL, Redis, Horizon, scheduler | `docker compose up -d` → wszystkie kontenery `healthy`; `GET /up` = 200; Horizon widzi Redis | ⬜ |
-| F0.3 | Pest + Larastan (max) + Pint; test pozytywny i negatywny na szkielecie | `pest`, `larastan`, `pint --test` zielone lokalnie i w kontenerze | ⬜ |
-| F0.4 | CI GitHub Actions: Pint, Larastan, Pest (usługi PG+Redis), gitleaks (`GITLEAKS_LICENSE` z sekretów org) | workflow zielony na pustym szkielecie | ⬜ |
-| F0.5 | `.env.example` — komplet nazw zmiennych bez wartości (Keycloak, 2× Stripe, SMSAPI, poczta, wideo) | brak wartości sekretów; `.env` w `.gitignore`; gitleaks czysty | ⬜ |
-| F0.6 | `docs/DECYZJE.md` — założony rejestr, przeniesione decyzje zapadłe + decyzje tej sesji | plik istnieje, format: data / decyzja / uzasadnienie / skutek | ⬜ |
-| F0.7 | Porównanie **Jitsi self-host vs Whereby** — koszty, ryzyka, rekomendacja | dokument w `docs/analizy/`; rekomendacja jednoznaczna; decyzja właściciela przed F3/F4 | ⬜ |
-| F0.8 | Lokalny Keycloak (stos z repo `konta`) + rejestracja klienta `gabinet` **w repo `konta`** + logowanie testowym kontem wg wzorca `ref-laravel` | test E2E: `test-psycholog`/`test-pacjent` loguje się do Gabinetu, role z access tokena, `aud` walidowane, test negatywny cudzego tokena = 401 | ⬜ |
-| F0.9 | Bramka F0 zielona + **niezależna weryfikacja** (osobny agent, czysty checkout) | raport weryfikatora bez czerwonych | ⬜ |
-| F0.10 | Przypomnienie właścicielowi: wniosek o nadawcę SMS „Niepodzielni" w SMSAPI | wpis w raporcie sesji + w `docs/DECYZJE.md` jako zadanie człowieka | ⬜ |
+| F0.1 | Szkielet Laravel 13.24 (PHP 8.4.24) w `backend/`, wersje przypięte digestem + `config.platform` | ✅ | `composer install` z lockfile'a; bramka krok 4 |
+| F0.2 | Docker Compose: postgres 18.4, redis 8, php-fpm, nginx, Horizon, scheduler | ✅ | `up -d --wait` → 6 kontenerów `healthy`; sondy pytają o STAN (`gabinet:zdrowie`, `gabinet:puls`) |
+| F0.3 | Pest 5 + Larastan `max` + Pint | ✅ | 66 testów / 192 asercje; `[OK] No errors`; 47 plików PASS |
+| F0.4 | `skrypty/bramka.sh` + CI wołające ten sam skrypt + gitleaks | ✅ lokalnie / ⚠️ CI nieuruchomione | `BRAMKA OK`; gitleaks: tryb git czysty, przynęta zapala skan |
+| F0.5 | `.env.example` bez wartości (Keycloak, 2× Stripe, SMSAPI, poczta, wideo) | ✅ | `SekretyTest`; gitleaks |
+| F0.6 | `docs/DECYZJE.md` | ✅ | 8 wpisów + rejestr zadań dla człowieka |
+| F0.7 | Porównanie Jitsi vs Whereby + rekomendacja | ✅ | `docs/analizy/wideo-jitsi-vs-whereby.md` |
+| F0.8 | Warstwa OIDC wg wzorca `ref-laravel` + sonda na żywym IdP | 🟡 częściowo | sonda OK na żywym Keycloaku; **pełne logowanie zablokowane: BLK-01** |
+| F0.9 | Niezależna weryfikacja | ✅ wykonana | obaliła 5 twierdzeń; wszystkie usterki naprawione, patrz commit `5045066` |
+| F0.10 | Przypomnienie o nadawcy SMS | ✅ | `docs/DECYZJE.md`, Z-01 |
 
-- Następny krok: F0.1 → F0.7 (backend-first), potem F0.8 (Keycloak) i bramka F0.9.
+### Blokery i oczekiwania
+
+- **BLK-01** (`docs/BLOKERY.md`): klient `gabinet` nie istnieje w realmie Keycloaka. Nie blokuje F1 ani F2. Gotowe zgłoszenie: `docs/zgloszenia/klient-gabinet-w-realmie.md`.
+- **CI nigdy nie jechało** — commity nie są wypchnięte. Kryterium „CI zielone" jest *niepotwierdzone*, nie „zielone".
+- Czeka na człowieka: Z-01 (nadawca SMS), Z-02 (dostawca wideo), Z-04 (przelewy vs Connect), Z-05 (źródła makiety).
+- Z-03 (limit niskopłatnych) **przestał blokować** — wartość rozstrzygnięta: 10 wizyt (D-2026-08-07-08).
+
+### Następny krok
+
+1. Zgoda właściciela na `git push` → uruchomienie CI → domknięcie F0.4.
+2. Zgłoszenie klienta `gabinet` w repo `konta` → domknięcie BLK-01 i F0.8.
+3. **F1 może ruszyć równolegle**: DPIA-checklista PRZED modelem danych. Materiał wejściowy: `docs/specyfikacja/05-DECYZJE-makiety.md` rozdz. 3 (macierz odwołań) i 4 (szkic modelu danych).
 
 ## F0 — Fundament (S)
 

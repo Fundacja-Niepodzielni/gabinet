@@ -124,13 +124,27 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	# `vendor/` bez `autoload.php`. Objaw: bramka czerwona na czystym
 	# klonie, zielona przy drugim uruchomieniu.
 	krok "instalacja zależności (jeden proces, przed startem stosu)"
-	dc run --rm --no-deps --entrypoint composer app \
+	# `-T` jest OBOWIĄZKOWE. Bez niego `docker compose run` próbuje przydzielić
+	# pseudoterminal; gdy stdin nie jest terminalem (CI, uruchomienie w tle),
+	# polecenie WRACA NATYCHMIAST, a kontener instaluje dalej w tle. Zmierzone
+	# na czystym klonie: kroki 5–10 poszły przy niekompletnym `vendor/`,
+	# a `php artisan` padał na braku `autoload.php` — przy czym instalacja
+	# w tle kończyła się powodzeniem kilka minut później.
+	dc run --rm -T --no-deps --entrypoint composer app \
 		install --no-interaction --prefer-dist --no-progress || zle
+
+	# Kontrola pyta o STAN, nie o kod wyjścia poprzedniego polecenia.
+	if dc run --rm -T --no-deps --entrypoint sh app -c 'test -f vendor/autoload.php'; then
+		echo "    vendor/autoload.php istnieje"
+	else
+		echo "    vendor/autoload.php NIE powstał — instalacja nie doszła do końca"
+		zle
+	fi
 
 	krok "start stosu (postgres, redis, app, web, horizon, scheduler)"
 	# `--wait` czeka na sondy zdrowia. Scheduler melduje się dopiero po
 	# pierwszym pulsie (do ~2 min) — stąd hojny limit.
-	dc up -d --wait --wait-timeout 300 || zle
+	dc up -d --wait --wait-timeout 600 || zle
 
 	krok "migracje"
 	dc exec -T app php artisan migrate --force || zle
