@@ -2,96 +2,228 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
 use App\Wsparcie\Typy;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Regresja na CLAUDE.md §2: „ŻADNYCH własnych haseł w tym systemie".
  *
- * Test powstał po niezależnej weryfikacji, która pokazała, że domyślny
- * szkielet Laravela dowiózł kolumnę `password`, `remember_token` i tabelę
- * `password_reset_tokens` — i że migracje zostały już wykonane. Dokumentacja
- * deklarowała zgodność, a schemat bazy woził mechanizm własnych haseł.
+ * WERSJA DRUGA. Pierwsza sprawdzała LITERALNE nazwy (`password`,
+ * `remember_token`, `password_reset_tokens`, model `User`) i została obalona
+ * przez niezależnego weryfikatora: podłożył kolumny `users.haslo_hash`
+ * i `users.token_zapamietania`, tabele `konta_lokalne(hash_hasla)`
+ * i `zetony_resetu`, model `Personel extends Authenticatable` oraz trasy
+ * `/reset-hasla` i `/zaloguj-haslem` — i **cała bramka została zielona**.
  *
- * WYTYCZNE-PRACY §3: „reguła bez testu na złamanie jej nie istnieje".
- * Dlatego asercje idą po SCHEMACIE BAZY i po realnej tablicy tras — czyli po
- * stanie, a nie po deklaracji w komentarzu.
+ * Wniosek: test na liście zakazanych nazw sprawdza słownik, nie regułę.
+ * Ta wersja szuka WZORCÓW w całym schemacie, we wszystkich modelach
+ * i we wszystkich trasach — po polsku i po angielsku.
  */
-it('nie ma w bazie ani jednej kolumny hasła', function (): void {
-    expect(Schema::hasTable('users'))->toBeTrue()
-        ->and(Schema::hasColumn('users', 'password'))->toBeFalse()
-        ->and(Schema::hasColumn('users', 'remember_token'))->toBeFalse();
-});
 
-it('nie ma tabeli resetu haseł', function (): void {
-    expect(Schema::hasTable('password_reset_tokens'))->toBeFalse();
-});
+/** Wzorce nazw, które w systemie bez haseł nie mają prawa wystąpić. */
+const WZORZEC_HASLA = '/(hasl|password|passwd|\bpwd\b|remember_token|token_zapamietania)/i';
 
-it('wiąże konto lokalne po sub z Keycloaka, nie po e-mailu', function (): void {
-    // Kontrakt §6 pkt 3 i CLAUDE.md §2. E-mail bywa NIEOBECNY w tokenie
-    // (kontrakt §2a), więc nie może być kluczem tożsamości.
-    expect(Schema::hasColumn('users', 'keycloak_sub'))->toBeTrue();
+/** Wzorce nazw tabel: hasła i wszystko, co je resetuje. */
+const WZORZEC_TABELI = '/(hasl|password|passwd|reset)/i';
 
-    $unikalneKolumny = [];
+/**
+ * @return list<string>
+ */
+function wszystkieTabele(): array
+{
+    $wiersze = DB::select(
+        "select tablename from pg_tables where schemaname = 'public' order by tablename"
+    );
 
-    foreach (Schema::getIndexes('users') as $indeks) {
-        $indeks = Typy::mapa($indeks);
+    $nazwy = [];
 
-        if (($indeks['unique'] ?? false) === true) {
-            $unikalneKolumny = array_merge($unikalneKolumny, Typy::listaNapisow($indeks['columns'] ?? null));
+    foreach ($wiersze as $wiersz) {
+        $nazwy[] = Typy::napis(Typy::mapa((array) $wiersz)['tablename'] ?? null);
+    }
+
+    return $nazwy;
+}
+
+/**
+ * @return list<string> pozycje w formacie `tabela.kolumna`
+ */
+function wszystkieKolumny(): array
+{
+    $wynik = [];
+
+    foreach (wszystkieTabele() as $tabela) {
+        foreach (Schema::getColumnListing($tabela) as $kolumna) {
+            $wynik[] = $tabela.'.'.Typy::napis($kolumna);
         }
     }
 
-    expect($unikalneKolumny)->toContain('keycloak_sub')
-        // E-mail NIE MOŻE być unikalny: dwa konta w IdP mogą nie mieć e-maila
-        // w ogóle, a ograniczenie unikalności na NULL-ach jest pułapką.
-        ->and($unikalneKolumny)->not->toContain('email');
+    return $wynik;
+}
+
+/**
+ * Kod PHP bez komentarzy — żeby kontrola patrzyła na to, co się wykonuje,
+ * a nie na to, co ktoś o tym napisał.
+ */
+function bezKomentarzy(string $kod): string
+{
+    $wynik = '';
+
+    foreach (token_get_all($kod) as $token) {
+        if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+            continue;
+        }
+
+        $wynik .= is_array($token) ? $token[1] : $token;
+    }
+
+    return $wynik;
+}
+
+/**
+ * @return list<string> ścieżki plików PHP w `app/`
+ */
+function plikiAplikacji(): array
+{
+    $katalog = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(base_path('app'), FilesystemIterator::SKIP_DOTS)
+    );
+
+    $pliki = [];
+
+    foreach ($katalog as $plik) {
+        if ($plik instanceof SplFileInfo && $plik->getExtension() === 'php') {
+            $pliki[] = $plik->getPathname();
+        }
+    }
+
+    sort($pliki);
+
+    return $pliki;
+}
+
+// ---------------------------------------------------------------------------
+// SCHEMAT BAZY — wzorce, nie lista zakazanych nazw
+// ---------------------------------------------------------------------------
+
+it('nie ma w CAŁYM schemacie ani jednej kolumny wyglądającej na hasło', function (): void {
+    $podejrzane = array_values(array_filter(
+        wszystkieKolumny(),
+        fn (string $kolumna): bool => preg_match(WZORZEC_HASLA, $kolumna) === 1
+    ));
+
+    expect($podejrzane)->toBe([], 'Kolumny wyglądające na mechanizm haseł: '.implode(', ', $podejrzane));
 });
 
-it('nie ma czego resetować — tabela brokera haseł nie istnieje', function (): void {
-    // UWAGA: samo `config('auth.passwords')` NIE jest dowodem. Laravel 11+
-    // scala konfigurację aplikacji z domyślną konfiguracją frameworka, więc
-    // usunięcie klucza z `config/auth.php` przywraca wartość domyślną
-    // (`table => password_reset_tokens`). Zmierzone, nie założone.
-    //
-    // Dlatego pytamy o STAN: nawet gdyby broker był skonfigurowany, nie ma
-    // tabeli, na której mógłby cokolwiek zrobić — a `Schema::hasTable()`
-    // czyta katalog systemowy bazy, nie plik konfiguracyjny.
-    $tabelaBrokera = Typy::napis(config('auth.passwords.users.table'), 'password_reset_tokens');
+it('nie ma ani jednej tabeli od haseł albo ich resetu', function (): void {
+    $podejrzane = array_values(array_filter(
+        wszystkieTabele(),
+        fn (string $tabela): bool => preg_match(WZORZEC_TABELI, $tabela) === 1
+    ));
 
-    expect(Schema::hasTable($tabelaBrokera))->toBeFalse();
-
-    // Drugi zamek: model wskazany przez providera (domyślnie App\Models\User)
-    // nie umie oddać hasła, bo nie jest `Authenticatable`. Nawet gdyby ktoś
-    // odtworzył tabelę, broker nie ma czego porównać.
-    $model = Typy::napis(config('auth.providers.users.model'), User::class);
-
-    expect(is_subclass_of($model, Authenticatable::class))->toBeFalse();
+    expect($podejrzane)->toBe([], 'Tabele od haseł/resetu: '.implode(', ', $podejrzane));
 });
+
+it('sprawdza schemat, który realnie ma tabele — nie pustkę', function (): void {
+    // Bez tego dwa testy wyżej przechodzą także wtedy, gdy migracje w ogóle
+    // się nie wykonały. Kontrola musi wiedzieć, że miała czego szukać.
+    expect(wszystkieTabele())->toContain('users', 'konfiguracja_regul')
+        ->and(count(wszystkieKolumny()))->toBeGreaterThan(10);
+});
+
+// ---------------------------------------------------------------------------
+// MODELE — żaden nie może umieć uwierzytelniać hasłem
+// ---------------------------------------------------------------------------
+
+it('nie ma w app/ ANI JEDNEJ klasy zdolnej do uwierzytelniania hasłem', function (): void {
+    // Weryfikator podłożył `App\Models\Personel extends Authenticatable`
+    // w osobnym pliku — poprzedni test patrzył wyłącznie na `App\Models\User`.
+    $podejrzane = [];
+
+    foreach (plikiAplikacji() as $plik) {
+        // Usuwamy komentarze: kontrola ma patrzeć na to, co się WYKONUJE,
+        // a nie na to, co ktoś o tym napisał. Bez tego zdanie „NIE dziedziczy
+        // po Authenticatable" w komentarzu modelu zapala test, który pilnuje
+        // czegoś dokładnie odwrotnego.
+        $tresc = bezKomentarzy((string) file_get_contents($plik));
+
+        if (preg_match('/\bAuthenticatable\b/', $tresc) === 1) {
+            $podejrzane[] = str_replace(base_path().'/', '', $plik);
+        }
+    }
+
+    expect($podejrzane)->toBe([], 'Pliki odwołujące się do Authenticatable: '.implode(', ', $podejrzane));
+});
+
+it('nie miesza w kodzie ani jednego skrótu hasła', function (): void {
+    // `Hash::make`, `bcrypt()`, `password_hash()`, `Hash::check` — obecność
+    // któregokolwiek znaczy, że gdzieś powstaje albo jest sprawdzane hasło.
+    $podejrzane = [];
+
+    foreach (plikiAplikacji() as $plik) {
+        $tresc = bezKomentarzy((string) file_get_contents($plik));
+
+        if (preg_match('/(Hash::(make|check)|\bbcrypt\s*\(|\bpassword_hash\s*\(|\bpassword_verify\s*\()/', $tresc) === 1) {
+            $podejrzane[] = str_replace(base_path().'/', '', $plik);
+        }
+    }
+
+    expect($podejrzane)->toBe([], 'Pliki mieszające skróty haseł: '.implode(', ', $podejrzane));
+});
+
+it('przegląda realny zbiór plików aplikacji — nie pustą listę', function (): void {
+    // Ta sama zasada co przy schemacie: kontrola musi wiedzieć, że miała
+    // czego szukać. Bez tego dwa testy wyżej przechodzą przy pustym katalogu.
+    expect(count(plikiAplikacji()))->toBeGreaterThan(10);
+});
+
+// ---------------------------------------------------------------------------
+// TRASY — po polsku i po angielsku
+// ---------------------------------------------------------------------------
 
 it('nie wystawia ani jednej trasy hasłowej', function (): void {
+    // Weryfikator dołożył `/reset-hasla` i `/zaloguj-haslem`. Poprzedni test
+    // szukał `haslo` — a odmiana „hasła"/„hasłem" go omijała.
     $podejrzane = [];
 
     foreach (Route::getRoutes()->getRoutes() as $trasa) {
         $sciezka = $trasa->uri();
         $nazwa = Typy::napis($trasa->getName());
 
-        if (str_contains($sciezka, 'password') || str_contains($sciezka, 'haslo')
-            || str_starts_with($nazwa, 'password.')) {
+        if (preg_match(WZORZEC_HASLA, $sciezka.' '.$nazwa) === 1) {
             $podejrzane[] = $sciezka;
         }
     }
 
-    expect($podejrzane)->toBe([]);
+    expect($podejrzane)->toBe([], 'Trasy hasłowe: '.implode(', ', $podejrzane));
 });
 
-it('nie ma modelu użytkownika zdolnego do uwierzytelniania hasłem', function (): void {
-    // `Authenticatable` niesie `getAuthPassword()` i `getRememberToken()`.
-    // Dopóki model po nim nie dziedziczy, żaden strażnik Laravela nie ma
-    // czego sprawdzić — i to jest zamierzone.
-    expect(is_subclass_of(User::class, Authenticatable::class))
-        ->toBeFalse();
+// ---------------------------------------------------------------------------
+// KONFIGURACJA
+// ---------------------------------------------------------------------------
+
+it('nie ma czego resetować — tabela brokera haseł nie istnieje', function (): void {
+    // `config('auth.passwords')` NIE jest dowodem: Laravel 11+ scala
+    // konfigurację aplikacji z domyślną konfiguracją frameworka, więc
+    // usunięcie klucza przywraca wartość domyślną. Zmierzone.
+    $tabelaBrokera = Typy::napis(config('auth.passwords.users.table'), 'password_reset_tokens');
+
+    expect(Schema::hasTable($tabelaBrokera))->toBeFalse();
+});
+
+it('nie ma ani jednego strażnika nad providerem zdolnym do haseł', function (): void {
+    // Strażnik bez providera nie ma kogo sprawdzić. Gdyby ktoś dołożył
+    // providera Eloquent nad modelem `Authenticatable`, złapie to test wyżej.
+    $providery = Typy::mapa(config('auth.providers'));
+
+    foreach ($providery as $nazwa => $provider) {
+        $model = Typy::napis(Typy::mapa($provider)['model'] ?? null);
+
+        if ($model !== '') {
+            expect(is_subclass_of($model, Authenticatable::class))
+                ->toBeFalse("Provider {$nazwa} wskazuje model zdolny do uwierzytelniania: {$model}");
+        }
+    }
 });

@@ -164,3 +164,41 @@ it('normalizuje aud podane jako pojedynczy napis', function (): void {
 
     expect(WalidatorTokenu::sprawdz($token, opcjeAccess())['ok'])->toBeTrue();
 });
+
+// ---------------------------------------------------------------------------
+// FAIL-CLOSED — kontrola, która nie ma z czym porównać, MA PAŚĆ
+// ---------------------------------------------------------------------------
+
+it('odrzuca token, gdy oczekiwany nonce jest pusty albo nieznany', function (mixed $oczekiwany): void {
+    // Znalezione przez niezależnego weryfikatora: wersja pierwsza POMIJAŁA
+    // kontrolę nonce przy `null`, więc sesja bez nonce wpuszczała token
+    // z dowolnym nonce i kończyła się stanem „zalogowany".
+    $token = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['nonce' => 'nonce-NAPASTNIKA']));
+
+    $wynik = WalidatorTokenu::sprawdz($token, opcjeAccess([
+        'typ' => 'ID',
+        'nonce' => $oczekiwany,
+    ]));
+
+    expect($wynik['ok'])->toBeFalse()
+        ->and($wynik['kontrole']['nonce'])->toBe('fail')
+        // Dowód, że padła DOKŁADNIE ta kontrola, a nie cała walidacja.
+        ->and($wynik['kontrole']['signature'])->toBe('ok')
+        ->and($wynik['kontrole']['iss'])->toBe('ok');
+})->with([
+    'null' => [null],
+    'pusty napis' => [''],
+    'liczba zamiast napisu' => [0],
+    'tablica' => [[]],
+]);
+
+it('przyjmuje token dopiero przy zgodnym, niepustym nonce', function (): void {
+    $token = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['nonce' => 'nonce-testowy']));
+
+    $wynik = WalidatorTokenu::sprawdz($token, opcjeAccess([
+        'typ' => 'ID',
+        'nonce' => 'nonce-testowy',
+    ]));
+
+    expect($wynik['kontrole']['nonce'])->toBe('ok');
+});

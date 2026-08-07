@@ -83,8 +83,18 @@ final class WalidatorTokenu
             $kontrole['azp'] = Typy::napis($claims['azp'] ?? null) === Typy::napis($opcje['azp']) ? 'ok' : 'fail';
         }
 
-        if (array_key_exists('nonce', $opcje) && $opcje['nonce'] !== null) {
-            $kontrole['nonce'] = Typy::napis($claims['nonce'] ?? null) === Typy::napis($opcje['nonce']) ? 'ok' : 'fail';
+        if (array_key_exists('nonce', $opcje)) {
+            // FAIL-CLOSED. Wersja pierwsza pomijała tę kontrolę, gdy oczekiwany
+            // `nonce` był `null` — a kontroler przekazywał `$przeplyw['nonce']
+            // ?? null`. Sesja bez `nonce` sprawiała więc, że token z DOWOLNYM
+            // nonce przechodził i kończył się stanem „zalogowany".
+            // Znalazł to niezależny weryfikator; kontrola bezpieczeństwa nie
+            // może MILCZEĆ, kiedy nie ma z czym porównać — ma paść.
+            $oczekiwany = $opcje['nonce'];
+
+            $kontrole['nonce'] = is_string($oczekiwany) && $oczekiwany !== ''
+                && Typy::napis($claims['nonce'] ?? null) === $oczekiwany
+                    ? 'ok' : 'fail';
         }
 
         $nieudane = array_keys(array_filter($kontrole, static fn (string $v): bool => $v !== 'ok'));

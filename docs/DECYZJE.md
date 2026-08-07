@@ -379,6 +379,75 @@ pacjentów zakładamy właśnie przez Admin API — status 2FA czytamy z tokenu
 
 ---
 
+## D-2026-08-07-15 — sprostowanie po drugiej weryfikacji: testy na wzorcach, nie na słowniku
+
+**Druga niezależna weryfikacja (2026-08-07, kod `eadf5c5`) obaliła cztery
+twierdzenia.** Wpis jest sprostowaniem, a nie relitygacją — poprzednie wpisy
+zostają, bo opisują stan, w którym je pisano.
+
+### Co zostało obalone i naprawione
+
+**1. `BrakWlasnychHaselTest` NIE egzekwował CLAUDE.md §2.** Weryfikator podłożył
+kompletny mechanizm własnych haseł — kolumny `users.haslo_hash`
+i `users.token_zapamietania`, tabele `konta_lokalne(hash_hasla)` i `zetony_resetu`,
+model `Personel extends Authenticatable`, trasy `/reset-hasla` i `/zaloguj-haslem`
+— i **cała bramka została zielona**.
+
+Przyczyna: test sprawdzał **listę zakazanych nazw**, czyli słownik, a nie regułę.
+Wystarczyło nazwać rzeczy po polsku.
+
+Wersja druga szuka **wzorców**: `/(hasl|password|passwd|pwd|remember_token)/i`
+we WSZYSTKICH kolumnach WSZYSTKICH tabel, `/(hasl|password|reset)/i` w nazwach
+tabel, `Authenticatable` i `Hash::make|bcrypt|password_hash` w KAŻDYM pliku
+`app/` (po usunięciu komentarzy — inaczej zdanie „NIE dziedziczy po
+Authenticatable" w komentarzu zapala test pilnujący czegoś odwrotnego), oraz
+ten sam wzorzec w ścieżkach i nazwach tras. Plus dwie asercje „miałem czego
+szukać": schemat ma realne tabele, katalog `app/` ma realne pliki — bez nich
+testy przechodzą także przy pustej bazie.
+
+**2. Fail-open kontroli `nonce`.** `WalidatorTokenu` POMIJAŁ kontrolę, gdy
+oczekiwany `nonce` był `null`, a kontroler przekazywał `$przeplyw['nonce'] ?? null`.
+Sesja bez `nonce` sprawiała, że token z **dowolnym** nonce przechodził i kończył
+się stanem „zalogowany". Weryfikator to zrobił.
+
+Naprawa dwutorowa: walidator jest **fail-closed** (brak oczekiwanego nonce =
+`fail`, nie pominięcie), a kontroler odmawia przy niekompletnym przepływie
+(`blad: niekompletny_przeplyw`). Kontrola bezpieczeństwa nie może MILCZEĆ,
+kiedy nie ma z czym porównać.
+
+**3. Sonda `app` nie testuje php-fpm.** `gabinet:zdrowie` uruchamia świeży
+proces CLI, więc zawieszony php-fpm daje `app` = healthy przez 8 minut, podczas
+gdy `web` = unhealthy. Zapisane jako znane ograniczenie — patrz „Co zostaje
+otwarte".
+
+**4. CI było czerwone na `eadf5c5`** (brak `GITLEAKS_LICENSE`). Naprawione
+wcześniej i niezależnie: D-2026-08-07-12 usunęła ten job. CI zielone od `ee85c83`.
+
+### Nowe perturbacje
+
+Obie usterki mają teraz perturbację (D-2026-08-07-13): `hasla` odtwarza **pełny
+atak weryfikatora**, `nonce` przywraca fail-open. Obie zapalają się na czerwono.
+Komplet: **15 kontroli** udowodniło, że umie zaświecić.
+
+Mutacje plików wyprowadzone do `skrypty/perturbuj.py` — dwa ciche błędy
+ucieczki znaków w heredokach basha sprawiły, że perturbacja „przechodziła",
+nie zmieniwszy niczego. Teraz podmiana bez trafienia **przerywa z błędem**.
+
+### Co zostaje otwarte (świadomie, z uzasadnieniem)
+
+| # | Ograniczenie | Dlaczego nie teraz |
+|---|---|---|
+| O-1 | Sonda `app` nie sprawdza, czy php-fpm obsługuje FastCGI | Stos jako całość ratuje sonda `web` (unhealthy po zawieszeniu php-fpm). Domknięcie wymaga `cgi-fcgi` w obrazie i ścieżki `ping` w php-fpm — wchodzi razem z hartowaniem obrazu w F9. |
+| O-2 | Suita **zawiesza się** przy niedostępnej bazie zamiast paść | W CI oznacza timeout joba zamiast czytelnej czerwieni. Do domknięcia: `PGCONNECT_TIMEOUT` w obrazie. |
+| O-3 | Skan sekretów widzi tylko treści **zacommitowane** | Tryb git jest właściwy dla CI (historia to też wyciek), ale sekret w drzewie roboczym przechodzi. Perturbacja `sekrety` skanuje `--no-git` i to łapie. |
+| O-4 | Brak `composer validate`; wolumen `vendor` nie odświeża się z przebudowanego obrazu | Podbicie lockfile'a bez `down -v` jest ignorowane **bez sygnału**. README ostrzega prozą; nic tego nie egzekwuje. |
+| O-5 | `bramka.sh` nie broni się przed równoległym przebiegiem na tym samym projekcie | Dwa przebiegi mielą jedną bazę `gabinet_test` i dają fałszywe czerwone. Weryfikator doświadczył tego sam. |
+| O-6 | Awaria po starcie widoczna po ~300 s (`retries: 12`) | To nie jest ślepa plama `start_period` (zmierzone: kończy się na pierwszej udanej sondzie), tylko koszt liczby prób. |
+
+O-2, O-4 i O-5 wchodzą do rozpiski F1 jako zadania bramkowe.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |

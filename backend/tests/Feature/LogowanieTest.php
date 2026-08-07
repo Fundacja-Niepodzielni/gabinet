@@ -349,3 +349,21 @@ it('nie przyjmuje logout tokenu wystawionego dla innego klienta', function (): v
         ->assertStatus(400)
         ->assertJsonPath('kontrole.aud', 'fail');
 });
+
+it('odmawia powrotu z IdP, gdy w sesji brakuje nonce albo weryfikatora PKCE', function (array $przeplyw): void {
+    // Kontroler nie może iść dalej z niekompletnym przepływem: brak nonce
+    // znaczy, że nie ma z czym porównać tokenu. Wcześniej szedł dalej,
+    // a walidator po cichu pomijał kontrolę.
+    udawajIdp();
+
+    $this->withSession(['oidc_przeplyw' => $przeplyw])
+        ->get('/auth/callback?code=kod&state=s')
+        ->assertStatus(400)
+        ->assertJsonPath('blad', 'niekompletny_przeplyw');
+
+    $this->getJson('/auth/ja')->assertStatus(401);
+})->with([
+    'bez nonce' => [['state' => 's', 'pkce' => 'p']],
+    'pusty nonce' => [['state' => 's', 'nonce' => '', 'pkce' => 'p']],
+    'bez pkce' => [['state' => 's', 'nonce' => 'n']],
+]);

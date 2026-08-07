@@ -69,7 +69,14 @@ final class LogowanieController extends Controller
             return response()->json(['ok' => false, 'blad' => 'state'], 400);
         }
 
-        $tokeny = $this->oidc->wymienKod(Typy::napis($request->query('code')), Typy::napis($weryfikator));
+        // Komplet danych przepływu MUSI być w sesji. Brak któregokolwiek pola
+        // znaczy, że nie ma z czym porównać tokenu — i wtedy jedyną poprawną
+        // odpowiedzią jest odmowa, a nie pominięcie kontroli.
+        if (! is_string($nonce) || $nonce === '' || ! is_string($weryfikator) || $weryfikator === '') {
+            return response()->json(['ok' => false, 'blad' => 'niekompletny_przeplyw'], 400);
+        }
+
+        $tokeny = $this->oidc->wymienKod(Typy::napis($request->query('code')), $weryfikator);
 
         if ($tokeny['status'] !== 200) {
             return response()->json(['ok' => false, 'blad' => 'wymiana_kodu', 'status' => $tokeny['status']], 401);

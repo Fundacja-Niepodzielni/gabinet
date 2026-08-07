@@ -46,6 +46,13 @@ sciezka_hosta() {
 
 dc() { docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"; }
 
+# Mutacje plików trzymamy w `perturbuj.py`, nie w heredokach basha —
+# uzasadnienie w nagłówku tamtego pliku (dwa ciche błędy ucieczki znaków
+# sprawiły, że perturbacja „przechodziła", nie zmieniwszy niczego).
+# `sciezka_hosta`, nie "$KORZEN/..." — przy MSYS_NO_PATHCONV=1 ścieżka POSIX
+# dociera do windowsowego Pythona dosłownie i staje się `D:\d\KOD\...`.
+perturbuj() { python3 "$(sciezka_hosta skrypty/perturbuj.py)" "$@"; }
+
 # Liczba testów z wyjścia pesta — DOKŁADNIE ta sama procedura co w bramce.
 # Pest koloruje wynik nawet przy NO_COLOR, a `[32;1m` zawiera cyfry, więc
 # bez usunięcia pełnych sekwencji ANSI parser wyłuskuje „39" albo zero.
@@ -213,18 +220,39 @@ p_sekrety() {
 }
 
 p_hasla() {
-	naglowek "CLAUDE.md §2 — próba przemycenia mechanizmu haseł"
-	local plik="backend/database/migrations/0001_01_01_000000_create_users_table.php"
+	naglowek "CLAUDE.md §2 — pełny mechanizm haseł pod polskimi nazwami"
+	# Odtworzenie ATAKU niezależnego weryfikatora. Pierwsza wersja testu
+	# sprawdzała literalne nazwy i przepuściła komplet: kolumny po polsku,
+	# osobną tabelę kont, tabelę resetu, drugi model dziedziczący po
+	# Authenticatable i trasy w polskiej odmianie. Bramka była wtedy zielona.
+	local migracja="backend/database/migrations/0001_01_01_000000_create_users_table.php"
+	local trasy="backend/routes/web.php"
+	zachowaj "$migracja"
+	zachowaj "$trasy"
+
+	perturbuj hasla-podloz || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
+
+	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa PEŁNY mechanizm haseł pod polskimi nazwami" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+
+	perturbuj hasla-sprzataj
+	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
+	cp "$KOPIE/$(printf '%s' "$trasy" | tr '/' '_')" "$trasy"
+	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
+}
+
+p_nonce() {
+	naglowek "nonce — fail-open kontroli bezpieczeństwa"
+	local plik="backend/app/Tozsamosc/WalidatorTokenu.php"
 	zachowaj "$plik"
 
-	sed -i "s|\$table->string('email')->nullable();|\$table->string('email')->nullable();\n            \$table->string('password');|" "$plik"
+	# Przywracamy zachowanie sprzed naprawy: kontrola MILCZY, gdy nie ma
+	# z czym porównać. Weryfikator doszedł tak do stanu „zalogowany"
+	# tokenem z cudzym nonce.
+	perturbuj nonce-fail-open || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
 
-	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa kolumnę hasła w schemacie" \
-		dc exec -T app ./vendor/bin/pest --filter="ani jednej kolumny hasła"
+	oczekuj_czerwone "testy wykrywają pominiętą kontrolę nonce" 		dc exec -T app ./vendor/bin/pest --filter="nonce"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
-
-	# Migracja z perturbacji mogła zostać wykonana — odtwarzamy schemat.
-	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 }
 
 p_zdrowie() {
@@ -296,7 +324,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita statyka format sekrety hasla zdrowie tozsamosc puls zamrozenie biala_lista"
+WSZYSTKIE="testy pusta_suita statyka format sekrety hasla nonce zdrowie tozsamosc puls zamrozenie biala_lista"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -318,6 +346,8 @@ for NAZWA in $WYBRANE; do
 		format) p_format ;;
 		sekrety) p_sekrety ;;
 		hasla) p_hasla ;;
+		nonce) p_nonce ;;
+		nonce) p_nonce ;;
 		zdrowie) p_zdrowie ;;
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;
