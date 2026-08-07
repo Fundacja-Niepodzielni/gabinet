@@ -171,6 +171,19 @@ services:
     command: ["php", "artisan", "horizon"]
     stop_signal: SIGTERM
     stop_grace_period: 30s
+    # Worker startuje DOPIERO, gdy `app` jest zdrowy — czyli po zainstalowaniu
+    # zależności. Bez tego warunku horizon i scheduler kręcą się w pętli
+    # oczekiwania na `vendor/`, a `docker compose up --wait` przerywa czekanie
+    # z błędem „No such container", bo kontener właśnie się restartuje.
+    # (Powtórzenie postgres/redis jest konieczne: YAML podmienia cały klucz
+    # `depends_on`, a nie scala go z kotwicą.)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "php artisan horizon:status | grep -q 'is running'"]
       interval: 15s
@@ -188,6 +201,13 @@ services:
     command: ["php", "artisan", "schedule:work"]
     stop_signal: SIGTERM
     stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     healthcheck:
       # Sonda czyta PULS zapisywany przez zadanie `gabinet:puls`, uruchamiane
       # co minutę przez sam harmonogram. To jest STAN: dowodzi, że pętla
