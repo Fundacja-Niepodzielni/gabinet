@@ -860,6 +860,42 @@ p_id_token_w_sesji() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_retencja_wykonanie() {
+	naglowek "retencja — zadanie WYBIERA rekordy, ale ich NIE KASUJE"
+	# Lekcja przekrojowa zespołu helpdesku: kontrole retencji sprawdzają zwykle,
+	# KOGO zadanie wybiera do skasowania — a nie czy rekord realnie ZNIKA.
+	# RODO wymaga WYKONANIA, nie selekcji: poprawnie wybrany rekord, którego
+	# nikt nie skasował, to dane pozostawione po terminie, w ciszy.
+	#
+	# Mutacja zostawia selekcję nietkniętą i usuwa samo kasowanie. Zmierzone:
+	# strukturalny `RetencjaTest` (rejestr, kolumna pochodzenia, sposób
+	# usunięcia) POZOSTAJE W CAŁOŚCI ZIELONY — czerwień zapala wyłącznie
+	# kontrola wykonania. To jest dowód, że selekcja i wykonanie to dwie
+	# różne rzeczy i że tylko jedna z nich była dotąd pilnowana.
+	local plik="backend/app/Retencja/ZadanieRetencji.php"
+	zachowaj "$plik"
+
+	perturbuj retencja-bez-kasowania
+
+	dowod_mutacji "kasowanie zniknęło z zadania, selekcja została" \
+		bash -c "grep -q 'kasowanie usuniete, selekcja zostaje' '$plik' && grep -q 'pluck(' '$plik'"
+
+	oczekuj_czerwone "kontrola wykrywa rekord, który PRZEŻYŁ zadanie retencyjne" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/RetencjaWykonanieTest.php
+
+	# Kontrola strukturalna NIE MOŻE tego złapać — i to też trzeba pokazać,
+	# bo inaczej nikt nie uwierzy, że potrzebne są obie.
+	if dc exec -T app ./vendor/bin/pest tests/Feature/RetencjaTest.php >/dev/null 2>&1; then
+		printf '    ✓ rejestr retencji pozostaje zielony — selekcja to NIE wykonanie\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ rejestr retencji zapalił się z innego powodu — perturbacja nierozstrzygająca\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -1072,7 +1108,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie id_token_sesja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -1132,6 +1168,7 @@ for NAZWA in $WYBRANE; do
 		lockfile) p_lockfile ;;
 		vendor) p_vendor_niekompletny ;;
 		retencja) p_retencja ;;
+		retencja_wykonanie) p_retencja_wykonanie ;;
 		obietnica) p_obietnica ;;
 		sesja) p_sesja_jawna ;;
 		role_zamrozone) p_role_zamrozone ;;

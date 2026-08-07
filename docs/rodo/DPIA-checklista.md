@@ -282,11 +282,40 @@ ciche: nic nie pada, nic nie alarmuje, dane po prostu leżą po terminie.
 świeży nie jest. Test tylko na „świeży nie znika" przechodzi również wtedy, gdy
 zadanie nie wybiera **niczego**.
 
-**Stan wdrożenia.** Kontrola strukturalna działa od F1: `RetencjaTest` trzyma
-rejestr (tabela → kolumna pochodzenia → podstawa → sposób usunięcia) i pilnuje,
-że każda tabela w bazie ma decyzję o retencji, że kolumna pochodzenia istnieje
-i że każdy wpis mówi, **jak** rekord znika. Testy „rekord po terminie jest
-wybierany" powstają razem z samymi zadaniami czyszczącymi w F2.
+**Stan wdrożenia.** Dwie kontrole, celowo rozdzielone:
+
+1. **Rejestr (`RetencjaTest`)** — tabela → kolumna pochodzenia → podstawa →
+   sposób usunięcia. Pilnuje, że każda tabela ma decyzję o retencji, że kolumna
+   pochodzenia istnieje i nie jest kolumną stanu, i że każdy wpis mówi, **jak**
+   rekord znika.
+2. **Wykonanie (`RetencjaWykonanieTest`)** — że rekord po terminie
+   **FIZYCZNIE ZNIKA** z bazy.
+
+## W-15 — selekcja to NIE wykonanie
+
+Lekcja przekrojowa zespołu helpdesku (08.08.2026). Kontrole retencji
+weryfikują zwykle, **kogo zadanie WYBIERA** do skasowania — i na tym
+poprzestają. RODO wymaga jednak **WYKONANIA**, nie selekcji: poprawnie wybrany
+rekord, którego nikt nie skasował, to dane pozostawione po terminie. Nic o tym
+nie krzyczy, bo kontrola patrzy na listę, nie na bazę.
+
+**Zmierzone u nas.** Perturbacja `retencja_wykonanie` usuwa z zadania samo
+kasowanie, zostawiając selekcję nietkniętą. Strukturalny `RetencjaTest`
+**pozostaje w całości zielony** — czerwień zapala wyłącznie kontrola
+wykonania. To jest dowód, że potrzebne są obie, a nie jedna.
+
+**Jak to jest zbudowane.** `ZadanieRetencji` zwraca liczbę WYBRANYCH i liczbę
+FAKTYCZNIE USUNIĘTYCH osobno, a stan po kasowaniu sprawdza **niezależnym
+zapytaniem** — nie ufamy wartości zwróconej przez `delete()`, bo ta mówi, na
+ilu wierszach zadziałało polecenie, a nie jaki jest stan bazy po nim. Wyzwalacz,
+reguła albo wycofana transakcja potrafią ją uczynić nieprawdziwą (reguła C1:
+kontrola musi patrzeć inną drogą niż mechanizm, który bada).
+
+**Nadal otwarte:** okresy retencji są wartościami zastępczymi do czasu
+odpowiedzi IOD (P-3). Mechanizm powstał wcześniej celowo — żeby dało się go
+SPRAWDZIĆ; liczby wchodzą, gdy przyjdą z zewnątrz. Zadania dla pozostałych
+kategorii (pacjenci przez anonimizację, rezerwacje, zdarzenia) powstają w F2
+na tym samym szkielecie i z tą samą parą kontroli.
 
 ## W-14 — retencja idzie za POCHODZENIEM rekordu, nie za jego stanem
 

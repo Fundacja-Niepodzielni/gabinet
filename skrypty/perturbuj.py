@@ -33,6 +33,7 @@ ODSWIEZANIE = KORZEN / "backend/app/Tozsamosc/OdswiezanieSesji.php"
 WYLOGOWANIE = KORZEN / "backend/app/Http/Controllers/BackchannelLogoutController.php"
 KONTROLER = KORZEN / "backend/app/Http/Controllers/LogowanieController.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
+ZADANIE = KORZEN / "backend/app/Retencja/ZadanieRetencji.php"
 
 
 def czytaj(sciezka: Path) -> str:
@@ -378,6 +379,21 @@ def id_token_zakodowany() -> None:
     podmien(KONTROLER, "Crypt::encryptString($idToken)", "base64_encode($idToken)")
 
 
+def retencja_bez_kasowania() -> None:
+    """Zadanie retencyjne WYBIERA rekordy, ale ich NIE KASUJE.
+
+    Lekcja przekrojowa helpdesku: kontrole retencji sprawdzaja zwykle,
+    kogo zadanie wybiera — a nie czy rekord realnie znika. RODO wymaga
+    WYKONANIA, nie selekcji. Ta mutacja zostawia selekcje nietknieta
+    i usuwa samo kasowanie: kontrola pytajaca tylko o liste PRZEJDZIE.
+    """
+    podmien(
+        ZADANIE,
+        "        DB::table($tabela)->whereIn('id', $doUsuniecia)->delete();",
+        "        // perturbacja: kasowanie usuniete, selekcja zostaje",
+    )
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -389,6 +405,7 @@ POLECENIA = {
     "obietnica-bez-dowodu": obietnica_bez_dowodu,
     "sesja-jawna": sesja_jawna,
     "id-token-jawny": id_token_jawny,
+    "retencja-bez-kasowania": retencja_bez_kasowania,
     "id-token-zakodowany": id_token_zakodowany,
     "role-zamrozone": role_zamrozone,
     "logout-bez-failsafe": logout_bez_failsafe,
