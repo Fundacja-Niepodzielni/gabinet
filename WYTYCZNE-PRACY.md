@@ -181,6 +181,30 @@ zaklasyfikowanych jako wada przyrządu nie jest w rzeczywistości wadą systemu
 przebraną za wadę przyrządu*. Pytanie ma trafić do zlecenia rundy, nie do
 naszej samooceny — samoocena tu z definicji nie działa.
 
+**Kontrola dzieląca mechanizm ze swoim przedmiotem jest w tym mechanizmie
+NIEFALSYFIKOWALNA.** Reguła C1 zespołu helpdesku. U nich kontrola dzieliła
+zapytanie ze sprzątaczką, więc podłożona zaległość znikała wspólnym
+mechanizmem — kontrola świeciła zielono, a przebiegi zostawiały dane wrażliwe
+w 13 obiektach. Wcześniej inna kontrola dzieliła uruchomienie skryptu
+konfiguracyjnego z testem i **naprawiała stan, który badała**.
+
+**Lek:** kontrola musi patrzeć ŚCIEŻKĄ NIEZALEŻNĄ od przedmiotu — osobne
+zapytanie, skan wstępny, inny mechanizm. Inaczej perturbacja znika tą samą
+drogą, którą kontrola patrzy.
+
+Nasze instancje tej klasy:
+
+- **Ślad wylogowania w tym samym cache'u co rejestr sesji.** `SladWylogowania`
+  liczył wejścia i awarie w cache'u, a `RejestrSesji` — obserwowany przedmiot —
+  też tam mieszkał. Wyczyszczenie cache'u kasowało JEDNO I DRUGIE, więc licznik
+  pokazywał spójne zero i nie dało się odróżnić „nie było czego kasować" od
+  „mechanizm padł". Trafiło nas we własnym teście: `Cache::flush()` usunął cel
+  perturbacji. Ślad idzie teraz do **pliku**.
+- **Kontrola odwrotna czekająca na harmonogram.** Perturbacja pulsu czekała, aż
+  harmonogram sam zapisze wpis — mierzyła więc jego cadencję, nie czujność
+  kontroli, i losowo padała po 90 s. Puls zapisujemy teraz **wprost**,
+  niezależnym poleceniem.
+
 **Nasze instancje** (rosną — dopisuj):
 
 1. `skrypty/perturbacje-powtarzalne.sh` dawał **fałszywe zielone**: podsumowanie

@@ -825,6 +825,41 @@ p_wymuszone_wylogowanie() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_id_token_w_sesji() {
+	naglowek "ID token w sesji — jawny oraz tylko zakodowany"
+	# Refinement B7 z huba, obie nogi naraz.
+	#
+	# NOGA 1: ID token zapisany JAWNIE. Poleganie na `SESSION_ENCRYPT` to jedna
+	# flaga od wycieku, a claim `email` jest daną pacjenta (RODO art. 9).
+	#
+	# NOGA 2 — trudniejsza i dlatego ważniejsza: ID token tylko ZAKODOWANY.
+	# Zapisana wartość różni się od oryginału, więc asercja „nie równa się"
+	# przechodzi, a e-mail jest w pełni odzyskiwalny. Ta noga rozstrzyga, czy
+	# kontrola pyta o ODZYSKIWALNOŚĆ DANYCH, czy tylko o różnicę napisów.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj id-token-jawny
+
+	dowod_mutacji "kontroler zapisuje ID token bez szyfrowania" \
+		bash -c "! grep -q 'Crypt::encryptString(\$idToken)' '$plik'"
+
+	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	perturbuj id-token-zakodowany
+
+	dowod_mutacji "kontroler koduje ID token zamiast go szyfrować" \
+		grep -q "base64_encode(\$idToken)" "$plik"
+
+	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -987,25 +1022,23 @@ p_puls() {
 
 	dc start scheduler >/dev/null 2>&1
 
-	# Kierunek odwrotny: po powrocie harmonogramu kontrola MUSI wrócić na
-	# zielone. Bez tego „czerwono przy braku pulsu" przechodzi także dla
-	# kontroli, która świeci czerwono zawsze.
-	local wrocil=0
+	# Kierunek odwrotny — bez czekania na naturalny tik harmonogramu.
+	#
+	# Reguła C1 (zespół helpdesku): KONTROLA DZIELĄCA MECHANIZM ZE SWOIM
+	# PRZEDMIOTEM JEST W TYM MECHANIZMIE NIEFALSYFIKOWALNA. Pierwsza wersja tej
+	# gałęzi czekała, aż harmonogram sam zapisze puls — czyli mierzyła cadencję
+	# harmonogramu, nie czujność kontroli, i losowo padała po 90 s.
+	#
+	# Puls zapisujemy więc NIEZALEŻNĄ ścieżką: wołamy polecenie wprost.
+	dc exec -T app php artisan gabinet:puls >/dev/null 2>&1
 
-	for _ in $(seq 1 45); do
-		if dc exec -T app php artisan gabinet:puls --sprawdz >/dev/null 2>&1; then
-			wrocil=1
-			break
-		fi
-
-		sleep 2
-	done
-
-	if [ "$wrocil" -eq 1 ]; then
-		printf '    ✓ po powrocie harmonogramu kontrola wraca na zielone\n'
+	if dc exec -T app php artisan gabinet:puls --sprawdz >/dev/null 2>&1; then
+		printf '    ✓ po zapisaniu pulsu kontrola wraca na zielone
+'
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ kontrola pozostaje czerwona mimo działającego harmonogramu\n'
+		printf '    ✗ kontrola pozostaje czerwona mimo świeżego pulsu
+'
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 }
@@ -1039,7 +1072,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie id_token_sesja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -1105,6 +1138,7 @@ for NAZWA in $WYBRANE; do
 		logout_failsafe) p_logout_failsafe ;;
 		zrodlo_rol) p_zrodlo_rol ;;
 		wymuszone_wylogowanie) p_wymuszone_wylogowanie ;;
+		id_token_sesja) p_id_token_w_sesji ;;
 		zamek) p_zamek ;;
 		sonda_bazy) p_sonda_bazy ;;
 		zdrowie) p_zdrowie ;;

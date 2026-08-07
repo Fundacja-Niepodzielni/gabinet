@@ -126,3 +126,27 @@ $sondaBazy = static function (): void {
 };
 
 $sondaBazy();
+
+/**
+ * Zdekodowane ładunki base64url ze wszystkiego, co w treści wygląda na JWT.
+ *
+ * Świadomie bez sprawdzania podpisu i bez ograniczania się do „naszych"
+ * tokenów: interesuje nas KAŻDY ciąg, z którego da się odczytać dane osobowe,
+ * niezależnie od tego, kto go wystawił i czy jest ważny.
+ */
+function zdekodowaneLadunki(string $tresc): string
+{
+    if (preg_match_all('/[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/', $tresc, $trafienia) === 0) {
+        return '';
+    }
+
+    $zdekodowane = '';
+
+    foreach ($trafienia[0] as $jwt) {
+        foreach (array_slice(explode('.', $jwt), 0, 2) as $czesc) {
+            $zdekodowane .= (string) base64_decode(strtr($czesc, '-_', '+/'), false);
+        }
+    }
+
+    return $zdekodowane;
+}

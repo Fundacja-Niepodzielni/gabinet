@@ -357,6 +357,27 @@ def logout_na_niezweryfikowanym_sid() -> None:
     )
 
 
+def id_token_jawny() -> None:
+    """Zapisuje ID token do sesji BEZ szyfrowania — refinement B7.
+
+    W polaczeniu z `sesja-jawna` odtwarza pelna luke: claim `email`
+    z wnetrza ID tokenu lezy w Redisie, zakodowany base64url. Skaner
+    szukajacy tekstu jawnego go MIJA.
+    """
+    podmien(KONTROLER, "Crypt::encryptString($idToken)", "$idToken")
+
+
+def id_token_zakodowany() -> None:
+    """Koduje ID token zamiast go szyfrowac — najtrudniejszy przypadek B7.
+
+    Kodowanie WYGLADA jak zabezpieczenie: zapisana wartosc rozni sie od
+    oryginalu, wiec asercja „nie rowna sie" przechodzi. Ale claim `email`
+    jest w pelni odzyskiwalny. Ta mutacja rozstrzyga, czy kontrola pyta
+    o ODZYSKIWALNOSC DANYCH, czy tylko o roznice napisow.
+    """
+    podmien(KONTROLER, "Crypt::encryptString($idToken)", "base64_encode($idToken)")
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -367,6 +388,8 @@ POLECENIA = {
     "suita-pominieta": suita_pominieta,
     "obietnica-bez-dowodu": obietnica_bez_dowodu,
     "sesja-jawna": sesja_jawna,
+    "id-token-jawny": id_token_jawny,
+    "id-token-zakodowany": id_token_zakodowany,
     "role-zamrozone": role_zamrozone,
     "logout-bez-failsafe": logout_bez_failsafe,
     "role-ze-zlego-zrodla": role_ze_zlego_zrodla,

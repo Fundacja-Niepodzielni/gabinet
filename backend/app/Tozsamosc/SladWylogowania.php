@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tozsamosc;
 
 use App\Wsparcie\Typy;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 
 /**
  * Ślad wejścia do handlera back-channel logout.
@@ -24,55 +24,86 @@ use Illuminate\Support\Facades\Cache;
  * Znacznik zapisujemy PRZED jakąkolwiek operacją mogącą rzucić (sieć, JWKS,
  * discovery). Inaczej nie odróżnimy „nie weszło" od „weszło i padło" — czyli
  * dokładnie tego, po co ten byt istnieje.
+ *
+ * ŚCIEŻKA NIEZALEŻNA OD PRZEDMIOTU (reguła C1 zespołu helpdesku):
+ *
+ *   KONTROLA DZIELĄCA MECHANIZM ZE SWOIM PRZEDMIOTEM JEST W TYM MECHANIZMIE
+ *   NIEFALSYFIKOWALNA.
+ *
+ * Pierwsza wersja tego śladu trzymała liczniki w CACHE'U — a `RejestrSesji`,
+ * czyli obserwowany przedmiot, też mieszka w cache'u. Awaria albo wyczyszczenie
+ * cache'u kasowały JEDNO I DRUGIE naraz, więc kontrola nie odróżniała „nie było
+ * czego kasować" od „mechanizm padł". Zdarzyło się to w naszym własnym teście:
+ * `Cache::flush()` usunął cel perturbacji, a licznik pokazywał spójne zero.
+ *
+ * Dlatego ślad idzie do PLIKU. To osobny mechanizm: perturbacja cache'u nie
+ * znika tą samą drogą, którą kontrola patrzy.
  */
 final class SladWylogowania
 {
-    private const KLUCZ_WEJSCIA = 'gabinet:wylogowanie:wejscia';
+    private const WEJSCIA = 'wejscia';
 
-    private const KLUCZ_AWARIE = 'gabinet:wylogowanie:awarie';
+    private const AWARIE = 'awarie';
 
     /** Odmowy zakończenia sesji — awaria, w której NIE dało się zweryfikować tokenu. */
-    private const KLUCZ_ODMOWY = 'gabinet:wylogowanie:odmowy';
-
-    /** Ślad żyje dobę — tyle, ile najdłuższa sesja SSO. */
-    private const CZAS_ZYCIA_S = 86400;
+    private const ODMOWY = 'odmowy';
 
     public static function wejscie(): void
     {
-        Cache::put(self::KLUCZ_WEJSCIA, self::wejscia() + 1, self::CZAS_ZYCIA_S);
+        self::zwieksz(self::WEJSCIA);
     }
 
     public static function awaria(string $klasaWyjatku): void
     {
-        Cache::put(self::KLUCZ_AWARIE, self::awarie() + 1, self::CZAS_ZYCIA_S);
-        Cache::put(self::KLUCZ_AWARIE.':ostatnia', $klasaWyjatku, self::CZAS_ZYCIA_S);
+        self::zwieksz(self::AWARIE);
+        self::zapisz('ostatnia-awaria', $klasaWyjatku);
     }
 
     public static function odmowa(): void
     {
-        Cache::put(self::KLUCZ_ODMOWY, self::odmowy() + 1, self::CZAS_ZYCIA_S);
+        self::zwieksz(self::ODMOWY);
     }
 
     public static function odmowy(): int
     {
-        return Typy::liczba(Cache::get(self::KLUCZ_ODMOWY));
+        return self::licznik(self::ODMOWY);
     }
 
     public static function wejscia(): int
     {
-        return Typy::liczba(Cache::get(self::KLUCZ_WEJSCIA));
+        return self::licznik(self::WEJSCIA);
     }
 
     public static function awarie(): int
     {
-        return Typy::liczba(Cache::get(self::KLUCZ_AWARIE));
+        return self::licznik(self::AWARIE);
     }
 
     public static function wyczysc(): void
     {
-        Cache::forget(self::KLUCZ_WEJSCIA);
-        Cache::forget(self::KLUCZ_AWARIE);
-        Cache::forget(self::KLUCZ_AWARIE.':ostatnia');
-        Cache::forget(self::KLUCZ_ODMOWY);
+        File::deleteDirectory(self::katalog());
+    }
+
+    private static function katalog(): string
+    {
+        return storage_path('slad-wylogowania');
+    }
+
+    private static function zwieksz(string $nazwa): void
+    {
+        self::zapisz($nazwa, (string) (self::licznik($nazwa) + 1));
+    }
+
+    private static function zapisz(string $nazwa, string $wartosc): void
+    {
+        File::ensureDirectoryExists(self::katalog());
+        File::put(self::katalog().'/'.$nazwa, $wartosc);
+    }
+
+    private static function licznik(string $nazwa): int
+    {
+        $plik = self::katalog().'/'.$nazwa;
+
+        return File::exists($plik) ? Typy::liczba(trim(File::get($plik))) : 0;
     }
 }

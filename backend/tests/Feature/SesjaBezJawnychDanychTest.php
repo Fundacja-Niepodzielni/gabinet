@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Wsparcie\Typy;
 use Illuminate\Contracts\Session\Session;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Redis;
 use Tests\Wsparcie\FabrykaTokenow;
 
@@ -28,7 +29,20 @@ beforeEach(function (): void {
     udawajIdp();
 });
 
-/** Surowa zawartość WSZYSTKICH kluczy sesji w Redisie — bajt w bajt. */
+/**
+ * Surowa zawartość magazynu sesji ROZSZERZONA o zdekodowane ładunki JWT.
+ *
+ * Refinement B7 z huba — najważniejsza część tego pliku. Skaner szukający
+ * e-maila TEKSTEM JAWNYM mija go, choć e-mail w magazynie JEST: claimy w ID
+ * tokenie są zakodowane base64url, więc ciąg `pacjent@przyklad.test` nie
+ * występuje w treści dosłownie. Test przechodził i deklarował klasę „brak
+ * danych osobowych w sesji", a mierzył klasę WĘŻSZĄ: „brak danych osobowych
+ * zapisanych wprost".
+ *
+ * Dlatego doklejamy zdekodowane ładunki wszystkiego, co wygląda na JWT.
+ * To ta sama zasada, co przy `RetencjaTest` i kontroli §2: pytanie ma dotyczyć
+ * DANYCH, nie ich reprezentacji — bo reprezentację wybiera ten, kto pisze kod.
+ */
 function surowaZawartoscSesji(): string
 {
     $polaczenie = Redis::connection(Typy::napis(config('session.connection'), 'default'));
@@ -45,7 +59,7 @@ function surowaZawartoscSesji(): string
         $tresc .= Typy::napis($polaczenie->get($bezPrefiksu));
     }
 
-    return $tresc;
+    return $tresc.zdekodowaneLadunki($tresc);
 }
 
 it('nie zapisuje e-maila ani ID tokenu JAWNIE w magazynie sesji', function (): void {
@@ -63,6 +77,7 @@ it('nie zapisuje e-maila ani ID tokenu JAWNIE w magazynie sesji', function (): v
     // z menedżera sesji; szyfrowanie stosuje się dokładnie tak, jak
     // w działającej aplikacji.
     /** @var Session $magazyn */
+    /** @var Session $magazyn */
     $magazyn = app('session')->driver('redis');
     $magazyn->setId(bin2hex(random_bytes(20)));
 
@@ -71,7 +86,9 @@ it('nie zapisuje e-maila ani ID tokenu JAWNIE w magazynie sesji', function (): v
         'sub' => 'sub-testowy',
         'email' => $email,
         'login' => $login,
-        'id_token' => $idToken,
+        // Tak, jak robi to kontroler: ID token szyfrowany JAWNIE, niezależnie
+        // od `session.encrypt` (refinement B7).
+        'id_token' => Crypt::encryptString($idToken),
     ]);
     $magazyn->save();
 
@@ -81,8 +98,8 @@ it('nie zapisuje e-maila ani ID tokenu JAWNIE w magazynie sesji', function (): v
 
     // Szukamy WARTOŚCI. Gdyby ktoś przemianował klucz `email` na `kontakt`,
     // ten test nadal łapie wyciek — bo szuka ciągu, nie nazwy.
-    expect(str_contains($surowe, $email))->toBeFalse('E-mail pacjenta leży JAWNIE w magazynie sesji.')
-        ->and(str_contains($surowe, $login))->toBeFalse('Login pacjenta leży JAWNIE w magazynie sesji.')
+    expect(str_contains($surowe, $email))->toBeFalse('E-mail pacjenta odczytywalny w magazynie sesji.')
+        ->and(str_contains($surowe, $login))->toBeFalse('Login pacjenta odczytywalny w magazynie sesji.')
         ->and(str_contains($surowe, $idToken))->toBeFalse('ID token leży JAWNIE w magazynie sesji.');
 });
 
@@ -111,4 +128,65 @@ it('ma szyfrowanie sesji włączone DOMYŚLNIE, nie tylko w .env', function (): 
 
     expect(config('session.encrypt'))->toBeTrue()
         ->and($domyslna['encrypt'])->toBeTrue();
+});
+
+it('SKANER DEKODUJE base64url — inaczej mierzy węższą klasę, niż deklaruje', function (): void {
+    // Refinement B7 z huba, przełożony na dowód. Bez dekodowania ładunków JWT
+    // test „w sesji nie ma e-maila" przechodzi także wtedy, gdy e-mail
+    // TAM JEST — tylko zakodowany base64url. Deklarowaliśmy klasę „brak danych
+    // osobowych", a mierzyliśmy „brak danych zapisanych wprost".
+    //
+    // Ten test dowodzi, że skaner widzi wnętrze tokenu: podkładamy ID token
+    // JAWNIE (tak, jak było przed naprawą) i wymagamy, żeby e-mail z jego
+    // wnętrza dał się znaleźć.
+    $email = 'wykrywalny-'.bin2hex(random_bytes(6)).'@przyklad.test';
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['email' => $email]));
+
+    // Kontrola wstępna: e-mail NIE występuje w tokenie tekstem jawnym.
+    expect(str_contains($idToken, $email))->toBeFalse(
+        'E-mail jest w tokenie dosłownie — test nie mierzy dekodowania.'
+    );
+
+    /** @var Session $magazyn */
+    $magazyn = app('session')->driver('redis');
+    $magazyn->setId(bin2hex(random_bytes(20)));
+    $magazyn->put('konta', ['sub' => 'sub-testowy', 'id_token' => $idToken]);
+    $magazyn->save();
+
+    // Przy WŁĄCZONYM szyfrowaniu sesji nawet jawny token jest nieczytelny,
+    // więc dla tego dowodu czytamy zawartość z pominięciem tej warstwy.
+    $bezSzyfrowania = zdekodowaneLadunki($idToken);
+
+    expect(str_contains($bezSzyfrowania, $email))->toBeTrue(
+        'Skaner NIE dekoduje ładunków JWT — mierzy węższą klasę, niż deklaruje.'
+    );
+});
+
+it('nie ujawnia e-maila UKRYTEGO WYŁĄCZNIE wewnątrz ID tokenu', function (): void {
+    // Najostrzejsza postać kontroli B7. W sesji NIE MA pola `email` — jedyne
+    // miejsce, gdzie adres pacjenta występuje, to claim wewnątrz ID tokenu,
+    // zakodowany base64url.
+    //
+    // Dzięki temu ten test może zapalić się na czerwono TYLKO przez
+    // dekodowanie. Perturbacja przywracająca jawny ID token przy wyłączonym
+    // szyfrowaniu sesji trafia dokładnie tutaj — i nigdzie indziej.
+    $email = 'ukryty-'.bin2hex(random_bytes(6)).'@przyklad.test';
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['email' => $email]));
+
+    expect(str_contains($idToken, $email))->toBeFalse('E-mail jest w tokenie dosłownie — nie mierzymy dekodowania.');
+
+    /** @var Session $magazyn */
+    $magazyn = app('session')->driver('redis');
+    $magazyn->setId(bin2hex(random_bytes(20)));
+    $magazyn->put('konta', [
+        'sub' => 'sub-testowy',
+        'id_token' => Crypt::encryptString($idToken),
+    ]);
+    $magazyn->save();
+
+    expect(str_contains(surowaZawartoscSesji(), $email))->toBeFalse(
+        'E-mail pacjenta odczytywalny z ID tokenu w magazynie sesji.'
+    );
 });

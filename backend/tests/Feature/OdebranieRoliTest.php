@@ -6,6 +6,7 @@ use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\SladWylogowania;
 use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use Tests\Wsparcie\FabrykaTokenow;
@@ -474,4 +475,54 @@ it('czyta role Z ACCESS TOKENU, a nie z userinfo — źródła podają RÓŻNE r
 
     expect($bramki['panel.koordynacji'])->toBeTrue()
         ->and($bramki['tresci.edytuj'] ?? false)->toBeFalse();
+});
+
+it('zapisuje ID token do sesji ZASZYFROWANY — e-mail pacjenta nie do odzyskania', function (): void {
+    // Refinement B7 z huba, druga część: poleganie na `SESSION_ENCRYPT` to
+    // JEDNA FLAGA OD WYCIEKU. ID token niesie claim `email`, a dla Gabinetu
+    // jest wartością NIEPRZEZROCZYSTĄ (tylko `id_token_hint` przy wylogowaniu).
+    // Wartość, do której nie zaglądamy, nie ma powodu leżeć czytelnie.
+    //
+    // Asercja celuje w KOD PRODUKCYJNY — w to, co zapisał kontroler — a nie
+    // w to, co test sam sobie włożył do sesji.
+    $email = 'pacjent-'.bin2hex(random_bytes(6)).'@przyklad.test';
+    $nonce = 'nonce-testowy';
+
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId([
+        'nonce' => $nonce,
+        'sid' => 'sid-szyfrowanie',
+        'email' => $email,
+    ]));
+
+    punktTokenowZwraca([
+        'id_token' => $idToken,
+        'access_token' => FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
+            'realm_access' => ['roles' => ['koordynator']],
+            'exp' => time() + 600,
+        ])),
+        'refresh_token' => 'refresh-szyfrowanie',
+        'token_type' => 'Bearer',
+    ]);
+
+    test()->withSession(['oidc_przeplyw' => [
+        'state' => 'state-testowy',
+        'nonce' => $nonce,
+        'pkce' => 'weryfikator-testowy-o-odpowiedniej-dlugosci-123456',
+    ]])->get('/auth/callback?code=kod-testowy&state=state-testowy');
+
+    $zapisany = Typy::napis(Typy::mapa(session('konta'))['id_token'] ?? null);
+
+    expect($zapisany)->not->toBe('', 'Kontroler nie zapisał ID tokenu — test nie ma czego sprawdzać.')
+        // Nie jest to surowy JWT…
+        ->and($zapisany)->not->toBe($idToken, 'ID token zapisany JAWNIE w sesji.')
+        // …i nie da się z niego odczytać e-maila po zdekodowaniu base64url.
+        // To jest ta asercja, której brakowało: samo „nie równa się" przeszłoby
+        // także przy kodowaniu bez szyfrowania.
+        ->and(str_contains(zdekodowaneLadunki($zapisany), $email))->toBeFalse(
+            'E-mail pacjenta odzyskiwalny z zapisanego ID tokenu.'
+        );
+
+    // Kierunek odwrotny: zapis MUSI dać się odszyfrować, inaczej wylogowanie
+    // straci `id_token_hint` i „bezpieczeństwo" wyszłoby z zepsucia funkcji.
+    expect(Crypt::decryptString($zapisany))->toBe($idToken);
 });

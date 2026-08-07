@@ -10,9 +10,11 @@ use App\Tozsamosc\OdswiezanieSesji;
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\WalidatorTokenu;
 use App\Wsparcie\Typy;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -137,7 +139,19 @@ final class LogowanieController extends Controller
             'role_surowe' => Bramki::roleZAccessTokenu($wynikAccess['claims']),
             'role' => Bramki::roleAutoryzujace(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
             'markery' => Bramki::markery(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
-            'id_token' => $idToken,
+            // ID TOKEN SZYFROWANY JAWNIE — niezależnie od `session.encrypt`.
+            //
+            // Refinement B7 z huba: poleganie na jednej fladze konfiguracji to
+            // JEDNA FLAGA OD WYCIEKU. `SESSION_ENCRYPT` może ktoś wyłączyć
+            // w środowisku, na stagingu, przy debugowaniu — i wtedy e-mail
+            // pacjenta (claim w ID tokenie) leży w Redisie jawnie, w systemie
+            // przetwarzającym dane o zdrowiu (RODO art. 9).
+            //
+            // Dla Gabinetu ID token jest NIEPRZEZROCZYSTY: służy wyłącznie jako
+            // `id_token_hint` przy wylogowaniu, nigdy do niego nie zaglądamy po
+            // zakończeniu logowania. Nieprzezroczysta wartość, której nie
+            // czytamy, nie ma powodu leżeć w postaci czytelnej.
+            'id_token' => Crypt::encryptString($idToken),
             // B8: bez refresh tokenu i bez `exp` nie da się przeliczyć ról
             // przed końcem sesji — a zamrożone role to wada bezpieczeństwa.
             // Sesja jest szyfrowana (patrz `config/session.php`).
@@ -157,7 +171,16 @@ final class LogowanieController extends Controller
     public function wyloguj(Request $request): RedirectResponse
     {
         $konta = Typy::mapa($request->session()->get('konta', []));
-        $idToken = Typy::napis($konta['id_token'] ?? null);
+        // Odszyfrowanie tuż przed użyciem. Sesja sprzed tej zmiany trzyma
+        // wartość jawną, więc nieudane odszyfrowanie nie może wywrócić
+        // wylogowania — bez `id_token_hint` IdP po prostu zapyta użytkownika.
+        $idToken = '';
+
+        try {
+            $idToken = Crypt::decryptString(Typy::napis($konta['id_token'] ?? null));
+        } catch (DecryptException) {
+            $idToken = '';
+        }
 
         $request->session()->flush();
         $request->session()->invalidate();
