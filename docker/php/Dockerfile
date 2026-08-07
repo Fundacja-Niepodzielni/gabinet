@@ -54,5 +54,30 @@ RUN chmod +x /usr/local/bin/gabinet-entrypoint
 # — jeden plik dla aplikacji i dla compose (decyzja D-2026-08-07-03).
 WORKDIR /srv/gabinet/backend
 
+# ---------------------------------------------------------------------------
+# Zależności wchodzą do OBRAZU, nie do bind-mountu.
+#
+# Powód jest zmierzony, nie estetyczny: `composer install` 136 pakietów na
+# bind-mouncie Windows/WSL trwa ~10 minut. Instalacja przy starcie kontenera
+# dawała wyścig, którego nie dało się zamknąć — trzy kolejne podejścia
+# (jeden instalator, `compose run -T`, `depends_on: service_healthy`) kończyły
+# się tak samo: bramka na czystym klonie leciała po niekompletnym `vendor/`.
+#
+# W obrazie instalacja idzie po warstwie kontenera i trwa sekundy. `vendor/`
+# jest potem montowany jako NAZWANY WOLUMEN nad bind-mountem (docker-compose.yml),
+# więc kod źródłowy dalej edytuje się na hoście, a zależności nie chodzą przez
+# wolne przejście plikowe.
+#
+# `--no-autoloader`: mapa klas wymaga plików aplikacji, których na tym etapie
+# jeszcze nie ma. Autoloader generuje entrypoint przy pierwszym starcie —
+# to sekundy, nie minuty.
+#
+# SKUTEK DLA PRACY: zmiana `composer.json` albo `composer.lock` wymaga
+# `docker compose build app` ORAZ `docker compose down -v` (żeby wolumen
+# `vendor` powstał na nowo). Bez tego kontener wozi stare zależności.
+# ---------------------------------------------------------------------------
+COPY backend/composer.json backend/composer.lock ./
+RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts --no-autoloader
+
 ENTRYPOINT ["gabinet-entrypoint"]
 CMD ["php-fpm"]

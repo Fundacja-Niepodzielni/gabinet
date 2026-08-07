@@ -118,20 +118,13 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	krok "budowanie obrazu aplikacji"
 	dc build app || zle
 
-	krok "start stosu + instalacja zależności (czekamy na SONDY, nie na kod wyjścia)"
-	# Zależności instaluje entrypoint roli `app` — jako JEDYNY (horizon
-	# i scheduler czekają na `vendor/autoload.php`). Gotowość rozstrzyga
-	# sonda `gabinet:zdrowie`, która startuje framework, odpytuje bazę,
-	# pinguje Redis i zapisuje do cache.
-	#
-	# Świadomie NIE używamy tu `docker compose run` do instalacji. Zmierzone
-	# dwukrotnie na czystym klonie: `run` (także z `-T`) wraca NATYCHMIAST,
-	# gdy stdin nie jest terminalem, i zostawia kontener instalujący w tle —
-	# a kolejne kroki lecą przy niekompletnym `vendor/`. `up --wait` nie ma
-	# tej wady, bo czeka na STAN sond, a nie na zakończenie polecenia.
-	#
-	# Limit hojny: `composer install` na bind-mouncie Windows/WSL to minuty.
-	dc up -d --wait --wait-timeout 900 || zle
+	krok "start stosu (gotowość rozstrzygają SONDY, nie kod wyjścia polecenia)"
+	# Zależności przyjeżdżają z OBRAZU i montują się jako nazwany wolumen
+	# (Dockerfile + docker-compose.yml). Entrypoint generuje tylko autoloader.
+	# Trzy wcześniejsze podejścia instalowały przy starcie i wszystkie
+	# kończyły się tym samym: bramka na czystym klonie leciała po
+	# niekompletnym `vendor/`, bo instalacja trwała ~10 minut w tle.
+	dc up -d --wait --wait-timeout 600 || zle
 
 	krok "stan: vendor/autoload.php realnie istnieje"
 	if dc exec -T app test -f vendor/autoload.php; then

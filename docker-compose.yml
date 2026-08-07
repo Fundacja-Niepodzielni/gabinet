@@ -49,6 +49,11 @@ x-aplikacja: &aplikacja
     DB_USERNAME: ${DB_USERNAME}
   volumes:
     - .:/srv/gabinet
+    # Wolumen NAD bind-mountem. Zależności przyjeżdżają z obrazu (Dockerfile),
+    # a nie przez wolne przejście plikowe Windows/WSL — instalacja przy starcie
+    # trwała ~10 minut i dawała wyścig nie do zamknięcia.
+    # UWAGA: zmiana composer.json/lock wymaga `build app` + `down -v`.
+    - vendor:/srv/gabinet/backend/vendor
   working_dir: /srv/gabinet/backend
   networks: [gabinet]
   logging: *logi
@@ -240,3 +245,5 @@ volumes:
     name: ${GABINET_PREFIX:-gabinet}-pg-data
   redis-data:
     name: ${GABINET_PREFIX:-gabinet}-redis-data
+  vendor:
+    name: ${GABINET_PREFIX:-gabinet}-vendor

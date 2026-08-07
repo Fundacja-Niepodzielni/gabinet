@@ -40,6 +40,24 @@ Porty na hoście (wyłącznie `127.0.0.1`, konfigurowalne w `.env`):
 Domyślne wartości są dobrane tak, żeby nie kolidować z innymi projektami
 fundacji stojącymi na tej samej maszynie (`niepodzielni-konta`, `helpdesk`).
 
+### Zależności PHP mieszkają w obrazie
+
+`vendor/` nie jest bind-mountem — przyjeżdża z obrazu i montuje się jako
+nazwany wolumen. Powód jest zmierzony: `composer install` 136 pakietów na
+bind-mouncie Windows/WSL trwa ~10 minut i przy starcie kontenerów dawał
+wyścig, którego nie dało się zamknąć.
+
+**Skutek dla pracy:** po zmianie `backend/composer.json` albo `composer.lock`
+trzeba przebudować obraz **i** usunąć wolumen:
+
+```bash
+docker compose down -v
+docker compose build app
+docker compose up -d --wait
+```
+
+Bez `down -v` kontener wozi stare zależności.
+
 ### Jeden plik `.env` w korzeniu
 
 Czyta go i `docker-compose.yml`, i Laravel — `backend/bootstrap/app.php` wskazuje

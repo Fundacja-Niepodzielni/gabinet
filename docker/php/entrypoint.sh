@@ -2,15 +2,15 @@
 # ---------------------------------------------------------------------------
 # Wspólny entrypoint kontenerów `app`, `horizon` i `scheduler`.
 #
-# NAJWAŻNIEJSZA REGUŁA: zależności instaluje DOKŁADNIE JEDNA rola — `app`.
+# Zależności są JUŻ w obrazie (patrz Dockerfile) i montują się jako nazwany
+# wolumen `vendor`. Tutaj zostaje tylko wygenerowanie autoloadera — mapa klas
+# wymaga plików aplikacji, których w czasie budowania obrazu jeszcze nie ma.
+# To sekundy, nie minuty.
 #
-# Poprzednia wersja pozwalała instalować wszystkim trzem naraz. Ponieważ dzielą
-# jeden bind-mount, `composer install` biegł potrójnie w tym samym katalogu,
-# `restart: unless-stopped` przerywał go w połowie, a `vendor/autoload.php`
-# (zapisywany na samym końcu) nigdy nie powstawał. Kolejne podejście mówiło
-# „Nothing to install" i stanu już nie naprawiało. Objaw: bramka czerwona na
-# czystym klonie, zielona przy drugim uruchomieniu. Znalezione przez
-# niezależnego weryfikatora, nie przez autora.
+# Dlaczego to nie jest znowu wyścig: autoloader generuje WYŁĄCZNIE rola `app`,
+# a `horizon` i `scheduler` startują dopiero po jej sondzie zdrowia
+# (`depends_on: app: service_healthy` w docker-compose.yml). Pętla oczekiwania
+# niżej jest drugim zamkiem na wypadek uruchomienia usług pojedynczo.
 #
 # Świadomie NIE uruchamiamy tu migracji: kolejność migracji jest decyzją
 # człowieka, a trzy kontenery odpaliłyby ją równolegle.
@@ -29,18 +29,24 @@ fi
 
 if [ ! -f vendor/autoload.php ]; then
 	if [ "$ROLA_INSTALUJACA" = "1" ]; then
-		echo "[entrypoint] brak vendor/ — instaluję zależności (rola: app)"
-		composer install --no-interaction --prefer-dist --no-progress
+		if [ -d vendor/composer ]; then
+			echo "[entrypoint] generuję autoloader (zależności są z obrazu)"
+			composer dump-autoload --optimize --no-interaction
+		else
+			# Wolumen `vendor` bez zawartości obrazu — np. gdy ktoś podmontował
+			# własny katalog. Wtedy trzeba pełnej instalacji.
+			echo "[entrypoint] brak zależności w wolumenie — pełna instalacja"
+			composer install --no-interaction --prefer-dist --no-progress
+		fi
 	else
-		echo "[entrypoint] czekam, aż rola `app` zainstaluje zależności"
-		for _ in $(seq 1 180); do
+		echo "[entrypoint] czekam, aż rola app wygeneruje autoloader"
+		for _ in $(seq 1 300); do
 			[ -f vendor/autoload.php ] && break
 			sleep 2
 		done
 
 		if [ ! -f vendor/autoload.php ]; then
-			echo "[entrypoint] BŁĄD: vendor/autoload.php nie pojawił się w 360 s." >&2
-			echo "[entrypoint] Uruchom: docker compose run --rm --no-deps app composer install" >&2
+			echo "[entrypoint] BŁĄD: vendor/autoload.php nie pojawił się w 600 s." >&2
 			exit 1
 		fi
 	fi
