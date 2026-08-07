@@ -48,6 +48,21 @@ final class OcenaAnulacji
             throw new InvalidArgumentException("Kwota zamrożona nie może być ujemna: {$kwotaZamrozonaGr}.");
         }
 
+        // W-5 z rundy 4: komentarz w tym miejscu TWIERDZIŁ, że `PHP_INT_MAX`
+        // jest obsłużony. Nie był — `$kwota * $procent` przepełniało typ
+        // całkowity, wynik stawał się liczbą zmiennoprzecinkową i `intdiv()`
+        // rzucało `TypeError` z komunikatem, który nie mówi nic o pieniądzach.
+        // Komentarz opisujący naprawę nie jest naprawą.
+        //
+        // Górna granica wynika wprost z arytmetyki: mnożymy przez najwyżej 100.
+        $granica = intdiv(PHP_INT_MAX, 100);
+
+        if ($kwotaZamrozonaGr > $granica) {
+            throw new InvalidArgumentException(
+                "Kwota zamrożona {$kwotaZamrozonaGr} gr przekracza granicę bezpiecznego przeliczenia ({$granica} gr)."
+            );
+        }
+
         // Godziny do wizyty liczone w SEKUNDACH i dopiero potem porównywane
         // z oknem. Liczenie w „pełnych godzinach" gubi 59 minut i przesuwa
         // granicę o godzinę — a granica jest tu całą regułą.

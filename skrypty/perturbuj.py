@@ -26,6 +26,7 @@ TRASY = KORZEN / "backend/routes/web.php"
 MODEL = KORZEN / "backend/app/Models/Personel.php"
 WALIDATOR = KORZEN / "backend/app/Tozsamosc/WalidatorTokenu.php"
 OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
+PEST = KORZEN / "backend/tests/Pest.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 
 
@@ -209,6 +210,41 @@ def wzmacniacz_zadan() -> None:
         "",
     )
 
+def suita_pominieta() -> None:
+    """Pomija CALA suite jednym `beforeEach` — atak W-4 z rundy 4.
+
+    Pest konczy sie kodem 0, wiersz podsumowania mowi „151 skipped
+    (0 assertions)", a podloga sumujaca wszystkie stany widziala 151
+    wykonanych testow. Zero wykonanych testow, bramka zielona.
+    """
+    pisz(PEST, czytaj(PEST) + ZNACZNIK_POMINIECIA + "\n")
+
+
+# `pest()->beforeEach(...)`, nie samo `beforeEach(...)` — sprawdzone pomiarem:
+# forma bez `pest()` NIE pomija testów (suita szła dalej, 158 passed), więc
+# perturbacja mierzyłaby nie to zjawisko. Ta forma daje realne
+# „158 skipped (0 assertions)", czyli dokładnie stan z W-4.
+ZNACZNIK_POMINIECIA = (
+    "\npest()->beforeEach(function (): void { $this->markTestSkipped('perturbacja'); })"
+    "->in('Feature', 'Unit');\n"
+)
+
+
+def suita_pominieta_sprzataj() -> None:
+    """Sprzatanie musi ODTWORZYC plik co do bajtu.
+
+    Pierwsza wersja zostawiala puste linie na koncu — `git status` pokazywal
+    zmiane, a kontrola powtarzalnosci meldowala wyciek z perturbacji, ktorego
+    nie bylo. Narzedzie obserwacji nie moze zmieniac obserwowanego stanu.
+    """
+    tresc = czytaj(PEST)
+
+    if ZNACZNIK_POMINIECIA not in tresc:
+        return
+
+    pisz(PEST, tresc.replace(ZNACZNIK_POMINIECIA, "").rstrip(chr(10)) + chr(10))
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -216,6 +252,8 @@ POLECENIA = {
     "nonce-fail-open": nonce_fail_open,
     "lockfile-rozjazd": lockfile_rozjazd,
     "wzmacniacz-zadan": wzmacniacz_zadan,
+    "suita-pominieta": suita_pominieta,
+    "suita-pominieta-sprzataj": suita_pominieta_sprzataj,
 }
 
 

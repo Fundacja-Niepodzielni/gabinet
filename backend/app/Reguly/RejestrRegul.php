@@ -82,10 +82,20 @@ final class RejestrRegul
         // przed jakim ostrzega docblock tej klasy.
         $ostatnia = DB::table('konfiguracja_regul')->max('obowiazuje_od');
 
-        if ($ostatnia !== null && CarbonImmutable::parse(Typy::napis($ostatnia))->greaterThan($obowiazujeOd)) {
+        // W-3 z rundy 4: porównanie było OSTRE, więc data RÓWNA ostatniej
+        // przechodziła. Wersja zerowa wchodzi migracją z `obowiazuje_od`
+        // = 2020-01-01, więc jedno wywołanie tej publicznej metody — bez SQL-a,
+        // bez podniesienia uprawnień — przepisywało CAŁĄ historię reguł od 2020
+        // roku: zapytanie „co obowiązywało 3 marca" zaczynało zwracać nową
+        // wersję. Test z rundy 3 sprawdzał wyłącznie datę ściśle wcześniejszą,
+        // czyli dokładnie tę instancję, którą pokazał weryfikator.
+        //
+        // Przy dacie równej obie wersje mają ten sam moment wejścia w życie
+        // i o wyniku decyduje kolejność wierszy — czyli nic.
+        if ($ostatnia !== null && CarbonImmutable::parse(Typy::napis($ostatnia))->greaterThanOrEqualTo($obowiazujeOd)) {
             throw new InvalidArgumentException(
-                'Nowa wersja reguł nie może obowiązywać wcześniej niż poprzednia ('
-                .Typy::napis($ostatnia).').'
+                'Nowa wersja reguł musi obowiązywać PÓŹNIEJ niż poprzednia ('
+                .Typy::napis($ostatnia).'), podano '.$obowiazujeOd->toDateTimeString().'.'
             );
         }
 

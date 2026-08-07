@@ -57,6 +57,9 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # a kontrola, którą można wyłączyć niewidocznie, nie jest kontrolą. Obniżenie
 # podłogi ma być widoczne w `git diff` i przejść przez przegląd.
 MINIMUM_TESTOW=100
+# Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
+# choćby liczba testów wyglądała dobrze.
+MINIMUM_ASERCJI=300
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0
@@ -402,13 +405,29 @@ krok "testy realnie SIĘ WYKONAŁY (podłoga: ${MINIMUM_TESTOW})"
 	# meldowała „suita się nie uruchomiła", choć uruchomiła się w całości,
 	# a diagnoza kierowała w zupełnie złe miejsce.
 	LICZBA_TESTOW="$(policz_testy "$WYNIK_TESTOW")"
+	LICZBA_POMINIETYCH="$(policz_pominiete "$WYNIK_TESTOW")"
+	LICZBA_ASERCJI="$(policz_asercje "$WYNIK_TESTOW")"
 LICZBA_TESTOW="${LICZBA_TESTOW:-0}"
 
+echo "    pominięte (nie liczą się do podłogi): $LICZBA_POMINIETYCH"
+
 if [ "$LICZBA_TESTOW" -ge "$MINIMUM_TESTOW" ]; then
-	echo "    wykonano $LICZBA_TESTOW testów (podłoga: $MINIMUM_TESTOW)"
+	echo "    WYKONANO $LICZBA_TESTOW testów (podłoga: $MINIMUM_TESTOW)"
 else
 	echo "    wykonano tylko $LICZBA_TESTOW testów przy podłodze $MINIMUM_TESTOW"
-	echo "    — suita skurczyła się albo w ogóle się nie uruchomiła"
+	echo "    — suita skurczyła się, została pominięta albo w ogóle się nie uruchomiła"
+	zle
+fi
+
+# W-4: drugi sygnał, niezależny od pierwszego. Liczbę testów da się nadmuchać
+# (pominięte wliczały się do podłogi, aż weryfikator pokazał zieloną bramkę
+# przy 151 pominiętych i ZERZE asercji). Asercji nie da się nadmuchać, nie
+# wykonując ich.
+if [ "$LICZBA_ASERCJI" -ge "$MINIMUM_ASERCJI" ]; then
+	echo "    sprawdzono $LICZBA_ASERCJI asercji (podłoga: $MINIMUM_ASERCJI)"
+else
+	echo "    sprawdzono tylko $LICZBA_ASERCJI asercji przy podłodze $MINIMUM_ASERCJI"
+	echo "    — testy mogły się „wykonać\" bez sprawdzenia czegokolwiek"
 	zle
 fi
 

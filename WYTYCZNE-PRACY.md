@@ -10,6 +10,9 @@ Wspólny standard ekosystemu Fundacji Niepodzielni (ten sam co w repo `konta`, `
 
 ## Kultura pracy (twarde reguły)
 
+> **Sekcja wspólna ekosystemu** — rdzeń identyczny we wszystkich repo, zmiany
+> propaguje architekt. Przykłady i instancje lokalne dopisujemy u siebie.
+
 1. **Jedna ścieżka, jeden piszący.** Nad jednym plikiem/modułem pracuje w danym momencie jedna sesja/agent. Fan-out tylko na rozłączne obszary.
 2. **„Zrobione" = zweryfikowane niezależnie.** Weryfikuje sesja/agent, który zmiany NIE pisał: czysty checkout, uruchomienie pełnej bramki od zera, porównanie wyniku z kryterium akceptacji fazy. Bez tego zadanie jest „napisane", nie „zrobione".
 3. **Test pozytywny I negatywny dla każdego zachowania.** Reguła bez testu na złamanie jej nie istnieje. Testy liczą wartości, nie obecność elementów na ekranie.
@@ -20,6 +23,9 @@ Wspólny standard ekosystemu Fundacji Niepodzielni (ten sam co w repo `konta`, `
 8. **Deploy:** środowiska dev — pełna swoboda; produkcja/publiczna ekspozycja — WYŁĄCZNIE za wyraźną zgodą właściciela (Jakub). Gałąź `main` chroniona konwencją: wchodzi na nią tylko zweryfikowana praca.
 
 ## Zarządzanie zespołem agentów i subagentów
+
+> **Sekcja wspólna ekosystemu** — rdzeń identyczny we wszystkich repo, zmiany
+> propaguje architekt. Przykłady i instancje lokalne dopisujemy u siebie.
 
 - **Orkiestrator (sesja główna) nie pisze kodu równolegle z subagentami** na tej samej ścieżce — deleguje, zbiera, weryfikuje.
 - **Kiedy subagenci:** research/przeszukiwanie (zawsze można), niezależne moduły (rozłączne pliki), masowy boilerplate/testy. **Kiedy NIE:** drobiazgi (koszt zimnego startu > zysk), praca na wspólnych plikach, decyzje architektoniczne.
@@ -38,6 +44,9 @@ Wspólny standard ekosystemu Fundacji Niepodzielni (ten sam co w repo `konta`, `
 6. Zaktualizuj `CURRENT WORK` + `docs/DECYZJE.md`; raport dla właściciela: co zrobione (z dowodami), co czerwone, co dalej, **jakie polecenia były sprzeczne i ile kosztuje cofnięcie**, czego potrzebujesz od człowieka.
 
 ## Sprzeczne polecenia architekta
+
+> **Sekcja wspólna ekosystemu** — rdzeń identyczny we wszystkich repo, zmiany
+> propaguje architekt. Przykłady i instancje lokalne dopisujemy u siebie.
 
 Wersja kanoniczna, uzgodniona z zespołem helpdesku (07.08.2026):
 
@@ -84,6 +93,85 @@ dwa razy:
 To samo dotyczy podmian w kodzie: `sed`/`str.replace`, które nic nie znalazły,
 kończą się **sukcesem**. Dlatego `skrypty/perturbuj.py` ma `podmien()`
 podnoszące błąd przy braku trafienia, a każda perturbacja ma **dowód mutacji**.
+
+## Podejrzewaj najpierw własny przyrząd
+
+> **Sekcja wspólna ekosystemu** — rdzeń identyczny we wszystkich repo, zmiany
+> propaguje architekt. Tabela instancji i przykłady są **lokalne** i mają
+> u nas rosnąć.
+
+**Zasada.** Przyrząd pomiarowy jest częścią badanego systemu i **zawodzi
+ciszej** niż przedmiot badania. Gdy kontrola, bramka albo test wygląda na
+zepsuty — **sprawdź instrument przed systemem**.
+
+Synteza zespołu helpdesku, potwierdzona czterokrotnie w trzech repozytoriach.
+We wszystkich instancjach mierzony system działał bez zarzutu — **kłamał
+przyrząd**.
+
+| przyrząd | jak skłamał |
+|---|---|
+| perturbacja bez mutacji | „kontrola nie zareagowała" na naruszenie, którego **nie było** |
+| filtr `grep` wyjścia | ukrył linię diagnozy, dla której uruchomiono przebieg |
+| edycja skryptu bash **w locie** | `syntax error` wskazujący na POPRAWNY kod (bash czyta plik przyrostowo; `bash -n` przechodzi!) |
+| ścieżki `/tmp` POSIX na Windows | „zapisano plik", a plik jest gdzie indziej (klasa `MSYS_NO_PATHCONV`) |
+| perturbacja kłamiąca o kontroli | sprawna kontrola uznana za wadliwą (U5) |
+| **kontrola statyczna zamiast uruchomienia** | `bash -n` przechodzi, choć wołana podkomenda nie istnieje; typy i lint przechodzą, a kod pada przy starcie |
+
+**Reguły operacyjne.**
+
+- **Nie edytuj skryptu, który właśnie się wykonuje.** Zatrzymaj, edytuj,
+  uruchom od nowa.
+- **Filtr, parser i formatowanie wyjścia są częścią pomiaru.** Zanim uznasz
+  „nic nie pokazało" — obejrzyj **surowe wyjście zapisane do pliku**.
+- **Perturbacja, która nie trafiła w mutację, MUSI przerwać błędem** (dowód
+  mutacji). Cicha podmiana bez trafienia to najgorszy możliwy wynik:
+  perturbacja melduje sukces, nie zmieniwszy niczego.
+- **Po zapisie, na którym opiera się decyzja — odczytaj plik z powrotem.**
+  „Skrypt się wykonał" ≠ „plik ma treść".
+- **Każda bramka musi URUCHOMIĆ, nie tylko sprawdzić składnię.** Kontrola
+  statyczna nie zastępuje uruchomienia. Wzorcowy przypadek: drugi biały ekran
+  makiety (dziennik makiety, rozdz. 23) — wyrażenie regularne z surowymi
+  bajtami NUL przeszło **wszystkie** kontrole statyczne i padło przy starcie.
+- **Pomiar z numerem linii bije model w głowie — także architekta.** Spór
+  o fakt techniczny rozstrzyga log, nie autorytet. Gdy dostajesz twierdzenie
+  techniczne sprzeczne z własnym pomiarem — ufaj pomiarowi i **zgłoś
+  rozbieżność**. Dotyczy wyłącznie twierdzeń o zachowaniu systemu; polecenia
+  wykonujemy.
+
+**Biegnąca suita pomiarowa DESTABILIZUJE środowisko.** Konsolidacja helpdesk
+U3a + Gabinet W-11. W trakcie działania bramki albo perturbacji:
+
+- **NIE commituj.** `git add -A` złapie stan sperturbowany. U helpdesku tak
+  trafił do repozytorium heap 1 GB — twarda reguła z `CLAUDE.md` była
+  **fałszywa w repo przez kilka commitów**, a nikt tego nie zauważył.
+- **NIE edytuj plików wejściowych.** Bash czyta skrypt przyrostowo, więc
+  edycja w locie daje `syntax error` wskazujący na POPRAWNY kod; edycja
+  źródeł miesza pomiar.
+- **NIE ufaj stanowi drzewa ani bazy.** U nas perturbacje wykonywały
+  `migrate:fresh --force` na bazie DEWELOPERA (W-11), bo domyślnym projektem
+  compose był `gabinet`.
+
+Docelowo perturbacje mają działać na **efemerycznym klonie i własnym projekcie
+compose**, nie na drzewie roboczym. Do czasu przeniesienia: własny projekt
+compose już jest wymuszony, a commit robimy **dopiero po zakończeniu
+perturbacji i po sprawdzeniu, że drzewo wróciło do stanu sprzed przebiegu**.
+
+**Nasze instancje** (rosną — dopisuj):
+
+1. `skrypty/perturbacje-powtarzalne.sh` dawał **fałszywe zielone**: podsumowanie
+   wyławiał grepem, więc padnięty zestaw dawał pustkę, a trzy pustki są
+   identyczne. Zmierzone: `bash -c 'echo start; exit 1' | grep '^PERTURBACJE'`
+   → `ROZNE=0`. (D-2026-08-07-22)
+2. Ten sam skrypt **brudził drzewo własnym dziennikiem**, po czym oskarżał
+   perturbacje o wyciek.
+3. Ten sam skrypt porównywał drzewo z **czystym repozytorium** zamiast ze
+   stanem sprzed przebiegu — każda praca w toku wyglądała jak wyciek
+   z perturbacji.
+4. `oczekuj_czerwone` sądziło **wyłącznie po kodzie wyjścia**, z wyjściem
+   w `/dev/null`: „wykryto naruszenie" było nieodróżnialne od „kontrola
+   w ogóle się nie wykonała". Tak przepadły U-2 i U-6.
+5. Heredoc basha zapisał `/tmp/parser.txt`, Python z tego samego polecenia
+   zgłosił `FileNotFoundError` — dwa razy tego samego dnia.
 
 ## Czego agentom nie wolno nigdy
 

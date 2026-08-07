@@ -87,24 +87,112 @@ final readonly class ZestawRegul
     }
 
     /**
+     * Pola całkowite zrzutu — nazwa w JSON → nazwa właściwości.
+     *
+     * Lista istnieje po to, żeby „kompletność" była SPRAWDZALNA, a nie
+     * domniemana z liczby argumentów konstruktora.
+     */
+    private const POLA_CALKOWITE = [
+        'wersja' => 'wersja',
+        'okno_bezplatnego_odwolania_godzin' => 'oknoBezplatnegoOdwolaniaGodzin',
+        'limit_przelozen' => 'limitPrzelozen',
+        'najblizszy_termin_godzin' => 'najblizszyTerminGodzin',
+        'kalendarz_pacjenta_dni' => 'kalendarzPacjentaDni',
+        'horyzont_wystawiania_dni' => 'horyzontWystawianiaDni',
+        'przerwa_miedzy_wizytami_minut' => 'przerwaMiedzyWizytamiMinut',
+        'blokada_koszyka_minut' => 'blokadaKoszykaMinut',
+        'waznosc_linku_platnosci_dni' => 'waznoscLinkuPlatnosciDni',
+        'limit_niskoplatnych_wizyt' => 'limitNiskoplatnychWizyt',
+        'limit_niskoplatnych_na_tydzien' => 'limitNiskoplatnychNaTydzien',
+        'auto_domkniecie_godzin' => 'autoDomkniecieGodzin',
+    ];
+
+    /**
+     * Liczba całkowita ALBO wyjątek. Bez wartości domyślnej.
+     *
+     * W-5 z rundy 4: `Typy::liczba()` przyjmuje wyłącznie `int` i napis
+     * z samych cyfr, a wszystkiemu innemu podstawia wartość DOMYŚLNĄ. Zapis
+     * `"zwrot_procent": 100.0` — całkowicie poprawny JSON — stawał się przez
+     * to zerem i przechodził walidację zakresu 0..100 bez protestu.
+     * Pacjentowi należnemu 145 zł system wypłacał 0 zł i NIC nie sygnalizował.
+     * Zamek `min(zwrot, wpłata)` z definicji tego nie łapie: błąd szedł w dół.
+     *
+     * Tu żadnej wyrozumiałości: liczba zmiennoprzecinkowa, `null`, napis
+     * niebędący liczbą i wartość logiczna to BŁĄD DANYCH, nie zaproszenie
+     * do zgadywania.
+     */
+    private static function calkowita(mixed $wartosc, string $pole): int
+    {
+        if (is_int($wartosc)) {
+            return $wartosc;
+        }
+
+        if (is_string($wartosc) && preg_match('/^-?\d+$/', $wartosc) === 1) {
+            return (int) $wartosc;
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'Pole [%s] musi być liczbą całkowitą, jest %s.',
+            $pole,
+            get_debug_type($wartosc)
+        ));
+    }
+
+    private static function logiczna(mixed $wartosc, string $pole): bool
+    {
+        if (is_bool($wartosc)) {
+            return $wartosc;
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'Pole [%s] musi być wartością logiczną, jest %s.',
+            $pole,
+            get_debug_type($wartosc)
+        ));
+    }
+
+    /**
+     * Odtworzenie zestawu reguł z tablicy — ŚCIŚLE, bez wartości domyślnych.
+     *
+     * W-2 z rundy 4: naprawa U-10 objęła wyłącznie macierz odwołań. Pozostałe
+     * TRZYNAŚCIE pól szło przez `Typy::liczba($dane[...] ?? null, $domyslne->...)`,
+     * więc brak klucza ALBO zła wartość cicho podstawiały stałą z kodu.
+     * Zmierzone przez weryfikatora: ten sam plik zrzutu (identyczne md5) dawał
+     * zwrot 14 500 gr albo 0 gr — zależnie wyłącznie od stałej w
+     * `wersjaZerowa()`. To wprost naruszenie CLAUDE.md §4: zamrożony zrzut
+     * przestawał być samowystarczalny, a zmiana cennika działała WSTECZ.
+     *
+     * Wartości domyślne mają dokładnie jedno miejsce: `wersjaZerowa()`, czyli
+     * wersję pierwszą wstawianą migracją. Nigdzie indziej.
+     *
      * @param  array<string, mixed>  $dane
      */
     public static function zTablicy(array $dane): self
     {
-        $domyslne = self::wersjaZerowa();
+        $wymagane = [...array_keys(self::POLA_CALKOWITE), 'kredyt_za_odsprzedany_termin', 'macierz_odwolan'];
+        $brakujace = array_values(array_diff($wymagane, array_keys($dane)));
+
+        if ($brakujace !== []) {
+            throw new InvalidArgumentException(
+                'Zrzut reguł jest niekompletny — brakuje pól: '.implode(', ', $brakujace)
+            );
+        }
+
+        $liczby = [];
+
+        foreach (array_keys(self::POLA_CALKOWITE) as $klucz) {
+            $liczby[$klucz] = self::calkowita($dane[$klucz], $klucz);
+        }
 
         /** @var array<string, array{zwrot_procent: int, termin_wraca: bool, godzina_platna: bool}> $macierz */
         $macierz = [];
 
-        foreach (Typy::mapa($dane['macierz_odwolan'] ?? null) as $sytuacja => $skutek) {
+        foreach (Typy::mapa($dane['macierz_odwolan']) as $sytuacja => $skutek) {
             $skutek = Typy::mapa($skutek);
-            $procent = Typy::liczba($skutek['zwrot_procent'] ?? null);
+            $procent = self::calkowita($skutek['zwrot_procent'] ?? null, "macierz_odwolan.{$sytuacja}.zwrot_procent");
 
-            // U-7 z rundy 3 weryfikacji: bez tego warunku zapis
-            // `zwrot_procent = 500` dawał ZWROT PIĘĆ RAZY WIĘKSZY niż wpłata
-            // (14 500 gr → 72 500 gr). W module, który wg CLAUDE.md §1 jest
-            // jedyną funkcją rozstrzygającą o pieniądzach, zakres musi być
-            // egzekwowany przy WEJŚCIU, a nie zakładany.
+            // U-7 z rundy 3: bez tego warunku zapis `zwrot_procent = 500`
+            // dawał ZWROT PIĘĆ RAZY WIĘKSZY niż wpłata (14 500 gr → 72 500 gr).
             if ($procent < 0 || $procent > 100) {
                 throw new InvalidArgumentException(
                     "Zwrot dla sytuacji [{$sytuacja}] musi mieścić się w 0..100, podano {$procent}."
@@ -113,46 +201,39 @@ final readonly class ZestawRegul
 
             $macierz[$sytuacja] = [
                 'zwrot_procent' => $procent,
-                'termin_wraca' => Typy::prawda($skutek['termin_wraca'] ?? null),
-                'godzina_platna' => Typy::prawda($skutek['godzina_platna'] ?? null),
+                'termin_wraca' => self::logiczna($skutek['termin_wraca'] ?? null, "macierz_odwolan.{$sytuacja}.termin_wraca"),
+                'godzina_platna' => self::logiczna($skutek['godzina_platna'] ?? null, "macierz_odwolan.{$sytuacja}.godzina_platna"),
             ];
         }
 
-        // U-10: macierz częściowa była przyjmowana bez protestu, a `OcenaAnulacji`
-        // sięgała wtedy po wartości Z KODU. Zamrożony zrzut przestawał być
-        // samowystarczalny — wbrew CLAUDE.md §4 — i werdykt dla starej
-        // rezerwacji zmieniałby się przy każdej zmianie stałej.
-        if ($macierz !== []) {
-            $brakujace = array_diff(
-                array_map(static fn (Sytuacja $s): string => $s->value, Sytuacja::cases()),
-                array_keys($macierz)
-            );
+        // U-10: macierz częściowa pozwalała `OcenaAnulacji` sięgnąć po wartości
+        // Z KODU dla brakujących sytuacji.
+        $brakSytuacji = array_values(array_diff(
+            array_map(static fn (Sytuacja $s): string => $s->value, Sytuacja::cases()),
+            array_keys($macierz)
+        ));
 
-            if ($brakujace !== []) {
-                throw new InvalidArgumentException(
-                    'Macierz odwołań jest niepełna — brakuje: '.implode(', ', $brakujace)
-                );
-            }
+        if ($brakSytuacji !== []) {
+            throw new InvalidArgumentException(
+                'Macierz odwołań jest niepełna — brakuje: '.implode(', ', $brakSytuacji)
+            );
         }
 
         return new self(
-            wersja: Typy::liczba($dane['wersja'] ?? null, $domyslne->wersja),
-            oknoBezplatnegoOdwolaniaGodzin: Typy::liczba(
-                $dane['okno_bezplatnego_odwolania_godzin'] ?? null,
-                $domyslne->oknoBezplatnegoOdwolaniaGodzin
-            ),
-            limitPrzelozen: Typy::liczba($dane['limit_przelozen'] ?? null, $domyslne->limitPrzelozen),
-            najblizszyTerminGodzin: Typy::liczba($dane['najblizszy_termin_godzin'] ?? null, $domyslne->najblizszyTerminGodzin),
-            kalendarzPacjentaDni: Typy::liczba($dane['kalendarz_pacjenta_dni'] ?? null, $domyslne->kalendarzPacjentaDni),
-            horyzontWystawianiaDni: Typy::liczba($dane['horyzont_wystawiania_dni'] ?? null, $domyslne->horyzontWystawianiaDni),
-            przerwaMiedzyWizytamiMinut: Typy::liczba($dane['przerwa_miedzy_wizytami_minut'] ?? null, $domyslne->przerwaMiedzyWizytamiMinut),
-            blokadaKoszykaMinut: Typy::liczba($dane['blokada_koszyka_minut'] ?? null, $domyslne->blokadaKoszykaMinut),
-            waznoscLinkuPlatnosciDni: Typy::liczba($dane['waznosc_linku_platnosci_dni'] ?? null, $domyslne->waznoscLinkuPlatnosciDni),
-            limitNiskoplatnychWizyt: Typy::liczba($dane['limit_niskoplatnych_wizyt'] ?? null, $domyslne->limitNiskoplatnychWizyt),
-            limitNiskoplatnychNaTydzien: Typy::liczba($dane['limit_niskoplatnych_na_tydzien'] ?? null, $domyslne->limitNiskoplatnychNaTydzien),
-            kredytZaOdsprzedanyTermin: Typy::prawda($dane['kredyt_za_odsprzedany_termin'] ?? null, $domyslne->kredytZaOdsprzedanyTermin),
-            autoDomkniecieGodzin: Typy::liczba($dane['auto_domkniecie_godzin'] ?? null, $domyslne->autoDomkniecieGodzin),
-            macierzOdwolan: $macierz !== [] ? $macierz : $domyslne->macierzOdwolan,
+            wersja: $liczby['wersja'],
+            oknoBezplatnegoOdwolaniaGodzin: $liczby['okno_bezplatnego_odwolania_godzin'],
+            limitPrzelozen: $liczby['limit_przelozen'],
+            najblizszyTerminGodzin: $liczby['najblizszy_termin_godzin'],
+            kalendarzPacjentaDni: $liczby['kalendarz_pacjenta_dni'],
+            horyzontWystawianiaDni: $liczby['horyzont_wystawiania_dni'],
+            przerwaMiedzyWizytamiMinut: $liczby['przerwa_miedzy_wizytami_minut'],
+            blokadaKoszykaMinut: $liczby['blokada_koszyka_minut'],
+            waznoscLinkuPlatnosciDni: $liczby['waznosc_linku_platnosci_dni'],
+            limitNiskoplatnychWizyt: $liczby['limit_niskoplatnych_wizyt'],
+            limitNiskoplatnychNaTydzien: $liczby['limit_niskoplatnych_na_tydzien'],
+            kredytZaOdsprzedanyTermin: self::logiczna($dane['kredyt_za_odsprzedany_termin'], 'kredyt_za_odsprzedany_termin'),
+            autoDomkniecieGodzin: $liczby['auto_domkniecie_godzin'],
+            macierzOdwolan: $macierz,
         );
     }
 

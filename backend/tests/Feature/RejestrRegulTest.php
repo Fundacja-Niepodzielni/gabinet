@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Reguly\OcenaAnulacji;
 use App\Reguly\RejestrRegul;
 use App\Reguly\Sytuacja;
+use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -129,10 +130,60 @@ it('nie pozwala wpisać wersji obowiązującej WSTECZ', function (): void {
         CarbonImmutable::parse('2026-08-20 00:00:00', 'UTC'),
         autor: 'kto-inny',
         uzasadnienie: 'Próba przepisania historii.',
-    ))->toThrow(InvalidArgumentException::class, 'wcześniej niż poprzednia');
+    ))->toThrow(InvalidArgumentException::class, 'musi obowiązywać PÓŹNIEJ');
 
     // Kontrola liczy WARTOŚĆ, nie sam fakt wyjątku: odpowiedź na to samo
     // pytanie musi być identyczna jak przed próbą.
     expect($rejestr->obowiazujaceW($pytanie)->oknoBezplatnegoOdwolaniaGodzin)->toBe($przed)
+        ->and(DB::table('konfiguracja_regul')->count())->toBe(2);
+});
+
+it('nie pozwala wpisać wersji o dacie RÓWNEJ ostatniej', function (): void {
+    // W-3 z rundy 4. Porównanie było OSTRE, więc data równa przechodziła.
+    // Wersja zerowa wchodzi migracją z `obowiazuje_od = 2020-01-01`, więc
+    // JEDNO wywołanie publicznej metody przepisywało całą historię reguł.
+    // Naprawa z rundy 3 zamykała wyłącznie datę ściśle wcześniejszą — czyli
+    // dokładnie tę instancję, którą wtedy pokazano.
+    $rejestr = app(RejestrRegul::class);
+
+    $ostatnia = CarbonImmutable::parse(Typy::napis(
+        DB::table('konfiguracja_regul')->max('obowiazuje_od')
+    ));
+
+    $pytanie = CarbonImmutable::parse('2026-03-03 12:00:00', 'UTC');
+    $przed = $rejestr->obowiazujaceW($pytanie);
+
+    expect(fn () => $rejestr->dodajWersje(
+        ['okno_bezplatnego_odwolania_godzin' => 1, 'limit_niskoplatnych_wizyt' => 0],
+        $ostatnia,
+        autor: 'napastnik',
+        uzasadnienie: 'Próba przepisania historii datą równą.',
+    ))->toThrow(InvalidArgumentException::class, 'musi obowiązywać PÓŹNIEJ');
+
+    // Kontrola liczy WARTOŚCI: odpowiedź na to samo pytanie bez zmian.
+    $po = $rejestr->obowiazujaceW($pytanie);
+
+    expect($po->wersja)->toBe($przed->wersja)
+        ->and($po->oknoBezplatnegoOdwolaniaGodzin)->toBe($przed->oknoBezplatnegoOdwolaniaGodzin)
+        ->and($po->limitNiskoplatnychWizyt)->toBe($przed->limitNiskoplatnychWizyt);
+});
+
+it('przyjmuje wersję o dacie choćby o sekundę PÓŹNIEJSZEJ — nie blokuje wszystkiego', function (): void {
+    // Kierunek odwrotny: bez niego „odmowa przy dacie równej" przechodzi też
+    // wtedy, gdyby metoda odmawiała zawsze.
+    $rejestr = app(RejestrRegul::class);
+
+    $ostatnia = CarbonImmutable::parse(Typy::napis(
+        DB::table('konfiguracja_regul')->max('obowiazuje_od')
+    ));
+
+    $nowa = $rejestr->dodajWersje(
+        ['okno_bezplatnego_odwolania_godzin' => 48],
+        $ostatnia->addSecond(),
+        autor: 'koordynator',
+        uzasadnienie: 'Wydłużenie okna.',
+    );
+
+    expect($nowa->oknoBezplatnegoOdwolaniaGodzin)->toBe(48)
         ->and(DB::table('konfiguracja_regul')->count())->toBe(2);
 });

@@ -623,3 +623,48 @@ dokładnie w stanie zastanym**, a zestaw uznajemy za sprawny dopiero, gdy
 pliki i wolumen `vendor` — to dokładnie ten gatunek ryzyka. Zmierzone:
 `skrypty/perturbacje.sh` trzy razy pod rząd, ten sam wynik, `git status`
 czysty po każdym przebiegu.
+
+---
+
+## D-2026-08-07-22 — filtr wyjścia jest częścią pomiaru (helpdesk P11 + konta Z3)
+
+**Reguła 1.** Zanim uznasz „kontrola nic nie pokazała", sprawdź, czy **Twój
+własny filtr, parser albo formatowanie tego nie ukryły**. U helpdesku `grep`
+odciął linię diagnostyczną dodaną specjalnie po to, żeby rozstrzygnąć wynik —
+drugi wiersz komunikatu zaczynał się od spacji, a wzorzec go nie łapał. To ta
+sama rodzina co U5: **narzędzie obserwacji zniekształca obserwację**.
+
+**Zastosowanie u nas — dwa realne defekty znalezione przez zastosowanie tej
+reguły do własnego kodu, oba w plikach napisanych tego samego dnia:**
+
+1. **`skrypty/perturbacje-powtarzalne.sh` dawał FAŁSZYWE ZIELONE.** Podsumowanie
+   wyławiał przez `… | grep '^PERTURBACJE' | tail -1`. Gdyby zestaw perturbacji
+   **padł przed podsumowaniem**, grep zwracał pustkę — a trzy pustki są
+   identyczne, więc skrypt meldował „POWTARZALNE". Zmierzone na sucho:
+   `bash -c 'echo start; exit 1' | grep '^PERTURBACJE'` → `ROZNE=0`.
+   Naprawa: wyjście do pliku, brak podsumowania to osobny głośny stan
+   (**NIEROZSTRZYGNIĘTE**), widoczny kod wyjścia zestawu, ostatnie 5 wierszy
+   w raporcie. Dowód: podstawiony zestaw kończący się `exit 7` daje
+   „przebieg 1 NIE DOSZEDŁ do podsumowania (kod wyjścia 7)".
+2. **Ten sam skrypt brudził drzewo własnym dziennikiem.** Plik logu leżał
+   w `skrypty/`, więc kontrola „czyste drzewo robocze po przebiegu" wywracała
+   się o **artefakt samego narzędzia pomiarowego**. Dziennik wyprowadzony poza
+   repozytorium.
+3. **`oczekuj_czerwone` sądziło wyłącznie po kodzie wyjścia**, wyrzucając całe
+   wyjście do `/dev/null`. Czerwień z zupełnie innego powodu — brak kontenera,
+   błąd składni, pusty przebieg — wyglądała identycznie jak wykryte naruszenie.
+   Dokładnie tak przepadły U-2 i U-6. Teraz czerwień musi być **uzasadniona**:
+   milcząca czerwień (zero wierszy) jest liczona jako **porażka** perturbacji,
+   a kod wyjścia trafia do raportu.
+
+**Reguła 2 — pomiar bije model w głowie, także architekta.** Spór o fakt
+techniczny rozstrzyga log z numerem linii, nie autorytet. W zgłoszonym
+przypadku architekt pomylił się **dwa razy pod rząd**, formułując rzecz
+z pamięci; rozstrzygnął pomiar sesji `konta`. Konsekwencja dla nas: gdy
+dostajemy twierdzenie techniczne sprzeczne z własnym pomiarem — **ufamy
+pomiarowi i zgłaszamy rozbieżność**, zamiast dopasowywać wynik do oczekiwania.
+Wpisane do `WYTYCZNE-PRACY.md`.
+
+Wynik po naprawach: `PERTURBACJE OK — 28 kontroli`, każda czerwień z kodem
+wyjścia i niepustym wyjściem. Żadna perturbacja nie opierała się na milczącym
+padnięciu.

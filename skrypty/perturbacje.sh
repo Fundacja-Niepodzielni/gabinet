@@ -48,10 +48,14 @@
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 #
-# WYMAGA stojącego stosu bramki albo deweloperskiego. Domyślnie używa
-# deweloperskiego (`gabinet`), bo perturbacje są krótkie i nie ruszają danych:
-# każda zmiana dotyczy plików w drzewie roboczym albo stanu kontenera,
-# i każda jest cofana.
+# STOS: perturbacje mają WŁASNY projekt compose (`gabinet-perturbacje`),
+# własny prefiks nazw i własne porty; stawiają go same, jeśli nie stoi.
+# Uruchomienie na projekcie `gabinet` jest ZABRONIONE — patrz W-11 niżej.
+#
+# Wcześniejszy nagłówek twierdził, że perturbacje „nie ruszają danych, bo
+# każda zmiana jest cofana". To była NIEPRAWDA: perturbacje haseł wołają
+# `migrate:fresh --force`, co kasuje bazę i nie jest cofane. Deklaracja
+# w komentarzu nie jest kontrolą.
 # ===========================================================================
 set -uo pipefail
 
@@ -61,7 +65,42 @@ export MSYS2_ARG_CONV_EXCL='*'
 KORZEN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$KORZEN"
 
-PROJEKT="${GABINET_PERTURBACJE_PROJEKT:-gabinet}"
+# W-11 z rundy 4 — NAJPOWAŻNIEJSZE ZNALEZISKO OPERACYJNE.
+#
+# Domyślnym projektem był `gabinet`, czyli stos DEWELOPERA. Perturbacje haseł
+# wołają na nim `php artisan migrate:fresh --force` CZTERY RAZY, a `p_zdrowie`
+# zatrzymuje bazę. `bramka.sh` odmawia startu na tym projekcie od początku
+# („to stos dewelopera i jego danych nie kasujemy") — perturbacje brały go
+# jako domyślny. Gołe `bash skrypty/perturbacje.sh` czyściło bazę dewelopera
+# i tak były uruchamiane przez cały dzień pracy.
+#
+# Nagłówek tego pliku twierdził: „każda zmiana dotyczy plików w drzewie
+# roboczym albo stanu kontenera, i każda jest cofana". `migrate:fresh` kasuje
+# dane i NIE JEST cofane. Deklaracja była nieprawdziwa.
+PROJEKTY_ZABRONIONE="gabinet dev"
+PROJEKT="${GABINET_PERTURBACJE_PROJEKT:-gabinet-perturbacje}"
+
+for ZABRONIONY in $PROJEKTY_ZABRONIONE; do
+	if [ "$PROJEKT" = "$ZABRONIONY" ]; then
+		echo "ODMOWA: perturbacje nie mogą działać na projekcie '$ZABRONIONY' — to stos dewelopera." >&2
+		echo "Perturbacje wykonują 'migrate:fresh --force' i zatrzymują bazę; jego danych nie kasujemy." >&2
+		echo "Użyj: GABINET_PERTURBACJE_PROJEKT=gabinet-perturbacje (domyślny) albo własnej nazwy." >&2
+		exit 2
+	fi
+done
+
+# Perturbacje MUTUJĄ drzewo robocze. Gdy w indeksie czekają zmiany
+# przygotowane do commitu, ryzyko jest konkretne: `git commit` wykonany
+# w trakcie przebiegu utrwala stan SPERTURBOWANY. U zespołu helpdesku tak
+# trafił do repozytorium heap 1 GB — twarda reguła była nieprawdziwa w repo
+# przez kilka commitów, bo nikt nie sprawdził, co właśnie zostało zapisane.
+if [ -n "$(git diff --cached --name-only 2>/dev/null)" ]; then
+	echo "ODMOWA: w indeksie git czekają przygotowane zmiany." >&2
+	echo "Perturbacje mutują drzewo robocze — commit w trakcie przebiegu utrwaliłby stan sperturbowany." >&2
+	echo "Zacommituj albo wycofaj z indeksu, potem uruchom perturbacje." >&2
+	exit 2
+fi
+
 KOPIE="$(mktemp -d)"
 UDANE=0
 NIEUDANE=0
@@ -71,7 +110,17 @@ sciezka_hosta() {
 	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$KORZEN/$1"; else echo "$KORZEN/$1"; fi
 }
 
-dc() { docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"; }
+# Własny PREFIKS nazw i własne porty — bez nich stos perturbacji zderza się
+# z zasobami dewelopera PO NAZWIE mimo innego projektu, a alias `postgres`
+# rozwiązuje się losowo na jeden z dwóch serwerów (ta sama pułapka, którą
+# bramka zamknęła prefiksem `GABINET_PREFIX`).
+PORT_HTTP="${GABINET_PERTURBACJE_PORT_HTTP:-8098}"
+PORT_PG="${GABINET_PERTURBACJE_PORT_POSTGRES:-55444}"
+PORT_REDIS="${GABINET_PERTURBACJE_PORT_REDIS:-56391}"
+
+dc() {
+	GABINET_PREFIX="$PROJEKT" 	GABINET_PORT_HTTP="$PORT_HTTP" 	GABINET_PORT_POSTGRES="$PORT_PG" 	GABINET_PORT_REDIS="$PORT_REDIS" 		docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
+}
 
 # Mutacje plików trzymamy w `perturbuj.py`, nie w heredokach basha —
 # uzasadnienie w nagłówku tamtego pliku (dwa ciche błędy ucieczki znaków
@@ -131,16 +180,42 @@ trap przerwano_perturbacje INT TERM
 naglowek() { printf '\n=== PERTURBACJA: %s\n' "$*"; }
 
 # Kontrola MUSI paść. Zielony wynik po złamaniu reguły = kontrola nic nie znaczy.
+#
+# Wyjście trafia do PLIKU, nie do `/dev/null` (lekcja helpdesku P11: filtr jest
+# częścią pomiaru). Pierwsza wersja sądziła wyłącznie po kodzie wyjścia, więc
+# „czerwono" z zupełnie innego powodu — brak kontenera, błąd składni, pusty
+# przebieg — wyglądało dokładnie tak samo jak wykryte naruszenie. Dwa razy nas
+# to kosztowało rundę weryfikacji (U-2, U-6).
+#
+# Dlatego czerwień musi być UZASADNIONA: narzędzie ma coś powiedzieć. Milcząca
+# czerwień (zero wierszy na wyjściu) to sygnał, że kontrola się nie wykonała,
+# a nie że zadziałała.
 oczekuj_czerwone() {
 	local opis="$1"; shift
+	local wyjscie kod=0
+	wyjscie="$(mktemp)"
 
-	if "$@" >/dev/null 2>&1; then
+	"$@" > "$wyjscie" 2>&1 || kod=$?
+
+	if [ "$kod" -eq 0 ]; then
 		printf '    ✗ %s — kontrola PRZESZŁA mimo złamanej reguły (nic nie sprawdza)\n' "$opis"
 		NIEUDANE=$((NIEUDANE + 1))
-	else
-		printf '    ✓ %s — kontrola zapaliła się na czerwono\n' "$opis"
-		UDANE=$((UDANE + 1))
+		rm -f "$wyjscie"
+
+		return
 	fi
+
+	if [ ! -s "$wyjscie" ]; then
+		printf '    ✗ %s — kontrola padła MILCZĄCO (kod %s, zero wierszy) — prawdopodobnie w ogóle się nie wykonała\n' "$opis" "$kod"
+		NIEUDANE=$((NIEUDANE + 1))
+		rm -f "$wyjscie"
+
+		return
+	fi
+
+	printf '    ✓ %s — kontrola zapaliła się na czerwono (kod %s)\n' "$opis" "$kod"
+	UDANE=$((UDANE + 1))
+	rm -f "$wyjscie"
 }
 
 # Wiek pulsu w sekundach, czytany WPROST z cache'u.
@@ -549,6 +624,69 @@ PYTON
 	cp "$KOPIE/$(printf '%s' "$rejestr" | tr '/' '_')" "$rejestr"
 }
 
+p_suita_pominieta() {
+	naglowek "podłoga testów — CAŁA suita pominięta"
+	# W-4 z rundy 4: naprawa U-6 („sumuj wszystkie stany") otworzyła tę samą
+	# awarię z drugiej strony. Weryfikator jednym `beforeEach` doprowadził do
+	# „Tests: 151 skipped (0 assertions)" i `BRAMKA OK — 0 nieudanych`.
+	# Zero wykonanych testów, zero asercji, bramka zielona — czyli DOKŁADNIE
+	# awaria, przed którą ten krok deklaruje ochronę.
+	local plik="backend/tests/Pest.php"
+	zachowaj "$plik"
+
+	perturbuj suita-pominieta
+
+	local wynik wykonane pominiete asercje
+	wynik="$(dc exec -T app ./vendor/bin/pest 2>&1)"
+	wykonane="$(policz_testy "$wynik")"
+	pominiete="$(policz_pominiete "$wynik")"
+	asercje="$(policz_asercje "$wynik")"
+
+	perturbuj suita-pominieta-sprzataj
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	if [ "$pominiete" -lt 100 ]; then
+		printf '    ✗ mutacja nie pominęła suity (pominiętych: %s) — perturbacja nierozstrzygająca\n' "$pominiete"
+		NIEUDANE=$((NIEUDANE + 1))
+		return
+	fi
+
+	printf '    · dowód mutacji: pest zgłasza %s pominiętych testów\n' "$pominiete"
+
+	# Pierwszy sygnał: pominięty test NIE JEST wykonanym testem.
+	if [ "$wykonane" -eq 0 ]; then
+		printf '    ✓ podłoga liczy 0 wykonanych testów — pominięte się nie liczą\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ podłoga zaliczyła %s pominiętych testów jako wykonane\n' "$wykonane"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	# Drugi, niezależny sygnał: suita bez asercji niczego nie dowiodła.
+	if [ "$asercje" -eq 0 ]; then
+		printf '    ✓ podłoga asercji widzi 0 sprawdzeń — drugi sygnał też czerwony\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ licznik asercji pokazuje %s przy pominiętej suicie\n' "$asercje"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	# Kierunek odwrotny: na zdrowej suicie oba liczniki muszą wrócić wysoko,
+	# inaczej „zero przy pominięciu" przechodzi także dla licznika zawsze zerowego.
+	local zdrowy
+	zdrowy="$(dc exec -T app ./vendor/bin/pest 2>&1)"
+
+	if [ "$(policz_testy "$zdrowy")" -ge 100 ] && [ "$(policz_asercje "$zdrowy")" -ge 300 ]; then
+		printf '    ✓ na zdrowej suicie oba liczniki wracają wysoko (%s testów, %s asercji)\n' \
+			"$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ liczniki nie wracają na zdrowej suicie (%s testów, %s asercji)\n' \
+			"$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -707,7 +845,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -717,8 +855,35 @@ fi
 WYBRANE="${*:-$WSZYSTKIE}"
 
 if ! dc ps --status running --services 2>/dev/null | grep -q '^app$'; then
-	echo "ODMOWA: stos '$PROJEKT' nie stoi. Uruchom: docker compose up -d --wait" >&2
-	exit 2
+	echo "Stos '$PROJEKT' nie stoi — stawiam go." >&2
+
+	# ŚWIADOMIE bez sprawdzania kodu wyjścia `up` — zasada 1 z nagłówka bramki:
+	# pytamy o STAN, nie o kod wyjścia polecenia. Pierwsza wersja tej gałęzi
+	# robiła `if ! dc up -d`, więc odmawiała startu, mimo że stos wstawał
+	# poprawnie (`up` wraca niezerowo, gdy któryś kontener mignie jako
+	# unhealthy w trakcie startu). Zmierzone: ręczne `up -d` → wszystko
+	# `Healthy`, skryptowe → „nie udało się postawić stosu".
+	dc up -d >/dev/null 2>&1 || true
+
+	# O gotowości rozstrzyga sonda pytająca o STAN.
+	GOTOWY=0
+
+	for _ in $(seq 1 60); do
+		if dc exec -T app php artisan gabinet:zdrowie --cichy >/dev/null 2>&1; then
+			GOTOWY=1
+			break
+		fi
+
+		sleep 2
+	done
+
+	if [ "$GOTOWY" -ne 1 ]; then
+		echo "ODMOWA: stos '$PROJEKT' nie zgłosił zdrowia w 120 s." >&2
+		exit 2
+	fi
+
+	dc exec -T app php artisan migrate --force >/dev/null 2>&1
+	echo "Stos '$PROJEKT' gotowy." >&2
 fi
 
 for NAZWA in $WYBRANE; do
@@ -734,6 +899,7 @@ for NAZWA in $WYBRANE; do
 		wzmacniacz) p_wzmacniacz ;;
 		lockfile) p_lockfile ;;
 		licznik) p_licznik_testow ;;
+		pominiete) p_suita_pominieta ;;
 		hasla_v2) p_hasla_v2 ;;
 		nonce) p_nonce ;;
 		lockfile) p_lockfile ;;
