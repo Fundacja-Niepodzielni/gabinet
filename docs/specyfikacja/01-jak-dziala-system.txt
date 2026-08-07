@@ -1,0 +1,1969 @@
+===== STRONA 1 =====
+Jak działa system
+Rezerwacja wizyt · Fundacja Niepodzielni
+Do czego służy ten dokument. Opisuje, co system robi z
+perspektywy osób, które będą z niego korzystać: pacjenta,
+psychologa i koordynatora. Nie ma tu terminów technicznych
+ani opisu, jak to zbudować — na to jest osobny dokument.
+Przy każdym kroku opisujemy też, co dzieje się w tle: kiedy
+wychodzi mail, kiedy SMS, co się blokuje i kiedy pieniądze
+zmieniają właściciela. To ta część, która najczęściej wraca w
+telefonach od pacjentów.
+Sporządzono piątek, 7 sierpnia 2026, 12:09 na podstawie działającej makiety.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 2 =====
+Jak to przebiega krok po kroku
+Najczęstsze sytuacje w systemie, od początku do końca. Prawa kolumna pokazuje, co system robi sam, bez
+udziału człowieka.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 3 =====
+Pierwsza rezerwacja przez nową osobę PACJENT
+Ktoś, kto pierwszy raz szuka pomocy, chce znaleźć wolny termin i mieć go potwierdzony od razu — bez zakładania
+konta, bez telefonu i bez czekania na odpowiedź.
+1 Wchodzi na listę wolnych terminów SYSTEM W TLE
+Pacjentka widzi wszystkich specjalistów w jednym widoku, ułożonych od Nic nie wysyła. Kalendarz
+tego, kto przyjmie najszybciej. Przy każdym nazwisku od razu widać cenę i pokazuje 30 dni w przód i nie
+pierwsze wolne godziny — nie trzeba wchodzić w profil, żeby sprawdzić, czy pokazuje godzin wcześniejszych
+niż 2 godziny od teraz.
+ktoś ma cokolwiek wolnego. Może zawęzić listę: rodzaj wizyty, online albo
+stacjonarnie, „termin w ciągu 48 godzin”, albo wpisać nazwisko, obszar
+pomocy czy nurt.
+2 Wybiera specjalistę i godzinę SYSTEM W TLE
+Na profilu widzi biogram, obszary pomocy, podejście do pracy, opinie i Od kliknięcia w godzinę termin
+kalendarz na najbliższe 7 dni. Wybiera rodzaj konsultacji — niskopłatna za jest trzymany dla niej przez 10
+55 zł, pełnopłatna za 115–145 zł, asystent zdrowienia bezpłatnie albo minut. Przez ten czas nikt inny go
+nie zarezerwuje.
+diagnoza ADHD za 350 zł — i klika godzinę. Cena zmienia się na miejscu,
+bez przeładowania strony.
+3 Podaje dane do wizyty SYSTEM W TLE
+Wpisuje imię i nazwisko, e-mail i telefon oraz zaznacza, czy była już Zegar 10 minut cały czas biegnie i
+wcześniej w fundacji. Może zostawić kilka zdań o tym, z czym przychodzi — jest widoczny w podsumowaniu
+to pole nie jest obowiązkowe. Nad formularzem stoi zdanie, po co potrzebny po prawej stronie.
+jest adres: na niego pójdzie potwierdzenie, link do spotkania i przypomnienia.
+4 Decyduje, czy chce konto SYSTEM W TLE
+Domyślnie rezerwuje jako gość i nic nie musi wybierać. Może zaznaczyć Konto powstaje dopiero po
+„Załóż mi konto przy tej rezerwacji” i ustawić hasło — wtedy sama zmienia zaksięgowaniu płatności. Dane do
+terminy, zapisuje się na grupy i widzi historię wizyt. Jeśli tego nie zrobi, konto logowania idą w tym samym mailu
+co potwierdzenie, nie osobno.
+i tak powstanie w tle, a ona wejdzie do niego linkiem z maila.
+5 Zaznacza zgody i potwierdza zasady odwołania
+SYSTEM W TLE
+Dwie zgody są wymagane: regulamin z polityką prywatności oraz zgoda na Nic nie wysyła. Data graniczna
+przetwarzanie danych o zdrowiu. Trzecia, o warsztatach i grupach wsparcia, jest wyliczona z terminu wizyty:
+jest nieobowiązkowa. Osobno, na żółtym tle, potwierdza, że zna zasady dokładnie 24 godziny wcześniej.
+odwoływania — z wypisaną konkretną datą i godziną, do której odwołanie
+jest bezpłatne.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 4 =====
+6 Płaci SYSTEM W TLE
+Przycisk pokazuje kwotę wprost: „Zapłać 145 zł i zarezerwuj”. Płatność idzie Po zaksięgowaniu płatności
+przez Stripe — karta, BLIK, Google Pay albo Apple Pay. Fundacja nie system wysyła jednocześnie dwie
+przechowuje danych karty. rzeczy: mail „Potwierdzenie
+wizyty” z terminem, nazwiskiem
+specjalisty, formą, miejscem albo
+linkiem, numerem rezerwacji i
+datą graniczną bezpłatnego
+odwołania, oraz SMS „termin
+zarezerwowany, szczegóły
+wysłaliśmy mailem, nr rezerwacji”.
+W SMS-ie nie ma ani nazwy
+usługi, ani słowa o zdrowiu.
+7 Widzi potwierdzenie
+SYSTEM W TLE
+Na ekranie jest numer rezerwacji, dane wizyty, potwierdzenie kwoty i — przy Nic więcej nie idzie w tym
+wizycie online — link do spotkania od razu, do skopiowania. Przy wizycie momencie. Każdy z kolejnych
+stacjonarnej w tym samym miejscu stoi adres z piętrem, numerem gabinetu i terminów, jeśli je wybierze, to
+osobna rezerwacja i osobna
+domofonem. Jest też przycisk dodania wizyty do kalendarza w telefonie i
+płatność.
+propozycje trzech kolejnych terminów: ten sam dzień i godzina za tydzień,
+dwa i trzy tygodnie.
+8 Dostaje przypomnienia przed wizytą SYSTEM W TLE
+Ekran potwierdzenia mówi wprost, co się jeszcze wydarzy, żeby pacjentka 24 godziny przed wizytą: mail
+nie musiała pilnować niczego sama. Dzień przed przychodzi przypomnienie z „Jutro o [godzina] —
+ostatnim momentem na bezpłatną zmianę. Dwie godziny przed wizytą online przypomnienie o wizycie” i SMS z
+terminem oraz datą graniczną
+przychodzi SMS z samym linkiem, żeby nie szukać go w skrzynce.
+bezpłatnego odwołania. 2 godziny
+przed wizytą online: SMS z
+linkiem do rozmowy. Po wizycie:
+propozycja kolejnego terminu u tej
+samej osoby.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 5 =====
+Najbliższy możliwy termin to 2 godziny od teraz. To świadomy wybór na rzecz osób w kryzysie — ktoś, kto rano
+czuje, że musi porozmawiać, może umówić się jeszcze tego samego dnia. Kosztem jest to, że specjalista dowiaduje
+się o wizycie na ostatnią chwilę.
+Kalendarz jest otwarty na 30 dni w przód. Dalej pacjent nie zarezerwuje, bo specjaliści wystawiają terminy najwyżej
+na 7 dni i grafik za miesiąc byłby deklaracją, a nie realną dostępnością.
+Wybrany termin jest trzymany 10 minut. Krócej — nie zdąży ktoś, kto płaci przelewem albo szuka karty. Dłużej —
+jedna niedokończona rezerwacja blokuje godzinę na pół dnia i inni widzą ją jako zajętą.
+Konto nie jest wymagane. Wymuszanie rejestracji przed pierwszą wizytą odsiewa część osób na progu, a fundacji
+nie daje nic, czego nie da adres e-mail.
+Wizyt niskopłatnych przysługuje 10. Liczba pozostałych jest pokazana PRZED płatnością, a nie po niej — pacjentka
+ma się dowiedzieć o wyczerpanym limicie w chwili wyboru usługi, nie po zaksięgowaniu przelewu.
+Kto zaczął leczenie niskopłatnie, kontynuuje niskopłatnie, dopóki ma limit — u tego samego albo innego specjalisty.
+Chodzi o to, żeby dofinansowanie szło na cały proces terapeutyczny, a nie na pojedyncze spotkania.
+Po wyczerpaniu 10 wizyt nikt nie traci dostępu do pomocy. Można umawiać się dalej w cenie pełnej albo poprosić
+koordynatora o zwiększenie puli — bez zaświadczeń, wystarczy krótka informacja o sytuacji, a odpowiedź przychodzi
+zwykle tego samego dnia.
+Psycholog prowadzący przypisuje się automatycznie po pierwszej odbytej wizycie. Nikt nie ustawia tego ręcznie, a
+pacjentka może umówić się u kogoś innego — pojedyncza wizyta u innej osoby nie zmienia przypisania, zmianę
+prowadzącego potwierdza koordynator.
+SMS nie zawiera ani nazwy usługi, ani słowa o zdrowiu, a nadawcą jest „Niepodzielni”, nie nazwa poradni.
+Wiadomość wyświetla się na zablokowanym ekranie, często przy innych ludziach.
+Nie ma pakietów ani serii wizyt. Każda wizyta to osobna rezerwacja i osobna płatność, więc odwołanie jednej sesji
+nie wymaga rozliczania pakietu i nie powstaje pytanie o zwrot za niewykorzystaną część.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 6 =====
+Odwołanie wizyty przez pacjenta — w oknie 24 godzin i po jego upływie PACJENT
+Coś wypadło i pacjentka chce oddać termin — a fundacja chce, żeby dowiedziała się o skutkach, zanim kliknie, a nie po
+fakcie.
+1 Otwiera swoje wizyty
+Przy każdej nadchodzącej wizycie widzi termin, kwotę, formę i link albo
+adres. Nad przyciskami stoi jedno z dwóch zdań: albo „Możesz jeszcze
+bezpłatnie zmienić lub odwołać — masz na to czas do [data], godz.
+[godzina]”, albo „Minął czas na bezpłatną zmianę”. To zdanie decyduje o
+wszystkim, co dalej.
+2 Rozgałęzienie A: zostało więcej niż 24 godziny — otwiera okno
+odwołania
+Przyciski „Przełóż termin” i „Odwołaj wizytę” są widoczne. Po kliknięciu
+odwołania okno mówi wprost: do wizyty zostało tyle a tyle godzin, czyli więcej
+niż 24, więc wraca cała kwota. Widać zapłaconą kwotę, kwotę zwrotu i
+zdanie, że termin natychmiast zwalnia się dla innych.
+3 Rozgałęzienie A: podaje powód i potwierdza SYSTEM W TLE
+Powód jest nieobowiązkowy — do wyboru: nie podaję powodu, choroba, Zwrot 100% kwoty trafia na listę
+kolizja z obowiązkami, nie potrzebuję już wizyty. Pod listą stoi wyjaśnienie, zwrotów do wykonania u
+kto to zobaczy. Po kliknięciu „Odwołaj wizytę” wizyta znika z listy koordynatora — pieniądze
+wracają na tę samą kartę, zwykle
+nadchodzących.
+w 3–5 dni roboczych. Termin
+natychmiast wraca do puli
+wolnych i widzą go inni pacjenci.
+Ta godzina nie wchodzi do
+rozliczenia specjalisty. Powód
+idzie do zbiorczych statystyk
+fundacji, a specjalista widzi go
+tylko przy swojej wizycie.
+4 Rozgałęzienie B: zostało mniej niż 24 godziny — przyciski
+SYSTEM W TLE
+znikają System nic nie wysyła i niczego
+Przyciski „Przełóż” i „Odwołaj” nie są wyszarzone — ich po prostu nie ma na nie zwraca. Godzina zostaje w
+rozliczeniu specjalisty.
+ekranie. Zamiast nich pacjentka widzi wyjaśnienie, że wizyta jest płatna
+niezależnie od obecności, i jeden przycisk: „Napisz do specjalisty”.
+Wyszarzony przycisk kusi, żeby go klikać i szukać sposobu obejścia, a
+potem generuje zgłoszenia „nie działa mi”.
+5 Rozgałęzienie B: prosi o wyjątek u człowieka SYSTEM W TLE
+Napisanie do specjalisty jest jedyną drogą i tak ma być. Na ekranie stoi Nic nie dzieje się automatycznie.
+zdanie: decyzję o wyjątku podejmuje osoba, nie system. Specjalista może Jeśli specjalista zdecyduje o
+potraktować taką sytuację jak odwołanie z pełnym zwrotem — ma to jako wyjątku, zwrot trafia na listę
+zwrotów do wykonania u
+osobne pole przy oznaczaniu nieobecności.
+koordynatora.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 7 =====
+6 Rozgałęzienie B: pacjentka po prostu nie przychodzi SYSTEM W TLE
+Jeśli nie napisze i nie pojawi się na wizycie, specjalista zgłasza nieobecność Brak zwrotu. Godzina wchodzi do
+w swoim panelu. Nieobecność zapisuje się w historii pacjentki i widzi ją rozliczenia specjalisty tak samo
+koordynator. jak odbyta wizyta. Termin nie
+wraca do puli, bo już minął.
+7 Zwolniony termin idzie na listę rezerwową
+SYSTEM W TLE
+Godzina zwolniona późnym odwołaniem zwykle przepada — nikt jej już nie Propozycja idzie mailem i SMS-
+znajdzie, a specjalista i tak dostaje wynagrodzenie. Dlatego system em jednocześnie. Jeśli termin uda
+proponuje ją kolejnym osobom z listy rezerwowej, dopóki ktoś nie przyjmie. się obsadzić ponownie, pierwsza
+pacjentka — ta, która odwołała po
+czasie — dostaje kredyt do
+wykorzystania, mimo że jej wizyta
+była płatna.
+Granica to 24 godziny przed rozpoczęciem wizyty. Dokładna data i godzina jest wypisana w trzech miejscach: w
+potwierdzeniu rezerwacji, w przypomnieniu dzień wcześniej i na karcie wizyty w panelu — nikt nie musi jej liczyć
+sam.
+Powyżej 24 godzin zwrot wynosi 100%, poniżej — 0%. Nie ma progów pośrednich ani opłat częściowych, bo każdy
+dodatkowy próg to kolejne pytanie do koordynatora i kolejne zdanie w regulaminie, którego nikt nie przeczyta.
+Wizyta odwołana późno jest płatna, bo specjalista zablokował ten czas wyłącznie dla jednej osoby i nie mógł przyjąć
+nikogo innego. Bez tej zasady polityka odwołań przestaje być wiarygodna dla specjalistów.
+Po upływie 24 godzin przyciski odwołania i zmiany znikają z ekranu, a nie są wyszarzone. Wyszarzony przycisk
+zaprasza do klikania i szukania obejścia; brak przycisku z wyjaśnieniem obok zamyka temat.
+Wyjątki istnieją, ale podejmuje je człowiek. System nie ma reguły „choroba zwalnia z opłaty”, bo takiej reguły nie da
+się sprawdzić, a próba jej egzekwowania zamieniłaby koordynatora w kontrolera zwolnień.
+Fundacja wykonuje zwroty ręcznie w panelu płatności — system tylko pokazuje, komu i ile się należy. Dlatego
+nigdzie nie pisze „zwrot wykonany”, tylko „zwrot do wykonania”; automatyczne zwroty to najdroższy kawałek
+integracji płatniczej, a przy kilkudziesięciu zwrotach miesięcznie kliknięcie jest tańsze niż jego utrzymanie.
+Jeśli późno odwołany termin uda się odsprzedać komuś z listy rezerwowej, pierwsza osoba dostaje kredyt. Fundacja
+nie zarabia dwa razy na tej samej godzinie.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 8 =====
+Przełożenie terminu przez pacjenta PACJENT
+Pacjentka chce zostać u tej samej osoby, ale w innej godzinie — i nie chce płacić drugi raz ani przechodzić przez
+odwołanie i nową rezerwację.
+1 Klika „Przełóż termin”
+Przycisk jest widoczny tylko wtedy, gdy do wizyty zostało więcej niż 24
+godziny i limit zmian nie został wyczerpany. Stoi obok czerwonego przycisku
+odwołania, ale pierwszy — przełożenie jest lepsze dla obu stron niż
+odwołanie.
+2 Wybiera nowy dzień i godzinę
+SYSTEM W TLE
+Okno pokazuje 7 najbliższych dni z liczbą wolnych godzin przy każdym; dni Nic jeszcze się nie zmienia. Stary
+bez terminów są nieaktywne. Po wybraniu dnia widzi wolne godziny tej samej termin nadal jest zajęty.
+osoby. Na górze stoi wyjaśnienie: zmienia tylko godzinę, specjalista, cena i
+forma zostają bez zmian.
+3 Potwierdza nowy termin SYSTEM W TLE
+Przycisk jest nieaktywny, dopóki nie wybierze godziny. Na dole okna stoi Stary termin natychmiast wraca
+licznik: „Zmiana 1 z 2 dozwolonych dla tej rezerwacji” — pacjentka wie, ile jej do puli wolnych i mogą go
+zostało, zanim kliknie. zarezerwować inni. Płatność
+przechodzi na nowy termin — nie
+pobieramy jej drugi raz i nie ma
+zwrotu. Pacjentka dostaje
+zaktualizowane potwierdzenie z
+nową datą, a przypomnienia —
+dzień przed i dwie godziny przed
+— przeliczają się na nowy termin.
+4 Przy trzeciej próbie przycisk jest nieaktywny SYSTEM W TLE
+Jeśli tę wizytę przekładano już 2 razy, przycisk „Przełóż termin” przestaje Nic nie idzie automatycznie.
+działać, a nad nim pojawia się wyjaśnienie: „Tę wizytę przekładano już 2 razy Trzecią zmianę ustala się
+z dozwolonych 2. Kolejna zmiana wymaga kontaktu ze specjalistą”. bezpośrednio ze specjalistą.
+Odwołanie nadal jest możliwe.
+5 Chce zmienić osobę, nie godzinę
+SYSTEM W TLE
+Zmiana specjalisty nie jest możliwa w tym oknie. Na ekranie stoi wprost: jeśli Odwołanie uruchamia zwykłą
+chcesz kogoś innego, odwołaj wizytę i zarezerwuj nową. Odwołanie w oknie ścieżkę: zwrot 100% do
+24 godzin jest bezpłatne, więc nic na tym nie traci. wykonania u koordynatora, termin
+wraca do puli.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 9 =====
+Jedną rezerwację można przełożyć 2 razy. Trzecia zmiana zwykle znaczy, że ten termin w ogóle nie pasuje do życia
+pacjentki — wtedy lepsza jest rozmowa ze specjalistą niż kolejne przesuwanie godziny, które blokuje jego kalendarz.
+Zmiana terminu podlega tej samej granicy 24 godzin co odwołanie. Gdyby przełożenie było możliwe później,
+wystarczyłoby przełożyć wizytę na odległy termin i odwołać ją następnego dnia — czyli obejść zasadę odpłatności.
+Przełożenie zmienia tylko godzinę. Specjalista, cena i forma zostają, bo zmiana osoby to inna decyzja i wymaga
+świadomego wyboru, a nie kliknięcia w oknie zmiany godziny.
+Płatność przechodzi na nowy termin i nie ma zwrotu ani ponownego pobrania. Zwrot i nowa płatność przy każdej
+zmianie godziny oznaczałyby kilka dni oczekiwania na pieniądze i sztucznie napompowaną listę zwrotów do
+wykonania.
+Licznik zmian widać przed kliknięciem, nie po. Informacja „zmiana 1 z 2” w chwili wyboru terminu jest użyteczna; ta
+sama informacja po wyczerpaniu limitu jest już tylko odmową.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 10 =====
+Umówienie kolejnej wizyty przez specjalistę w gabinecie PSYCHOLOG
+Specjalistka chce ustalić kolejne spotkanie na koniec sesji, nie rozmawiając w gabinecie o pieniądzach i nie przyjmując
+płatności.
+1 Otwiera umawianie
+Może kliknąć „Umów pacjenta” u góry listy swoich wizyt albo „Kolejny termin”
+przy wierszu osoby, która właśnie u niej jest — wtedy nazwisko wpisuje się
+samo. Okno da się otworzyć w trakcie sesji albo później, tego samego dnia.
+2 Wpisuje pacjenta i rodzaj wizyty
+Podaje imię, nazwisko i adres e-mail — na ten adres pójdzie link do
+płatności. Wybiera rodzaj wizyty z listy, przy każdej pozycji widzi cenę i czas
+trwania. Przy pacjencie kontynuującym proces niskopłatny wybiera
+konsultację niskopłatną za 55 zł.
+3 Wybiera termin z grafiku albo wpisuje go ręcznie SYSTEM W TLE
+Domyślnie wybiera z własnego grafiku — 7 najbliższych dni z liczbą wolnych Termin wpisany ręcznie trafia do
+godzin przy każdym. Może też przełączyć się na wpisanie daty i godziny jej kalendarza i do rozliczenia tak
+ręcznie, jeśli chce dać komuś termin poza wystawionymi godzinami. Przy samo jak każdy inny.
+terminie spoza grafiku pojawia się ostrzeżenie: nikt inny go nie zarezerwuje,
+ale też nikt nie przypomni, że ma wtedy pracować.
+4 Wysyła link do płatności SYSTEM W TLE
+Klika „Zarezerwuj i wyślij link do płatności”. Rozmowa o pieniądzach kończy Pacjent dostaje mail „Do
+się w tym momencie — reszta dzieje się między pacjentem a systemem, opłacenia: wizyta [data] o
+poza gabinetem. [godzina]” z nazwiskiem
+specjalistki, terminem, kwotą i
+linkiem do zapłaty. W mailu stoi
+data, do której termin jest dla
+niego trzymany — 2 dni od
+wysłania. Po otwarciu linku ma 10
+minut na dokończenie płatności.
+Jeśli nie zapłaci w ciągu 2 dni,
+termin wraca do puli wolnych i
+specjalistka widzi to na liście
+swoich wizyt. Po zapłaceniu idzie
+zwykłe potwierdzenie mailem i
+SMS-em, tak samo jak przy
+rezerwacji własnej.
+5 Wariant: prosi o zwolnienie z opłaty SYSTEM W TLE
+Zamiast wysyłać link, może zaznaczyć „Poproś koordynatora o zwolnienie z Mail do koordynatora z
+opłaty” i wpisać krótkie uzasadnienie. Uzasadnienie ma dotyczyć wyłącznie nazwiskiem pacjenta, terminem,
+sytuacji finansowej — pod polem stoi wprost, żeby nie wpisywać tam kwotą, uzasadnieniem i linkiem do
+decyzji. Termin jest zablokowany
+informacji o zdrowiu. Przycisk zmienia się na „Wyślij wniosek i zablokuj
+do czasu decyzji — nikt inny go
+termin”.
+nie zarezerwuje. Pacjent w tym
+momencie nie dostaje żadnego
+Jak działa system · Fundacja Niepodzielni linku do płapitąntoeśk,c 7i asnieir ipnnfioar 2m0a2c6j,i ,12:09
+że wniosek został złożony.
+===== STRONA 11 =====
+6 Widzi, co się stało z terminem SYSTEM W TLE
+Nieopłacone wizyty są widoczne na liście rezerwacji ze statusem „czeka na Koordynator widzi te same
+płatność”. Jeśli termin wrócił do puli, specjalistka nie musi tego nigdzie rezerwacje w swoim zestawieniu,
+sprawdzać — po prostu znika z jej kalendarza jako zajęty. w kaflu „Czeka na płatność”.
+Specjalista nigdy nie pobiera pieniędzy. Wpisuje dane i wybiera termin, a płatność odbywa się między pacjentem a
+systemem — dzięki temu rozmowa o pieniądzach nie wchodzi do gabinetu i nie obciąża relacji terapeutycznej.
+Na opłacenie terminu umówionego przez specjalistę są 2 dni, a nie 10 minut jak przy rezerwacji własnej. Sytuacja
+jest inna: pacjent nie siedzi przy komputerze z kartą, tylko wychodzi z gabinetu i dostaje link mailem. Dwa dni to
+weekend plus dzień roboczy — mieści się w tym osoba, która płaci przelewem po wypłacie.
+Po otwarciu linku do płatności termin jest trzymany jeszcze 10 minut na samo dokończenie transakcji, tak jak przy
+każdej innej rezerwacji.
+Specjalista wystawia terminy najwyżej na 7 dni w przód. Fundacja chce mieć pewność, że grafik odzwierciedla realną
+dostępność, a nie deklaracje sprzed miesiąca.
+Termin spoza grafiku jest dozwolony i nie wymaga niczyjej zgody. Gabinet nie działa według kalendarza — osoba w
+kryzysie potrzebuje jutra, a nie najbliższego wolnego terminu za dwa tygodnie. Specjalista bierze wtedy godzinę
+spoza wystawionych i sam odpowiada za to, że będzie wolny.
+Uzasadnienie wniosku o zwolnienie z opłaty jest wyłącznie finansowe. Koordynator podejmuje decyzję o pieniądzach
+i nie potrzebuje do tego żadnej informacji o zdrowiu pacjenta.
+Termin objęty wnioskiem o zwolnienie jest zablokowany do czasu decyzji. Bez tego pacjent mógłby dostać zgodę na
+wizytę, której godziny już nie ma.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 12 =====
+Odwołanie wizyty przez specjalistę i co dzieje się z listą rezerwową PSYCHOLOG
+Specjalistka nie może przyjąć w umówionej godzinie i chce, żeby pacjent dowiedział się o tym natychmiast, dostał
+pieniądze z powrotem i miał czym zastąpić utracony termin.
+1 Klika „Odwołaj” przy konkretnej wizycie
+Robi to z listy swoich nadchodzących wizyt. Przy wizytach, do których
+zostało mniej niż 24 godziny, w kolumnie statusu widnieje dopisek „pacjent
+nie może już odwołać” — specjalistka wie, że po drugiej stronie nie ma już
+wyjścia awaryjnego.
+2 Widzi skutki, zanim potwierdzi
+Okno mówi wprost dwie rzeczy: pacjent dostanie pełny zwrot niezależnie od
+tego, ile zostało do wizyty, a ta godzina nie wejdzie do jej rozliczenia. Nie ma
+tu żadnego progu czasowego — zasada jest ta sama godzinę przed wizytą i
+tydzień przed.
+3 Podaje powód i decyduje o propozycjach terminów
+Wybiera powód z listy: choroba, sytuacja losowa, nakładający się obowiązek
+zawodowy albo inny. Powód zobaczy koordynator — jest to napisane obok
+pola. Domyślnie zaznaczone jest pole „Zaproponuj pacjentowi trzy najbliższe
+wolne terminy z mojego kalendarza”; może je odznaczyć.
+4 Potwierdza odwołanie SYSTEM W TLE
+Klika „Odwołaj i powiadom pacjenta”. Wizyta znika z jej listy nadchodzących. Pacjent dostaje jednocześnie mail
+„Wizyta [data] niestety się nie
+odbędzie” — z kwotą zwrotu,
+informacją o 3 dniach roboczych,
+linkiem do wyboru nowego
+terminu i zdaniem, że może
+odpisać, jeśli woli, żeby fundacja
+zaproponowała termin sama —
+oraz SMS z tą samą informacją w
+skrócie i linkiem. Zwrot 100%
+trafia na listę zwrotów do
+wykonania u koordynatora.
+Godzina wypada z rozliczenia
+specjalistki. Odwołanie dolicza się
+do jej licznika odwołań z ostatnich
+30 dni.
+5 Koordynator dostaje sygnał, jeśli odwołań jest dużo SYSTEM W TLE
+Po przekroczeniu 10 odwołań w ciągu 30 dni u koordynatora zapala się alert. Alert widzi wyłącznie koordynator.
+Nie jest to kara ani wpis do akt — dziesięć odwołań w miesiącu prawie Specjalista nie dostaje żadnej
+zawsze znaczy, że po drugiej stronie dzieje się coś, czego nie widać w wiadomości ani ostrzeżenia.
+grafiku: choroba, wypalenie, zbyt gęsto ułożony tydzień.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 13 =====
+6 Zwolniony termin trafia na listę rezerwową SYSTEM W TLE
+Godzina, którą specjalistka zwolniła, nie wraca po prostu do kalendarza i nie Propozycja idzie mailem i SMS-
+czeka, aż ktoś ją przypadkiem znajdzie. System sam proponuje ją osobom, em jednocześnie. Pierwsza osoba
+które zapisały się do kolejki u tej osoby i na ten rodzaj wizyty, po kolei, dopóki w kolejce ma 4 godziny na
+odpowiedź, przy czym zegar
+ktoś nie przyjmie.
+zatrzymuje się między 21:00 a
+8:00. Po tym czasie propozycja
+przechodzi do następnej osoby
+automatycznie, bez udziału
+koordynatora.
+7 Koordynator obserwuje odzysk i może przyspieszyć SYSTEM W TLE
+Na swoim ekranie widzi, ile osób czeka w kolejce, które terminy się zwolniły, Kliknięcie „Przekaż dalej” przenosi
+ile godzin przed wizytą je odwołano i co z nich wyszło: obsadzony ponownie, propozycję do następnej osoby od
+propozycja wysłana albo przepadł. Widzi też, ile pieniędzy odzyskano i ile razu, zamiast czekać do końca
+czterech godzin.
+mimo wszystko przepadło. Przy trwającej propozycji może kliknąć „Przekaż
+dalej”, gdy wie, że pierwsza osoba jest nieosiągalna.
+8 Kolejka jest ułożona według czasu oczekiwania
+Pierwsza jest osoba, która czeka najdłużej. Przy nazwiskach widać, ile razy
+ktoś dostał propozycję i jej nie przyjął — po dwóch nieprzyjętych
+propozycjach warto zapytać, czy ta osoba nadal chce czekać, zamiast
+wysyłać jej kolejne. Widać też, kto zgadza się na termin w ciągu 24 godzin,
+bo tylko takim osobom ma sens proponować godzinę zwolnioną na jutro.
+Gdy odwołuje specjalista, pacjent zawsze dostaje pełny zwrot — nawet godzinę przed wizytą. Ta asymetria wobec
+zasady 24 godzin jest celowa: pacjent nie ma wpływu na to, że specjalista zachorował, a bez tej różnicy polityka
+odwołań przestałaby być wiarygodna dla pacjentów.
+Godzina odwołana przez specjalistę nie wchodzi do jego rozliczenia. Gdy to pacjent odwołuje późno albo nie
+przychodzi, godzina jest płatna i wchodzi. Bez tej różnicy zasada przestałaby być wiarygodna dla którejś ze stron.
+Alert u koordynatora zapala się po przekroczeniu 10 odwołań w oknie 30 dni. Okno jest tu równie ważne jak próg —
+licznik od początku współpracy przekroczyłby dziesiątkę u każdej aktywnej osoby w ciągu roku i sygnał przestałby
+cokolwiek znaczyć. Chodzi o to, co dzieje się teraz.
+Pierwsza osoba w kolejce ma 4 godziny na przyjęcie zwolnionego terminu. Doba marnuje termin zwolniony na jutro
+— zanim propozycja wygaśnie, wizyta już minie. Kwadrans karze za to, że ktoś jest akurat w pracy albo na sesji.
+Cztery godziny mieszczą się w dniu roboczym i pozwalają przejść przez trzy osoby w kolejce.
+Zegar czterech godzin zatrzymuje się na noc, między 21:00 a 8:00. Propozycja wysłana o 22:00 nie może wygasnąć,
+zanim ktokolwiek się obudzi — inaczej fundacja karałaby ludzi za sen.
+Powód odwołania widzi koordynator, nie pacjent. Pacjent dostaje informację, że wizyta się nie odbędzie i że
+pieniądze wracają; szczegóły sytuacji specjalisty do niego nie należą.
+Zwrot po odwołaniu przez specjalistę też jest wykonywany ręcznie przez koordynatora. W mailu i SMS-ie pacjent
+dostaje termin „3 dni robocze”, bo tyle realnie zajmuje ta operacja razem z księgowaniem po stronie banku.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 14 =====
+Zamknięcie miesiąca: od podsumowania u specjalisty przez fakturę do akceptacji
+koordynatora PSYCHOLOG
+Specjalistka chce dostać wypłatę za miniony miesiąc, a fundacja chce mieć pewność, że zapłaciła dokładnie tyle, ile się
+należy — ani mniej, ani więcej.
+1 Oznacza, co się wydarzyło na wizytach
+SYSTEM W TLE
+W zakładce „Do oznaczenia” ma wizyty z ostatnich dni czekające na Po 48 godzinach system sam
+rozstrzygnięcie: odbyła się albo pacjent nie przyszedł. Nieobecność musi uzna nieoznaczoną wizytę za
+zgłosić sama — to ona decyduje, że pacjent nie dostaje zwrotu. Przy odbytą i wliczy ją do rozliczenia.
+Zgłoszona nieobecność zapisuje
+zgłaszaniu nieobecności może zaznaczyć „odpuść tym razem”, jeśli pacjent
+się w historii pacjenta i jest
+uprzedził ją inną drogą.
+widoczna dla koordynatora;
+pacjent nie dostaje zwrotu, a
+godzina wchodzi do rozliczenia
+specjalistki. „Odpuszczenie”
+zamienia to na odwołanie z
+pełnym zwrotem, który trafia na
+listę zwrotów do wykonania.
+2 Sprawdza podsumowanie okresu SYSTEM W TLE
+Na ekranie rozliczeń widzi cztery liczby: kwotę do wypłaty, liczbę godzin Kwota przy każdej pozycji to jej
+spędzonych w gabinecie, liczbę godzin opłaconych mimo braku pacjenta wynagrodzenie — dokładnie tyle,
+oraz datę najbliższej wypłaty — 10 dnia miesiąca. Poniżej ma dwie listy: ile trafi na przelew. Fundacja
+pobiera 20% prowizji od wizyt
+wizyty odbyte i osobno godziny opłacone mimo braku pacjenta, czyli późne
+pełnopłatnych, ale ta liczba nie
+odwołania i nieobecności.
+pojawia się nigdzie na ekranie
+specjalisty.
+3 Sprawdza, czy liczby się zgadzają
+Obok stoi krótka tabelka, kiedy godzina jest płatna: wizyta się odbyła — tak;
+pacjent odwołał późno — tak; pacjent nie przyszedł — tak; pacjent odwołał w
+terminie — nie; specjalistka odwołała — nie. Jeśli coś się nie zgadza, ma
+napisać do koordynatora PRZED wystawieniem faktury.
+4 Wysyła fakturę SYSTEM W TLE
+Klika „Prześlij fakturę”. Okno pokazuje liczbę rozliczanych wizyt, okres, Po wysłaniu specjalistka dostaje
+termin przesłania i podpowiedzianą kwotę do wystawienia. Wpisuje własny potwierdzenie przyjęcia faktury na
+numer faktury i załącza plik PDF — bez pliku przycisk wysyłki nie działa. swój adres. Faktura pojawia się u
+koordynatora ze statusem
+„oczekuje” i wchodzi do kolejki do
+sprawdzenia.
+5 Koordynator otwiera fakturę i porównuje kwoty
+Na liście faktur przy każdej pozycji widzi kwotę z faktury, wyliczenie systemu i
+różnicę między nimi. Jeśli różnicy nie ma, wiersz jest oznaczony jako zgodny
+i nie wymaga niczego więcej. Cztery kafle u góry mówią, ile faktur czeka, ile
+już zaakceptowano, ile jest do poprawy i przy ilu jest rozjazd z systemem.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 15 =====
+6 Wariant zgodny: koordynator akceptuje SYSTEM W TLE
+Otwiera fakturę, widzi zielone potwierdzenie, że kwota odpowiada Przelew wychodzi w najbliższej
+rozliczeniu, i klika „Akceptuj do wypłaty”. To cała czynność. paczce, do 10 dnia miesiąca, na
+konto z profilu specjalistki.
+Potwierdzenie księgowania idzie
+do niej mailem.
+7 Wariant z różnicą: koordynator prosi o korektę SYSTEM W TLE
+Przy fakturze niższej niż rozliczenie system podpowiada najczęstszą Specjalistka dostaje mail „Faktura
+przyczynę: pominięte godziny opłacone mimo nieobecności pacjenta. Przy [numer] — prośba o korektę” z
+fakturze wyższej podpowiada, żeby sprawdzić wizyty umówione telefonicznie treścią wpisaną przez
+koordynatora, wyliczeniem
+albo poza grafikiem. Koordynator klika „Poproś o korektę” i wpisuje
+systemu, kwotą z jej faktury i
+konkretnie, czego brakuje — samo „proszę o korektę” bez wskazania pozycji
+linkiem do przesłania
+oznacza kolejną wymianę maili i tydzień opóźnienia.
+poprawionego dokumentu.
+Faktura zmienia status na „do
+poprawy” i widać to od razu na jej
+ekranie rozliczeń, w wyróżnionej
+ramce. Wypłata przesuwa się na
+najbliższą paczkę po akceptacji.
+Faktura idzie do 10 dnia miesiąca za miesiąc poprzedni, przelew wychodzi do 10 dnia miesiąca. Jedna data zamiast
+dwóch osobnych terminów jest łatwiejsza do zapamiętania i nie wymaga tłumaczenia przy każdym nowym
+specjaliście.
+Specjalista nie widzi prowizji fundacji ani kwoty, którą zapłacił pacjent. Z jego perspektywy stawka to po prostu jego
+stawka, a rozbicie na kwotę pacjenta i potrącenie nie daje mu żadnej decyzji do podjęcia — zamienia tylko ekran
+wypłaty w przypomnienie o marży. Pełne rozliczenie widzi koordynator.
+Fundacja pobiera 20% od wizyt pełnopłatnych. Wizyty niskopłatne i asystent zdrowienia są bez prowizji — od nich
+fundacja dopłaca, a nie pobiera.
+System podpowiada kwotę, ale nie wystawia faktury za specjalistę. Specjaliści rozliczają się na różnych zasadach —
+działalność, umowa-zlecenie, ryczałt — i dokument musi wychodzić z ich własnej księgowości.
+Bez załączonego pliku faktury nie da się jej wysłać. Fundacja potrzebuje dokumentu z księgowości specjalisty, a nie
+samej deklaracji kwoty.
+Koordynator sprawdza każdą fakturę, nie akceptuje automatycznie. Kwota z faktury bywa NIŻSZA od rozliczenia
+systemu, bo specjalista liczy z własnego kalendarza i pomija godziny opłacone mimo nieobecności pacjenta.
+Automatyczna akceptacja oznaczałaby, że fundacja płaci mniej, niż powinna — ten krok chroni przede wszystkim
+specjalistę.
+Status nazywa się „do poprawy”, nie „odrzucona”. Odrzucenie brzmi jak zarzut, a w dziewięciu przypadkach na
+dziesięć chodzi o pomyłkę w arytmetyce — i o człowieka, z którym fundacja chce dalej pracować.
+Po 48 godzinach nieoznaczona wizyta liczy się jako odbyta, ale nieobecność trzeba zgłosić samodzielnie. Domyślne
+założenie idzie na korzyść pacjenta: brak reakcji nie może skutkować utratą jego pieniędzy.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 16 =====
+Zgłoszenie pierwszego kontaktu i kwalifikacja przez koordynatora KOORDYNATOR
+Osoba, która pierwszy raz prosi o pomoc, ma dostać jedną konkretną propozycję zamiast listy 111 nazwisk i wyboru
+między nurtami, o których nic nie wie.
+1 Osoba wypełnia krótką ankietę SYSTEM W TLE
+Sześć pytań, wszystkie z zamkniętą listą odpowiedzi, żadnego pola Zgłoszenie dostaje numer i trafia
+opisowego. Pyta o obszar wsparcia (najwyżej dwa z listy dwunastu, np. lęk, do kolejki koordynatora. Nic nie
+depresja, trauma, żałoba, wypalenie zawodowe), o wcześniejsze idzie automatycznie do żadnego
+specjalisty.
+doświadczenie terapii, o formę spotkania i miasto, o pilność, o to, czy
+potrzebuje wizyty dofinansowanej, oraz o kanał kontaktu. Nie ma pytania
+„opisz swój problem”, nie ma pytań o diagnozy, leki ani hospitalizacje.
+2 Koordynator widzi kolejkę SYSTEM W TLE
+Zgłoszenia są ułożone według deklarowanej pilności powiększonej o czas Nic nie wysyła. Licznik „dłużej niż
+czekania. Cztery liczby u góry mówią: ile czeka na kwalifikację, ile czeka 24 godziny” jest miarą tego, czy
+dłużej niż 24 godziny, ile osób zaznaczyło „pilne” i ile wynosi mediana fundacja dotrzymuje własnej
+obietnicy odpowiedzi.
+oczekiwania. Można zawęzić listę do samych pilnych albo do czekających
+dłużej niż dobę.
+3 Otwiera zgłoszenie i widzi dopasowania SYSTEM W TLE
+W jednym miejscu ma wszystkie odpowiedzi z ankiety oraz trzy propozycje Nic nie wysyła. Jeśli osoba
+specjalistów wybrane spośród całego zespołu. Przy każdej propozycji stoi zostawiła telefon, numer jest
+uzasadnienie: wspólne obszary pomocy, miasto, jeśli się zgadza, i data zasłonięty do momentu kliknięcia
+„Pokaż” — odsłonięcie zapisuje
+pierwszego wolnego terminu. Jeśli ktoś jest wolny dopiero za ponad tydzień,
+się w logu dostępu, bo ekran
+ma to wypisane przy nazwisku.
+kwalifikacji bywa otwarty w biurze,
+przy którym przechodzą inni.
+4 Wybiera specjalistę, rodzaj wizyty i jeden termin SYSTEM W TLE
+Żadna propozycja nie jest zaznaczona z góry — koordynator musi kliknąć. Jeśli koordynator zmieni
+Rodzaj wizyty startuje od tego, co osoba zaznaczyła w ankiecie: niskopłatna, niskopłatną na pełnopłatną wbrew
+jeśli prosiła o dofinansowanie. Potem wybiera jedną godzinę spośród ankiecie, pojawia się ostrzeżenie
+z konkretną ceną i uwagą, że
+czterech na dzień, z trzech najbliższych dni tej osoby.
+propozycja z niezapowiedzianą
+ceną kończy się zwykle brakiem
+odpowiedzi.
+5 Wysyła propozycję terminu SYSTEM W TLE
+Przed wysłaniem widzi dokładnie to, co zobaczy osoba zgłaszająca: Osoba dostaje propozycję z
+nazwisko, datę, godzinę, rodzaj wizyty i cenę. Jedna propozycja, nie lista. terminem i linkiem do opłacenia.
+Termin jest zablokowany na 2 dni
+— po tym czasie wraca do puli
+wolnych, a zgłoszenie wraca do
+kolejki kwalifikacji. Zgłoszenie
+znika z listy koordynatora i
+zamienia się w rezerwację;
+odpowiedzi z ankiety nie wędrują
+do kartoteki pacjenta.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 17 =====
+6 Wariant: nie ma do kogo skierować SYSTEM W TLE
+Jeśli nikt w zespole nie deklaruje tych obszarów, zamiast trzech propozycji Nic nie idzie automatycznie.
+koordynator widzi wyjaśnienie: to sytuacja do decyzji człowieka, nie do filtra.
+Trzeba dopytać o formę, zaproponować grupę wsparcia albo skierować poza
+fundację.
+7 Wariant: nikt nie przyjmuje w tym mieście
+Gdy osoba prosi o spotkanie stacjonarne w mieście, w którym nikt z zespołu
+nie przyjmuje, nad propozycjami pojawia się ostrzeżenie. Propozycje są
+wtedy z innych miast i przed wysłaniem trzeba zapytać, czy wizyta online jest
+do przyjęcia — dojazd do innego miasta zwykle nie jest.
+8 Wariant: dwie odpowiedzi to za mało
+SYSTEM W TLE
+Koordynator klika „Poproś o rozmowę” zamiast wysyłać propozycję. Zgłoszenie wraca do kolejki z
+Rozmowa telefoniczna jest tańsza niż trzecie pytanie w ankiecie. adnotacją, że poproszono o
+rozmowę — nie znika i nie gubi
+się.
+Ankieta pyta o sześć rzeczy i nie ma pola opisowego. Odpowiedzi o zdrowiu psychicznym są danymi szczególnej
+kategorii — każde dodatkowe pole trzeba zabezpieczyć, przechować i po czasie usunąć. Powód nie jest jednak
+wyłącznie prawny: osoba, która pierwszy raz prosi o pomoc, opowiada swoją historię terapeucie, a nie formularzowi
+na stronie, a formularz pytający o wszystko zamyka się częściej, niż wysyła.
+Odpowiedzi celowo nie mają formy „byłam / byłem”. Rodzaj gramatyczny wymuszałby deklarację płci już w
+pierwszym kontakcie z fundacją.
+Fundacja deklaruje odpowiedź w ciągu 24 godzin. To zobowiązanie organizacyjne, nie blokada w systemie — nic się
+po tym czasie nie zamyka, ale licznik przeterminowanych zgłoszeń jest widoczny na ekranie koordynatora przez cały
+czas.
+Kolejność ustala pilność razem z czasem czekania, nie jedno z nich. Sama deklaracja premiuje osoby, które potrafią
+głośno poprosić — a przy pierwszym kontakcie to właśnie najbardziej zmęczeni zaznaczają „bez pośpiechu”. Sam
+czas czekania spycha realnie pilne zgłoszenia na koniec dnia. W praktyce zgłoszenie „bez pośpiechu” wyprzedza
+świeże „pilne” po 48 godzinach w kolejce.
+Forma spotkania jest twardym filtrem. Osoba, która napisała „stacjonarnie”, ma powód, a propozycja spotkania online
+byłaby odpowiedzią na inne pytanie.
+Specjalista bez wolnego terminu w ciągu tygodnia spada pod gorzej dopasowanych. Idealne dopasowanie z
+pierwszym wolnym terminem za trzy tygodnie nie jest propozycją, którą można dziś wysłać osobie w kryzysie.
+Żadna propozycja nie jest zaznaczona domyślnie. Podpowiedź systemu zostawałaby niezmieniona w większości
+przypadków, a wtedy kwalifikacja przestałaby być decyzją koordynatora i stałaby się automatem z ludzkim podpisem.
+Osoba dostaje jedną propozycję, a nie listę do wyboru. Cały sens tego ekranu polega na przeniesieniu czytania
+biogramów z osoby proszącej o pomoc na koordynatora — kosztem jest doba zwłoki, którą ten ekran mierzy i
+pokazuje.
+Termin z propozycji jest zablokowany na 2 dni, tak samo jak przy umawianiu przez specjalistę. Po tym czasie wraca
+do puli, a zgłoszenie wraca do kolejki — nikt nie wypada z systemu przez to, że nie odpisał.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+Koordynator nie widzi treści rozmów ani notatek specjalisty, a odpowiedzi z ankiety nie trafiają do kartoteki pacjenta.
+Kwalifikacja odpowiada na jedno pytanie: kogo skierować teraz i do kogo.
+===== STRONA 18 =====
+Co widzi i robi pacjent
+Osoba szukająca pomocy — od pierwszego wejścia na stronę, przez wybór terminu i zapłatę, po zarządzanie
+swoimi wizytami, zapisami na grupy i kontaktem ze specjalistą.
+Strona startowa
+Zdjęcie na całą szerokość z hasłem i dwoma przyciskami: „Wspieraj” i „Umów się”. Zaraz pod nim wyróżniona
+ramka z najbliższym wolnym terminem w całej fundacji — data, godzina i nazwisko osoby, która go ma. Niżej
+cztery rodzaje konsultacji, każdy z ceną i czasem trwania. Na końcu krótkie wyjaśnienie, że to makieta, a nie
+działający system, i że wszystkie rezerwacje oraz kwoty są zmyślone.
+Kliknąć „Umów się” i przejść do wyszukiwarki terminów
+Kliknąć najbliższy wolny termin i wejść od razu na profil tej osoby
+Wybrać rodzaj konsultacji i zobaczyć tylko tych specjalistów, którzy ją prowadzą
+Przełączyć się na widok psychologa albo koordynatora — wyłącznie po to, żeby obejrzeć makietę
+Najbliższy wolny termin stoi nad cennikiem, a nie pod nim. Osoba, która trafia na tę stronę, najczęściej pyta „kiedy
+najwcześniej”, a nie „ile to kosztuje” — odpowiedź powinna paść, zanim zacznie czytać.
+Wyszukiwarka wolnych terminów
+Wszyscy specjaliści w jednej liście, ułożeni od tego, kto przyjmie najwcześniej. Na każdej karcie widać nazwisko,
+rolę, kilka zdań o osobie, obszary pomocy, cenę, formę pracy (online albo stacjonarnie z miastem), datę
+najbliższego terminu oraz do pięciu konkretnych godzin do kliknięcia. Nad listą jest pole wyszukiwania i filtry, a
+pod nią liczba znalezionych osób. Zalogowana pacjentka widzi dodatkowo pasek z informacją, kto ją prowadzi.
+Wpisać nazwisko, obszar pomocy albo nurt pracy
+Zawęzić listę do jednego rodzaju konsultacji
+Wybrać wizyty online, stacjonarne albo oba rodzaje
+Włączyć „Termin w ciągu 48 h”
+Włączyć „Tylko mój psycholog”
+Wyczyścić wszystkie filtry jednym przyciskiem
+Kliknąć godzinę na karcie i przejść prosto do rezerwacji tego terminu
+Wejść na pełny profil specjalisty
+Konkretne godziny są wypisane wprost na karcie, więc nie trzeba wchodzić w profil, żeby sprawdzić, czy ktoś ma
+cokolwiek wolnego. Psycholog prowadzący idzie na początek listy, ale jej nie ogranicza — pacjentka może umówić się u
+kogokolwiek. Gdy filtr wyklucza prowadzącego albo nie ma on wolnych godzin, pasek mówi to wprost, zamiast
+obiecywać coś, czego lista nie pokazuje.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 19 =====
+Profil specjalisty
+Duża karta ze zdjęciem, nazwiskiem, tytułem, specjalizacją, oceną w gwiazdkach, językami i nurtami pracy. Trzy
+zakładki: O mnie, Obszary pomocy, Podejście terapeutyczne. Pod nimi siedem dni do kliknięcia, przy każdym
+liczba wolnych godzin, a obok lista godzin z wybranego dnia. Z boku wybór rodzaju konsultacji z ceną, czasem
+trwania i przypomnieniem, że odwołanie jest bezpłatne do 24 godzin przed wizytą, a termin trzymamy przez 10
+minut na czas płatności. Na dole cztery kroki „Jak zarezerwować wizytę” i opinie.
+Przełączać zakładki z opisem specjalisty
+Wybrać dzień i zobaczyć godziny z tego dnia
+Zmienić rodzaj konsultacji — cena przelicza się od razu, strona się nie przeładowuje
+Kliknąć godzinę i przejść do rezerwacji
+Wrócić do listy specjalistów
+Spróbować dodać opinię — dostępne dopiero po odbytej wizycie
+Jeśli pacjentkę prowadzi ktoś inny, widzi tu zdanie, że ta wizyta jest jednorazowa i nie zmienia przypisania. Profil to
+ostatni ekran przed płatnością, więc ostatni moment, żeby to powiedzieć.
+Rezerwacja — dane i płatność
+Na górze trzy kroki: termin jest już odhaczony, zostają dane i płatność. Formularz z imieniem, mailem, telefonem,
+pytaniem, czy była już u nas, i miejscem na kilka zdań przed wizytą. Osobna sekcja z pytaniem, czy założyć
+konto. Sekcja zgód, w tym wyróżniona zgoda na zasady odwoływania. Z boku podsumowanie: kto, kiedy, ile trwa,
+ile kosztuje, licznik odliczający czas blokady terminu i informacja o sposobach płatności. Przy konsultacji
+niskopłatnej widać też, która to wizyta z puli.
+Poprawić imię, mail i telefon
+Napisać kilka zdań o tym, z czym przychodzi
+Zaznaczyć założenie konta i ustawić hasło albo zostać przy rezerwacji jako gość
+Zaznaczyć zgody
+Wrócić i zmienić termin
+Zapłacić i zarezerwować wizytę
+Zgoda na zasady odwoływania nie mówi tylko „24 godziny”, ale podaje konkretną datę i godzinę, do której odwołanie jest
+bezpłatne. Przeliczanie w głowie jest źródłem nieporozumień, wypisana data nie jest. Stan puli wizyt niskopłatnych też
+widać tutaj, przed zapłatą — a nie dopiero po zaksięgowaniu przelewu.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 20 =====
+Potwierdzenie rezerwacji
+Zielony znaczek, napis „Wizyta zarezerwowana”, numer rezerwacji i informacja, na jaki adres poszło
+potwierdzenie. Karta z nazwiskiem specjalisty, terminem, rodzajem wizyty, formą i zapłaconą kwotą. Od razu, bez
+czekania na przypomnienie, widać link do spotkania albo adres gabinetu z piętrem i numerem domofonu. Niżej oś
+„Co się teraz wydarzy”: teraz, 24 godziny przed, 2 godziny przed, po wizycie. Na końcu trzy propozycje kolejnego
+terminu — ten sam dzień i godzina w kolejnych tygodniach.
+Skopiować link do spotkania
+Pobrać wpis do kalendarza
+Przejść do zarządzania swoją rezerwacją
+Umówić od razu kolejną wizytę u tej samej osoby
+Nie ma pakietów ani serii wizyt. System proponuje kolejny termin, ale każda wizyta jest osobną rezerwacją i osobną
+płatnością. Dzięki temu odwołanie jednej sesji nie wymaga rozliczania pakietu i nie powstaje pytanie o zwrot za
+niewykorzystaną część.
+Warsztaty i grupy wsparcia — lista
+Karty spotkań ułożone od najbliższego. Na każdej: data w dużym kwadracie, nazwa, rodzaj spotkania, opis, kto
+prowadzi, kiedy i gdzie się odbywa, cena oraz opis rytmu, na przykład „8 spotkań, co tydzień”. Z boku pasek
+pokazujący, ile miejsc jest już zajętych, a przy komplecie — ile osób czeka w kolejce.
+Zawęzić listę do jednego rodzaju spotkań
+Wejść w konkretne spotkanie
+Przejść wprost do zapisu albo do listy rezerwowej
+Gdy miejsca się kończą, zapisy nie zamykają się — przechodzą na listę rezerwową. W grupach wsparcia rezygnacje są
+częste, a każde puste krzesło to miejsce, którego nikt już nie zajmie.
+Spotkanie grupowe
+Nagłówek z datą, nazwą, rodzajem, opisem, czasem trwania, miejscem i osobami prowadzącymi. Pod spodem
+harmonogram wszystkich spotkań cyklu, ponumerowany, z wyblakłymi terminami tych, które już się odbyły. Z boku
+liczba wolnych miejsc z paskiem, liczba spotkań, koszt i przycisk zapisu. Osoba, która jest już zapisana, widzi
+zamiast tego swój status — ma miejsce albo czeka na liście, z podaną pozycją.
+Zapisać się na spotkanie — otwiera się okno z danymi, harmonogramem, kosztem i zgodą na stały skład grupy
+Dopisać się na listę rezerwową, gdy miejsc już nie ma
+Zrezygnować z udziału
+Wejść na profil osoby prowadzącej
+Wrócić do listy spotkań
+Rezygnacja ze spotkania grupowego jest zawsze bezpłatna, także z warsztatu płatnego — inaczej niż przy wizytach
+indywidualnych. Zwolnione miejsce natychmiast trafia do pierwszej osoby z listy rezerwowej, więc nikt na tym nie traci.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 21 =====
+Potwierdzenie zapisu na spotkanie
+Dwa różne ekrany zależnie od sytuacji: „Masz miejsce” albo „Jesteś na liście rezerwowej” z podaną pozycją w
+kolejce. Poniżej nazwa spotkania, data pierwszego spotkania, liczba spotkań, miejsce i koszt. Osoba z
+potwierdzonym miejscem dostaje od razu link albo adres. Przy cyklu widać wszystkie terminy naraz.
+Skopiować link do spotkania
+Pobrać wszystkie terminy cyklu do kalendarza
+Przejść do swoich zapisów
+Wejść na profil osoby prowadzącej
+Osoba na liście rezerwowej nie płaci nic. Zapłaci dopiero wtedy, gdy miejsce naprawdę się zwolni i je potwierdzi. Gdyby
+płaciła z góry, po każdym warsztacie fundacja miałaby kolejkę zwrotów dla osób, które nigdy do grupy nie weszły.
+Logowanie
+Pole na adres mailowy, pole na hasło i przycisk logowania. Pod nimi odsyłacz „Nie pamiętam hasła” i informacja,
+że konto zakłada się samo przy pierwszej rezerwacji. Na dole lista kont przygotowanych po to, żeby dało się
+obejrzeć makietę z każdej strony.
+Zalogować się mailem i hasłem
+Poprosić o link do ustawienia nowego hasła
+Kliknąć konto z listy, żeby formularz wypełnił się sam
+Przejść do umawiania wizyty, jeśli konta jeszcze nie ma
+W gotowym systemie prawie nikt tego ekranu nie zobaczy. Pacjentka wchodzi do swojego panelu linkiem z maila, bez
+hasła. Logowanie jest dla osób, które wracają po miesiącach i nie mają już tamtej wiadomości, oraz dla specjalistów i
+koordynatorów, gdzie hasło jest konieczne.
+Pulpit pacjenta
+Powitanie po imieniu i cztery liczby na wierzchu: za ile jest najbliższa wizyta, ile wizyt czeka, ile już się odbyło i ile
+wizyt niskopłatnych zostało z puli — z paskiem pokazującym zużycie. Poniżej ramka z psychologiem
+prowadzącym. Dalej pełna karta najbliższej wizyty z linkiem albo adresem i datą, do której zmiana jest jeszcze
+bezpłatna. Na dole grupy, na które pacjentka jest zapisana, i zestawienie „Zasady, które Cię dotyczą” z pięcioma
+konkretnymi liczbami.
+Umówić nową wizytę
+Napisać wiadomość do prowadzącego
+Umówić kolejną wizytę u prowadzącego
+Skopiować link do spotkania albo pobrać wpis do kalendarza
+Przejść do zarządzania wizytami
+Zobaczyć swoje grupy albo przejrzeć otwarte
+Sprawdzić w jednym miejscu wszystkie zasady, które jej dotyczą
+Pulpit odpowiada na jedno pytanie: co mnie czeka i czy muszę coś zrobić. Nie ma tu żadnych sum wydanych na wizyty
+ani historii finansowej — pacjentka widzi cenę pojedynczej wizyty przed zapłatą i nic ponad to.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 22 =====
+Moje wizyty
+Dwie zakładki: Nadchodzące i Historia. Na karcie nadchodzącej wizyty widać, kto ją prowadzi, jaki to rodzaj
+konsultacji, ile trwa i w jakiej formie, dużą datę z godziną, za ile to będzie, numer rezerwacji i kwotę. Poniżej link
+do spotkania albo adres gabinetu. Na samym dole zielona ramka „Możesz jeszcze bezpłatnie zmienić lub
+odwołać” z konkretną datą i godziną albo pomarańczowa ramka „Minął czas na bezpłatną zmianę”. W Historii jest
+skrócona lista wizyt ze statusem i kwotą.
+Przełączyć się między nadchodzącymi a historią
+Skopiować link do spotkania albo dołączyć do niego
+Przełożyć termin — otwiera się okno z dniami i wolnymi godzinami oraz licznikiem, która to zmiana z dwóch
+dozwolonych
+Odwołać wizytę — otwiera się okno z kwotą zwrotu, wyjaśnieniem zasady i polem na powód
+Napisać do specjalisty, gdy na samodzielną zmianę jest już za późno
+Umówić nową wizytę
+To najważniejszy ekran w całym obszarze. Gdy do wizyty zostało mniej niż 24 godziny, przyciski „Przełóż termin” i
+„Odwołaj wizytę” znikają z ekranu. Nie są wyszarzone — znikają, a na ich miejscu pojawia się wyjaśnienie i przycisk
+napisania do specjalisty. Wyszarzony przycisk kusi, żeby go klikać i szukać obejścia, a potem generuje telefony „u mnie
+nie działa”. Decyzję o wyjątku podejmuje człowiek, nie system.
+Grupy i warsztaty w koncie
+Lista spotkań, na które pacjentka jest zapisana. Przy każdym rodzaj spotkania, status — „Masz miejsce” albo
+„Lista rezerwowa” z pozycją w kolejce — nazwa, rytm spotkań, cena oraz data i miejsce najbliższego spotkania.
+Pod listą wyjaśnienie, że rezygnacja i zgłoszenie nieobecności działają najpóźniej 2 godziny przed spotkaniem,
+czyli inaczej niż przy wizytach indywidualnych.
+Wejść w szczegóły spotkania
+Zgłosić nieobecność na najbliższym spotkaniu
+Zrezygnować z udziału w całym cyklu
+Napisać do prowadzącego, gdy do spotkania zostało mniej niż 2 godziny
+Grupy są oddzielone od wizyt indywidualnych, bo rządzą się inną logiką: to cykl w stałym składzie, a nie pojedynczy
+termin, i rezygnacja jest zawsze bezpłatna, tylko z krótszym oknem.
+Wiadomości
+Po lewej lista rozmów, przy każdej tytuł, kontekst — numer wizyty albo nazwa grupy — początek ostatniej
+wiadomości i licznik nowych. Po prawej otwarta rozmowa: wiadomości ułożone w czasie, podpisane imieniem i
+informacją, ile godzin albo dni temu przyszły. Pod nią pole do napisania odpowiedzi.
+Otworzyć wybraną rozmowę
+Napisać i wysłać wiadomość — odbiorca dostaje powiadomienie mailem
+Każda rozmowa ma przy sobie kontekst: numer wizyty albo nazwę grupy. Bez tego po trzech tygodniach nikt nie wie,
+czego dotyczyła, a moduł zamienia się w drugą skrzynkę mailową, z której nikt nie korzysta. To nie jest kanał kryzysowy
+— wiadomości czytamy w godzinach pracy, a numery kryzysowe są w stopce każdej strony.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 23 =====
+Moje dane
+Imię, adres mailowy z wyjaśnieniem, po co go używamy, telefon i strefa czasowa. Niżej sposób płatności: cztery
+ostatnie cyfry karty i data ważności, z uwagą, że reszty danych karty w ogóle nie przechowujemy. Dalej trzy
+zgody, z których jedna jest zablokowana. Na końcu sekcja o prawie do pobrania wszystkich swoich danych i do
+usunięcia konta.
+Poprawić imię, mail, telefon i strefę czasową, a potem zapisać zmiany
+Zmienić kartę płatniczą
+Włączyć albo wyłączyć informacje o warsztatach i przypomnienia SMS
+Pobrać wszystko, co fundacja o niej przechowuje
+Poprosić o usunięcie konta
+Nie ma tu notatek z sesji ani dokumentacji terapeutycznej — to dane szczególnej kategorii i wymagają osobnej decyzji
+fundacji: kto ma do nich dostęp, jak długo są przechowywane i czy pacjent widzi je u siebie. Zgoda na przetwarzanie
+danych o zdrowiu jest zablokowana, bo bez niej nie da się prowadzić wizyt; odznaczenie jej oznaczałoby przerwanie
+leczenia, a to nie powinno dziać się jednym kliknięciem.
+Zasady obowiązujące w tym obszarze
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 24 =====
+Wizytę można odwołać albo przełożyć bezpłatnie najpóźniej 24 godziny przed jej rozpoczęciem. Wtedy
+pacjentka dostaje z powrotem 100% kwoty.
+Specjalista rezerwuje tę godzinę wyłącznie dla jednej osoby i nie przyjmuje w niej nikogo innego. Doba to tyle, ile
+realnie trzeba, żeby ktoś inny zdążył zająć zwolniony termin — przy krótszym oknie godzina i tak przepada.
+Gdy do wizyty zostało mniej niż 24 godziny, jest ona płatna niezależnie od obecności i nie ma zwrotu.
+Specjalista dostaje za tę godzinę wynagrodzenie.
+Zablokował ten czas i nie mógł przyjąć nikogo innego. Praca została wykonana po jego stronie, nawet jeśli spotkanie
+się nie odbyło.
+Po przekroczeniu 24 godzin nie działa też zmiana terminu, nie tylko odwołanie. Przyciski znikają z
+ekranu, zostaje wyjaśnienie i kontakt do specjalisty.
+Gdyby zostawić furtkę na przełożenie, nikt by nie odwoływał — wszyscy by przekładali. Godzina i tak przepada, a
+zasada 24 godzin przestałaby cokolwiek znaczyć. Tak samo rozwiązują to inne systemy rezerwacji wizyt: późne
+przełożenie liczy się jak późne odwołanie.
+Termin odwołany później niż 24 godziny przed wizytą i tak wraca do puli. Jeśli ktoś inny go wykupi,
+pierwsza pacjentka dostaje równowartość jako kredyt na kolejną wizytę.
+Lepiej, żeby godzina się odbyła, niż stała pusta. Specjalista ma ją opłaconą tak czy inaczej, a różnicę pokrywa
+fundacja — to jest właśnie ta sytuacja, w której fundacja dokłada, żeby pacjentka nie została z niczym.
+Jedną rezerwację można przełożyć 2 razy. Trzecia zmiana wymaga kontaktu ze specjalistą.
+Dwie zmiany to normalne życie: choroba dziecka, nagły dyżur. Trzecia prawie zawsze znaczy, że ten termin w ogóle
+nie pasuje — i wtedy krótka rozmowa ze specjalistą daje więcej niż kolejne przesunięcie w kalendarzu.
+Najbliższy termin, jaki da się zarezerwować, zaczyna się 2 godziny od teraz.
+Osoba, która rano czuje, że musi z kimś porozmawiać, może umówić się jeszcze tego samego dnia. Kosztem jest to,
+że specjalista dowiaduje się o wizycie na ostatnią chwilę — to świadomy wybór fundacji na rzecz osób w kryzysie.
+Pacjentka widzi terminy na 30 dni w przód, ale specjalista wystawia konkretne godziny najwyżej 7 dni
+do przodu.
+Grafik ma pokazywać realną dostępność z najbliższego tygodnia, a nie deklaracje sprzed miesiąca. Termin sprzed
+miesiąca bardzo często kończy się odwołaniem po stronie specjalisty, a to najgorsza możliwa rzecz dla kogoś, kto już
+się na tę wizytę nastawił.
+Wybrany termin jest zablokowany dla jednej osoby przez 10 minut na czas płatności. Po tym czasie
+wraca do puli.
+Bez blokady dwie osoby płacą za tę samą godzinę i jedna dostaje zwrot zamiast wizyty. 10 minut wystarcza na
+zapłatę kartą albo BLIK-iem, a jednocześnie nie trzyma godziny zajętej przez kogoś, kto się rozmyślił i zamknął kartę.
+Każdej osobie przysługuje 10 wizyt niskopłatnych. Koordynator może ten limit podnieść pojedynczej
+pacjentce.
+Fundacja dopłaca różnicę między ceną niskopłatną a rynkową z dotacji, a ta pula jest skończona. Po wyczerpaniu
+limitu nikt nie traci dostępu do pomocy — przechodzi na wizyty pełnopłatne albo pisze do koordynatora z prośbą o
+zwiększenie puli.
+Liczymy wizyty, a nie minuty: „3 z 10 wizyt”, nie „pozostało 1 godzina 40 minut”.
+„3 z 10 wizyt” każdy rozumie od razu i sam policzy, ile mu jeszcze zostało. Licznik w minutach generuje telefony do
+koordynatora z pytaniem, na ile spotkań to wystarczy.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 25 =====
+Kto zaczął leczenie w trybie niskopłatnym, rezerwuje kolejne wizyty też jako niskopłatne — u tego
+samego albo u innego specjalisty — dopóki ma pulę.
+Dofinansowanie ma iść na cały proces terapeutyczny, a nie na pojedyncze, przypadkowe spotkania. Pacjentka może
+wybrać wizytę pełnopłatną i wtedy jej pula zostaje nienaruszona.
+Jeden specjalista może wystawić najwyżej 4 terminy niskopłatne tygodniowo.
+To ograniczenie działa przy układaniu grafiku, a nie przy rezerwacji. Pacjentka nigdy nie powinna zobaczyć wolnego
+terminu, po który dostanie odmowę przy płatności — czyli w najgorszym możliwym momencie, po podjęciu decyzji i
+wyjęciu karty.
+Między wizytami jest zawsze 10 minut przerwy.
+Specjalista potrzebuje chwili na zanotowanie czegoś i złapanie oddechu, a pacjentka nie mija się w drzwiach z
+osobą, która wyszła przed nią.
+Z grupy albo warsztatu można zrezygnować najpóźniej 2 godziny przed spotkaniem — zawsze
+bezpłatnie, także przy warsztacie płatnym. Wpłata wraca w całości.
+Przez te 2 godziny miejsce da się jeszcze przekazać komuś z listy rezerwowej, więc nikt na rezygnacji nie traci.
+Później prowadzący ma już ustalony skład grupy i liczy na obecność wszystkich.
+Zapisy na spotkanie grupowe zamykają się 2 godziny przed jego rozpoczęciem.
+Prowadzący musi wiedzieć, ile osób przyjdzie i przygotować spotkanie pod ten skład. Osoba dopisana kwadrans
+przed startem wchodzi do grupy, która zaczęła się już bez niej.
+Gdy w pełnej grupie zwolni się miejsce, pierwsza osoba z listy rezerwowej dostaje maila i ma 24
+godziny na potwierdzenie. Potem propozycja idzie do następnej.
+Doba mieści w sobie dzień pracy i noc, więc realnie da się zdążyć. Dłuższe czekanie blokowałoby miejsce, na które
+czeka ktoś kolejny, a grupa i tak odbywa się w wyznaczonym terminie.
+Osoba na liście rezerwowej nie płaci nic z góry. Płaci dopiero po tym, jak miejsce się zwolni i ona je
+potwierdzi.
+Gdyby lista płaciła z góry, po każdym warsztacie fundacja miałaby kolejkę zwrotów dla osób, które nigdy do grupy nie
+weszły. Nie trzymamy pieniędzy ludzi, którzy czekają w kolejce.
+W istniejącej rezerwacji można zmienić godzinę, ale nie osobę specjalisty. Żeby trafić do kogoś innego,
+trzeba odwołać wizytę i zarezerwować nową.
+Cena, forma pracy i dostępność są związane z konkretną osobą. „Podmiana” zostawiłaby płatność, która nie pasuje
+ani do starej, ani do nowej wizyty, i zwykle wymagałaby dopłaty albo zwrotu w tle — czego nikt by nie zrozumiał.
+Do zarezerwowania wizyty nie trzeba zakładać konta. Konto powstaje samo po opłaceniu, a dostęp
+przychodzi linkiem w mailu.
+Osoba w kryzysie nie powinna wymyślać hasła, zanim umówi wizytę. Kto chce, może ustawić hasło od razu przy
+rezerwacji albo później.
+Link do spotkania online albo adres gabinetu pacjentka dostaje od razu po rezerwacji — w
+potwierdzeniu na ekranie, w mailu i na karcie wizyty w swoim panelu.
+Trzymanie linku do przypomnienia na 2 godziny przed wizytą oznacza, że ktoś, kto ma słabszy zasięg albo problem
+ze skrzynką, dowiaduje się o tym w ostatniej chwili. Informacja dostępna w trzech miejscach nie zginie.
+Przed każdą wizytą przychodzą dwa przypomnienia: mailem 24 godziny przed i drugie 2 godziny przed,
+z linkiem do spotkania.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 26 =====
+Pierwsze trafia dokładnie w moment, w którym zmiana terminu jest jeszcze bezpłatna — pacjentka ma wtedy realny
+wybór. Drugie oszczędza szukania linku w skrzynce tuż przed spotkaniem.
+Zwrot pieniędzy wraca na tę samą kartę, zwykle w 3–5 dni roboczych, i zleca go człowiek z fundacji.
+Fundacja klika zwrot ręcznie w panelu płatności, bo automatyczne zwroty to najdroższy i najbardziej awaryjny
+kawałek obsługi płatności. Dlatego nigdzie nie piszemy „zwrot wykonany”, tylko „zwrot do wykonania” — nie
+obiecujemy czegoś, czego system sam nie robi.
+Każda pacjentka ma jednego psychologa prowadzącego. Przypisuje się on sam przy pierwszej odbytej
+wizycie. Wizyta u kogoś innego jest dozwolona i nie zmienia przypisania; stałą zmianę potwierdza
+koordynator.
+Przy pomocy w kryzysie liczy się najbliższy wolny termin, a nie ciągłość opieki za wszelką cenę — dlatego nie
+blokujemy rezerwacji u innych osób. Mówimy jednak wprost, że taka wizyta jest jednorazowa, żeby nikt nie odkrył po
+fakcie, że właśnie zmienił terapeutę.
+Pacjentka nie widzi w swoim panelu żadnych sum wydanych na wizyty ani historii finansowej. Widzi
+cenę pojedynczej wizyty przed zapłatą.
+Fundacja pomocowa nie powinna przypominać komuś, ile łącznie zapłacił za to, że szukał pomocy. Do podjęcia
+decyzji o konkretnej wizycie wystarczy cena tej wizyty.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 27 =====
+Co widzi i robi psycholog — panel specjalisty
+Z tego obszaru korzysta osoba prowadząca konsultacje w fundacji — psycholog, psychoterapeutka albo asystent
+zdrowienia — żeby ustawić swoje godziny przyjęć, prowadzić własne wizyty, oznaczać, co się na nich wydarzyło, i
+pilnować, żeby wynagrodzenie na koniec miesiąca się zgadzało.
+Stałe obramowanie panelu (menu i nagłówek)
+Po lewej stronie, na każdym ekranie tak samo, widać spis miejsc podzielony na trzy grupy: Praca (pulpit, wizyty,
+grupy i warsztaty, wiadomości), Kalendarz (moje kalendarze, dostępność) i Pieniądze (rozliczenia, dokumenty i
+wypłaty). U góry jest logo fundacji, imię i nazwisko zalogowanej osoby, jej tytuł zawodowy i przycisk wylogowania.
+Specjalista nie ma tu niczego, co dotyczy innych osób — nie widzi grafiku całego zespołu ani finansów fundacji.
+Przejść do jednego z ośmiu miejsc panelu
+Wrócić na stronę fundacji, klikając logo
+Wylogować się
+Podział na trzy grupy jest celowy. Specjalista wchodzi do panelu z jednym z trzech pytań: co mam dzisiaj, kiedy
+przyjmuję, ile zarobiłam. Jedna długa lista ośmiu pozycji zmuszałaby do przeczytania wszystkich za każdym razem.
+Pulpit — pierwszy ekran po zalogowaniu
+Na górze cztery liczby: ile wizyt jest dzisiaj i ile z nich jeszcze przed specjalistą, ile wolnych godzin zostało w
+najbliższym tygodniu, jaki procent wystawionych godzin jest już zajęty i ile wyniosło wynagrodzenie z ostatnich 30
+dni. Pod tym lista dzisiejszych wizyt: godzina, długość, imię i nazwisko pacjenta, rodzaj wizyty, forma spotkania i
+kwota. Po prawej stronie kolumna „Wymaga uwagi” z konkretnymi sprawami do załatwienia oraz słupki na siedem
+najbliższych dni — ciemny słupek to wizyty umówione, jasny to godziny wystawione, których nikt jeszcze nie zajął.
+Dołączyć do spotkania online — przycisk pojawia się na godzinę przed wizytą
+Otworzyć szczegóły nadchodzącej wizyty
+Oznaczyć wizytę, która już się odbyła
+Przejść do pełnej listy wizyt
+Przejść do ustawiania godzin przyjęć
+Dwie rzeczy ustawione świadomie. Po pierwsze, pulpit pokazuje tylko imię pacjenta, rodzaj wizyty i formę — żadnych
+notatek ani historii, bo ten ekran bywa otwarty na laptopie, gdy w gabinecie siedzi kolejna osoba. Po drugie, gdy dzisiaj
+nie ma żadnej wizyty, ekran pokazuje najbliższy dzień, w którym coś jest, zamiast pustego miejsca — pusty pulpit
+niczego nie mówi o tym, jak system działa.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 28 =====
+Wizyty — lista w trzech zakładkach
+Zakładka „Nadchodzące” to tabela wizyt na najbliższe trzy tygodnie: termin, pacjent, rodzaj wizyty, sposób
+spotkania, wynagrodzenie i status. Przy wizytach, do których zostało mniej niż 24 godziny, pod statusem dopisane
+jest wprost „pacjent nie może już odwołać”. Zakładka „Do oznaczenia” — z liczbą przy nazwie — zbiera wizyty z
+ostatnich dni, przy których trzeba powiedzieć, co się wydarzyło. Zakładka „Historia” pokazuje zamknięte wizyty
+razem z informacją, czy weszły do wypłaty, czy są poza nią.
+Przełączać się między trzema zakładkami
+Skopiować link do spotkania online jednym kliknięciem
+Otworzyć szczegóły wizyty
+Umówić pacjenta na kolejny termin
+Odwołać wizytę po swojej stronie
+Oznaczyć „odbyła się”
+Oznaczyć „nie przyszedł”
+Pobrać listę wizyt do arkusza
+Zdanie „pacjent nie może już odwołać” jest tam po coś. Gdy pacjent zadzwoni z prośbą o przełożenie na dzień przed
+wizytą, specjalista od razu wie, że system tego nie zrobi i decyzja należy do niego — zamiast odsyłać pacjenta do
+ekranu, który mu tego nie pozwoli.
+Okno: szczegóły wizyty
+Rodzaj wizyty i jej długość, forma, numer rezerwacji i kwota wynagrodzenia. Przy wizycie online — link do
+spotkania; przy stacjonarnej — nazwa gabinetu i numer pokoju. Na dole krótka informacja o pacjencie w rodzaju
+„to trzecia wizyta tej osoby w fundacji, poprzednie odbyły się bez zakłóceń”.
+Skopiować link do spotkania
+Wpisać własny link — na przykład do swojego stałego pokoju
+Zmienić gabinet na inny z listy fundacji
+Zapisać zmianę, która od razu idzie do pacjenta mailem i SMS-em
+Miejsce spotkania da się zmienić przy konkretnej wizycie, a nie raz na zawsze w profilu, bo ta sama osoba potrafi
+przyjmować w dwóch miejscach w różne dni, a czasem używa własnego pokoju online. Przycisk nazywa się „Zapisz i
+powiadom pacjenta”, a nie samo „Zapisz” — inaczej powstałyby dwie wersje prawdy: adres w systemie i adres w mailu
+sprzed tygodnia.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 29 =====
+Okno: odwołuję wizytę
+Na górze żółte ostrzeżenie: pacjent dostanie pełny zwrot niezależnie od tego, ile zostało do wizyty, a ta godzina
+nie wejdzie do rozliczenia specjalisty. Pod spodem wybór powodu: choroba, sytuacja losowa, nakładający się
+obowiązek zawodowy albo inny powód — z dopiskiem, że powód zobaczy koordynator. Na dole zaznaczone już
+pole: „Zaproponuj pacjentowi trzy najbliższe wolne terminy z mojego kalendarza”.
+Wybrać powód odwołania
+Zdecydować, czy pacjent dostanie propozycje trzech terminów
+Potwierdzić odwołanie
+Wrócić bez odwoływania
+Propozycja trzech terminów jest zaznaczona z góry. Odwołanie bez propozycji zostawia pacjenta samego ze zwrotem na
+koncie i koniecznością szukania nowego terminu od zera — a to najczęstszy moment, w którym ludzie rezygnują z
+pomocy.
+Okno: pacjent się nie pojawił
+Czerwony blok opisujący skutki dla pacjenta: wizyta zostaje płatna, bez zwrotu, a nieobecność zapisze się w jego
+historii i zobaczy ją koordynator. Pod spodem trzy zdania wprost: godzina wchodzi do rozliczenia specjalisty —
+tak; zwrot dla pacjenta — brak; termin wraca do puli — nie, bo już minął. Na dole pole do zaznaczenia: „Odpuść
+tym razem — potraktuj jako odwołanie z pełnym zwrotem”.
+Zapisać nieobecność
+Zaznaczyć odpuszczenie i potraktować sprawę jak zwykłe odwołanie z pełnym zwrotem
+Anulować i nic nie zapisywać
+Furtka „odpuść tym razem” istnieje dlatego, że życie dzieje się poza systemem — pacjent uprzedził SMS-em, zadzwonił
+albo napisał do specjalisty prywatnie. Bez tej możliwości specjalista musiałby albo skrzywdzić pacjenta, albo dzwonić do
+koordynatora po każdej takiej sytuacji.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 30 =====
+Okno: umów pacjenta na kolejny termin
+Pola na imię, nazwisko i adres e-mail pacjenta — wypełnione z góry, gdy specjalista umawia kogoś, kto właśnie
+był na wizycie. Niżej wybór rodzaju wizyty z ceną i długością, a pod nim siedem najbliższych dni z liczbą wolnych
+godzin przy każdym i lista godzin do wyboru. Jest też przełącznik „z grafiku / wpisz ręcznie” oraz pole „Poproś
+koordynatora o zwolnienie z opłaty”. Na dole wyjaśnienie: pacjent dostanie maila z linkiem do płatności, a termin
+będzie trzymany 10 minut od otwarcia tego linku.
+Wpisać dane pacjenta
+Wybrać rodzaj wizyty
+Wybrać dzień i godzinę z własnego grafiku
+Wpisać termin spoza grafiku ręcznie
+Poprosić koordynatora o zwolnienie pacjenta z opłaty i dopisać uzasadnienie
+Wysłać — pacjent dostaje maila z linkiem do płatności
+Najważniejsza rzecz w tym oknie: psycholog nigdy nie pobiera pieniędzy. Wybiera termin, a płatność idzie mailem —
+dzięki temu rozmowa o pieniądzach nie wchodzi do gabinetu i nie kończy sesji na wyjmowaniu karty. Przy wniosku o
+zwolnienie z opłaty jest wprost napisane, żeby nie wpisywać informacji o zdrowiu — koordynatorowi wystarczy powód
+finansowy.
+Moje kalendarze — co przyjmuję
+Lista usług fundacji podzielona na trzy części: te, które specjalista przyjmuje; te, które może włączyć; te, które
+wymagają zgody fundacji. Przy każdej usłudze widać opis, czas trwania, cenę (albo wybór własnej stawki przy
+konsultacjach pełnopłatnych), formę pracy oraz podsumowanie godzin przyjęć — na przykład „wt, czw 9:00–
+13:00, 8 godzin tygodniowo”. Przy usługach zablokowanych zamiast przełącznika jest wyjaśnienie, dlaczego są
+zablokowane, i przycisk poproszenia o dostęp.
+Włączyć albo wyłączyć usługę
+Wybrać własną stawkę pełnopłatną z czterech kwot ustalonych przez fundację
+Wybrać formę pracy: online, stacjonarnie albo obie
+Poprosić koordynatora o uprawnienie do usługi zablokowanej
+Przejść do ustawiania godzin dla danej usługi
+Wyłączenie usługi zatrzymuje tylko nowe rezerwacje — umówione wizyty zostają. Cennik i długość spotkania ustala
+fundacja, a jedyna cena, o której decyduje specjalista, to stawka pełnopłatna wybrana z widełek. W dzisiejszym systemie
+„niskopłatne” i „pełnopłatne” to dwa oddzielne konta tej samej osoby; tutaj to jedno konto z dwoma kalendarzami —
+rozdzielone są godziny, nie tożsamość specjalisty.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 31 =====
+Dostępność — kiedy przyjmuję
+Na górze dwie zakładki: godziny ustawia się osobno dla konsultacji pełnopłatnych i osobno dla niskopłatnych.
+Przy niskopłatnych dodatkowo pasek „Twoja pula na ten tydzień — 3 z 4”. Krok pierwszy to tygodniowy rytm:
+siedem dni z przełącznikami i zakresami godzin, z licznikiem, ile terminów tygodniowo z tego wychodzi. Krok drugi
+to siatka siedmiu dni na godziny, w czterech kolorach: godziny z rytmu, dodane ręcznie, wyłączone i zajęte przez
+pacjenta. Niżej tabela wolnego i urlopów, spis reguł ustawionych przez fundację oraz miejsce na połączenie z
+prywatnym kalendarzem.
+Przełączać się między usługą pełnopłatną a niskopłatną
+Włączać i wyłączać całe dni tygodnia
+Dodawać, usuwać i zmieniać zakresy godzin
+Kliknąć pojedynczą godzinę, żeby ją wyłączyć albo dołożyć poza rytmem
+Wyczyścić wszystkie poprawki naraz
+Dodać urlop lub inne wolne i zobaczyć, ile wizyt w tym czasie trzeba przełożyć
+Zapisać harmonogram
+Podłączyć prywatny kalendarz Google (poza makietą, do decyzji)
+Dwa poziomy zamiast samego klikania po kalendarzu: rytm tygodniowy ustawia się raz na kilka miesięcy i odpowiada za
+większość terminów, a klikanie po siatce służy do wyjątków w rodzaju „w ten czwartek wyjątkowo o 8:00”. Poprawki na
+siatce są jednorazowe — dotyczą jednego konkretnego dnia, więc żeby coś zmienić na stałe, trzeba poprawić rytm.
+Godziny już zajętej przez pacjenta nie da się kliknąć, bo nie da się cofnąć godziny, na którą ktoś przyjdzie.
+Grupy i warsztaty
+Na górze cztery liczby: ile spotkań specjalista prowadzi, ilu uczestników ma razem, ile to godzin grupowych i kiedy
+jest najbliższe spotkanie. Pod tym informacja, że terminy i limity miejsc ustala koordynator. Niżej karty
+poszczególnych grup: nazwa, rodzaj, stan zapisów (na przykład 8 z 10 miejsc), pasek zapełnienia, data i godzina,
+miejsce albo „online”, cena od osoby, liczba osób na liście rezerwowej i nazwiska współprowadzących.
+Otworzyć listę uczestników grupy
+Pobrać listę obecności do arkusza
+Zgłosić koordynatorowi chęć poprowadzenia grupy albo warsztatu
+Specjalista nie zakłada grup — robi to koordynator, bo trzeba naraz pogodzić kompetencje, terminy i wolne sale.
+Świadome ograniczenie: specjalista widzi imiona i nazwiska uczestników, bo musi wiedzieć, kto siedzi w sali, ale nie
+widzi, kto i ile zapłacił — to zostaje między pacjentem a fundacją.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 32 =====
+Okno: uczestnicy grupy
+Tabela osób zapisanych: imię i nazwisko, adres e-mail, kiedy się zapisały i status — potwierdzony, obecny,
+nieobecny albo „rezerwowa” z numerem w kolejce. Pod tabelą informacja, ile osób czeka na miejsce, oraz
+harmonogram wszystkich spotkań cyklu, w którym minione daty są przygaszone.
+Oznaczyć nieobecność konkretnej osoby
+Napisać wiadomość do całej grupy
+Zamknąć okno
+Przy liście rezerwowej napisane jest wprost: jeśli ktoś zrezygnuje, pierwsza osoba z kolejki dostanie miejsce
+automatycznie i prowadzący nie musi nic robić. Bez tego zdania ludzie szukają przycisku, którego nie ma, albo dzwonią
+do koordynatora.
+Okno: zgłoszenie do prowadzenia grupy
+Na górze wyjaśnienie, że to prośba, a nie rezerwacja — decyduje koordynator, a odpowiedź przychodzi mailem.
+Pod tym wybór, czego zgłoszenie dotyczy: nowa grupa wsparcia, dołączenie do istniejącej jako współprowadzący
+albo warsztat jednodniowy. Dalej pole na temat i grupę odbiorców oraz pole na własną dostępność.
+Wybrać rodzaj zgłoszenia
+Opisać temat i dla kogo grupa ma być
+Podać, kiedy może prowadzić
+Wysłać zgłoszenie do koordynatora
+Okno nazywa rzecz po imieniu — „to prośba, nie rezerwacja”. Gdyby przycisk nazywał się po prostu „Utwórz grupę”,
+specjalista czekałby, aż grupa pojawi się na stronie, a koordynator dowiedziałby się o tym w momencie, gdy zapisze się
+pierwszy pacjent.
+Rozliczenia
+Cztery liczby na górze: ile jest do wypłaty i za ile wizyt, ile godzin specjalista przepracował w gabinecie, ile godzin
+zostało opłaconych mimo braku pacjenta i kiedy wychodzi najbliższa wypłata. Pod tym tabela wizyt z kwotą przy
+każdej i sumą na dole, a osobno druga tabela: godziny opłacone mimo braku pacjenta, z podaniem, co się
+wydarzyło. Po prawej stronie ściągawka „kiedy godzina jest płatna”, miejsce na przesłanie faktury z historią
+wcześniejszych oraz lista wypłat z poprzednich okresów.
+Zmienić okres rozliczeniowy
+Pobrać zestawienie dla własnej księgowości
+Przesłać fakturę za miniony miesiąc
+Zobaczyć status każdej faktury i przeczytać prośbę o poprawę, jeśli jest
+Czego tu celowo nie ma: kolumny „pacjent zapłacił” i wiersza z prowizją fundacji. Specjalista widzi swoją stawkę, bo tylko
+na nią ma wpływ — rozbicie każdej wizyty na kwotę pacjenta minus potrącenie nie daje mu żadnej decyzji do podjęcia, a
+zamienia ekran wypłaty w przypomnienie o marży. Godziny opłacone mimo braku pacjenta są w osobnej tabeli, żeby
+było widać, skąd bierze się różnica między liczbą odbytych spotkań a kwotą do wypłaty.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 33 =====
+Okno: prześlij fakturę
+Podsumowanie okresu: ile wizyt jest rozliczanych, jakiego miesiąca dotyczy faktura, do kiedy trzeba ją przesłać i
+jaka jest kwota do wystawienia. Pod tym wyjaśnienie, skąd ta kwota — to suma stawek za wizyty odbyte plus
+godziny opłacone mimo nieobecności pacjenta. Niżej pole na numer faktury i miejsce na wgranie pliku PDF, a na
+końcu trzy kroki opisujące, co dzieje się dalej: koordynator sprawdza kwotę, przelew wychodzi, potwierdzenie
+przychodzi mailem.
+Wpisać numer faktury
+Załączyć plik PDF
+Wysłać fakturę — przycisk działa dopiero, gdy jest i numer, i plik
+Anulować
+System podpowiada kwotę, ale faktury nie wystawia. Specjaliści rozliczają się na różnych zasadach — działalność,
+umowa zlecenie, ryczałt — więc dokument musi wyjść z ich własnej księgowości. Krok z akceptacją koordynatora chroni
+specjalistę, bo kwota z faktury bywa niższa od rozliczenia systemu: ludzie liczą z własnego kalendarza i pomijają godziny
+opłacone mimo nieobecności pacjenta. Dlatego status nazywa się „do poprawy”, a nie „odrzucona” — w dziewięciu
+przypadkach na dziesięć chodzi o pomyłkę w rachunkach.
+Dokumenty i wypłaty
+Umowa o współpracy z datą podpisania, formą współpracy i listą aneksów, oznaczona jako podpisana. Pod tym
+tabela stawek: ile specjalista dostaje za konsultację pełnopłatną, ile za niskopłatną i ile za spotkanie grupy, z
+adnotacją, że są to kwoty do wypłaty i nic się z nich nie odejmuje. Niżej numer konta bankowego z oznaczeniem
+„zweryfikowany” oraz opis, jak wygląda miesiąc rozliczeniowy: zestawienie do 5 dnia, uwagi do 8 dnia, przelew do
+10 dnia.
+Pobrać umowę w PDF
+Pobrać aneks
+Zmienić numer konta do wypłat, potwierdzając zmianę linkiem z maila
+Umowa leży w panelu, żeby specjalista nie musiał jej szukać w mailach sprzed roku. Numer konta zmienia sam, bo to
+jego dane, ale zmiana wchodzi w życie dopiero po kliknięciu w link wysłany na jego adres — to zabezpieczenie na
+wypadek, gdyby ktoś obcy dostał się do jego konta w systemie i podmienił rachunek przed wypłatą.
+Wiadomości
+Po lewej lista rozmów: tytuł, przy nim kontekst — numer wizyty albo nazwa grupy — początek ostatniej
+wiadomości i zielona liczba nowych. Po prawej cała rozmowa ułożona jak czat, z informacją, kto i kiedy pisał, oraz
+pole do napisania odpowiedzi. Pod rozmową ostrzeżenie, że to nie jest kanał kryzysowy: wiadomości czytamy w
+godzinach pracy, a przy zagrożeniu życia trzeba reagować telefonicznie.
+Otworzyć wybrany wątek
+Napisać i wysłać wiadomość — odbiorca dostaje powiadomienie mailem
+Każdy wątek jest podpięty pod konkretną wizytę albo grupę. Bez tego po trzech tygodniach nie wiadomo, czego
+rozmowa dotyczyła, a moduł zamienia się w drugą skrzynkę mailową, z której nikt nie korzysta. Ostrzeżenie o kanale
+kryzysowym widzi specjalista i koordynator, a nie pacjent — to instrukcja dla osoby, która ma zareagować.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 34 =====
+Zasady obowiązujące w tym obszarze
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 35 =====
+Specjalista wystawia terminy najwyżej na 7 dni do przodu — dalsze dni są w panelu zablokowane.
+Fundacja chce, żeby grafik pokazywał realną dostępność, a nie deklarację sprzed miesiąca. Termin wystawiony na
+sześć tygodni naprzód najczęściej trzeba potem odwołać, a odwołana wizyta kosztuje pacjenta więcej niż termin,
+którego nigdy nie było.
+Jeden specjalista może wystawić 4 terminy niskopłatne tygodniowo. Pula odnawia się w każdy
+poniedziałek, a godziny pełnopłatne są bez ograniczeń.
+Pula dofinansowania jest skończona, więc fundacja steruje nią w momencie wystawiania godzin, a nie przy
+rezerwacji. Gdyby blokada działała na końcu, pacjent zobaczyłby wolny termin i dostał odmowę dopiero przy
+płatności — czyli w najgorszym możliwym momencie, po podjęciu decyzji i wyjęciu karty.
+Między wizytami system zostawia 10 minut przerwy.
+Ta przerwa to czas na notatkę, toaletę i złapanie oddechu. Bez niej pięć wizyt pod rząd oznacza, że piąty pacjent
+czeka pod drzwiami dwadzieścia minut, a specjalista pracuje bez chwili przerwy.
+Najbliższy termin, jaki pacjent może zarezerwować, to 2 godziny od teraz.
+To świadomy wybór na rzecz osób w kryzysie: ktoś, kto rano czuje, że musi porozmawiać, może umówić się jeszcze
+tego samego dnia. Kosztem jest to, że specjalista dowiaduje się o takiej wizycie na ostatnią chwilę — fundacja
+przyjęła, że to koszt wart poniesienia.
+Pacjent widzi kalendarz otwarty na 30 dni w przód.
+Miesiąc wystarcza, żeby zaplanować terapię, a jednocześnie nie zachęca do rezerwowania terminów, o których za
+dwa miesiące nikt nie będzie pamiętał.
+Pacjent odwołuje bezpłatnie do 24 godzin przed wizytą. Później wizyta zostaje płatna, pacjent nie
+dostaje zwrotu, a godzina wchodzi do rozliczenia specjalisty.
+Specjalista zablokował ten czas i nie mógł przyjąć nikogo innego. Doba to tyle, ile realnie potrzeba, żeby ktoś inny
+zdążył ten termin znaleźć i zarezerwować.
+Pacjent może przełożyć jedną rezerwację 2 razy i tylko wtedy, gdy do wizyty zostało więcej niż 24
+godziny. Po tym czasie zmiany terminu nie ma wcale.
+Gdyby zostawić furtkę na późne przełożenie, nikt nie odwoływałby wizyt — wszyscy by je przekładali. Godzina i tak
+przepada, a okno 24 godzin przestaje cokolwiek znaczyć. Tak samo rozwiązują to inne systemy rezerwacji wizyt:
+późne przełożenie liczy się jak późne odwołanie.
+Gdy wizytę odwołuje specjalista — o dowolnej porze, także na godzinę przed — pacjent dostaje 100%
+zwrotu, a ta godzina nie wchodzi do rozliczenia specjalisty.
+Ta różnica jest celowa. Skoro pacjent ponosi konsekwencje późnego odwołania, to specjalista też musi je ponosić —
+inaczej polityka odwołań przestaje być wiarygodna dla którejś ze stron i ludzie zaczynają ją obchodzić.
+Gdy pacjent nie przychodzi bez uprzedzenia: brak zwrotu, godzina płatna dla specjalisty, a termin nie
+wraca do puli, bo już minął.
+Nikt nie mógł tej godziny wykorzystać. Specjalista czekał w gabinecie, więc dostaje za nią wynagrodzenie tak samo
+jak za spotkanie, które się odbyło.
+Wizytę trzeba oznaczyć w ciągu 48 godzin. Po tym czasie system sam uznaje ją za odbytą — ale
+nieobecność pacjenta specjalista musi zgłosić osobiście.
+Automat po dwóch dobach pilnuje, żeby rozliczenie nie stanęło, gdy ktoś zapomni kliknąć. Nieobecności system nie
+zgadnie i nie może jej założyć, bo to właśnie ona odbiera pacjentowi zwrot — taka decyzja musi mieć człowieka po
+Jaks dwzioałjae sj yssttreomn ·ie F.undacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 36 =====
+10 odwołań ze strony jednego specjalisty w ciągu 30 dni zapala sygnał u koordynatora.
+To nie jest kara, tylko zaproszenie do rozmowy — dziesięć odwołań w miesiącu prawie zawsze znaczy, że po drugiej
+stronie dzieje się coś, czego nie widać w grafiku: choroba, wypalenie, zbyt gęsto ułożony tydzień. Licznik obejmuje
+30 dni, a nie całą współpracę, bo od początku współpracy każda aktywna osoba przekroczyłaby dziesiątkę w ciągu
+roku i sygnał przestałby cokolwiek znaczyć.
+Konsultacja niskopłatna kosztuje pacjenta 55 zł, a pełnopłatna 115, 125, 135 albo 145 zł. Innych kwot w
+systemie nie ma.
+Cennik ustala fundacja i jest ten sam dla wszystkich. Specjalista wybiera własną stawkę pełnopłatną, ale tylko z tych
+czterech kwot — dzięki temu pacjent porównujący dwie osoby porównuje doświadczenie i termin, a nie cenę
+wymyśloną przez kogoś samodzielnie.
+Fundacja zatrzymuje 20% z wizyty pełnopłatnej i 0% z niskopłatnej, ale ta liczba nie pojawia się nigdzie
+w panelu specjalisty.
+Specjalista widzi kwotę, którą dostanie, bo tylko na nią ma wpływ. Pokazywanie mu przy każdej wizycie, ile zostało w
+fundacji, nie daje mu żadnej decyzji do podjęcia. Pełne rozliczenie — wpływ, prowizja, marża — widzi koordynator.
+Jednemu pacjentowi przysługuje 10 wizyt niskopłatnych; koordynator może ten limit podnieść
+pojedynczej osobie.
+Fundacja dopłaca do tych wizyt z dotacji, więc pula jest skończona. Po wyczerpaniu limitu pacjent nie traci dostępu
+do pomocy — przechodzi na wizyty pełnopłatne albo prosi koordynatora o zwiększenie. Liczymy spotkania, a nie
+minuty, bo „3 z 10 wizyt” każdy rozumie od razu, a „pozostało 1 godzina 40 minut” kończy się telefonem do
+koordynatora.
+Wizytę umówioną przez specjalistę pacjent ma 2 dni na opłacenie. Gdy rezerwuje sam na stronie,
+termin jest trzymany 10 minut.
+To dwie różne sytuacje. Kto rezerwuje sam, siedzi przy komputerze z kartą w ręku — dziesięć minut wystarczy. Kto
+wychodzi z gabinetu i dostaje link mailem, potrzebuje więcej: dwa dni to weekend plus dzień roboczy, więc mieści się
+w tym także osoba, która płaci przelewem po wypłacie.
+Fakturę specjalista przesyła do 10 dnia miesiąca za miesiąc poprzedni. Zestawienie do sprawdzenia
+dostaje do 5 dnia, uwagi zgłasza do 8 dnia, przelew wychodzi do 10 dnia.
+Te trzy daty ustawiają cały miesiąc: jest pięć dni na sprawdzenie liczb i trzy dni na zgłoszenie różnicy, zanim
+pieniądze wyjdą. Po przelewie poprawki i tak trzeba przenieść na następny okres, więc lepiej zdążyć wcześniej.
+2 z 4 usług w katalogu — diagnoza ADHD u dorosłych i asystent zdrowienia — wymagają uprawnienia
+nadanego przez koordynatora. Specjalista nie włączy ich sam.
+Diagnozę prowadzą wyłącznie osoby po odpowiednim szkoleniu, a asystentami zdrowienia zostają osoby z własnym
+doświadczeniem kryzysu po szkoleniu fundacji. Uprawnienie potwierdza fundacja, więc to ona je nadaje —
+specjalista może o nie poprosić jednym kliknięciem.
+Wpisane wolne — na przykład 14 dni urlopu — wyłącza terminy we wszystkich usługach naraz i ma
+pierwszeństwo zarówno przed tygodniowym rytmem, jak i przed pojedynczymi poprawkami w siatce
+godzin.
+Urlop jest urlopem niezależnie od tego, czy w tym tygodniu miały wypaść konsultacje pełnopłatne, czy niskopłatne.
+Jedna reguła, która wygrywa ze wszystkim, oznacza, że nie da się przypadkiem zostawić otwartego terminu w
+środku wyjazdu. System od razu pokazuje też, ile już umówionych wizyt trzeba w tym czasie przełożyć.
+Zmiana numeru konta do wypłat wymaga 1 kliknięcia w link wysłany na adres e-mail specjalisty. Do
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+tego czasu przelew idzie na stary rachunek.
+===== STRONA 37 =====
+To zabezpieczenie na wypadek, gdyby ktoś obcy dostał się do konta w systemie tuż przed dniem wypłaty. Sam
+dostęp do panelu nie wystarczy, żeby przekierować pieniądze — trzeba mieć jeszcze skrzynkę e-mail.
+Za poprowadzenie 90-minutowego spotkania grupy specjalista dostaje 180 zł, niezależnie od tego, czy
+przyszło 4 czy 12 osób.
+Praca prowadzącego jest ta sama bez względu na frekwencję, a ryzyko pustej sali bierze na siebie fundacja, nie
+specjalista. Gdyby wynagrodzenie zależało od liczby uczestników, prowadzący musiałby zabiegać o zapisy zamiast
+prowadzić grupę.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 38 =====
+Co widzi i robi koordynator
+Panel koordynacji fundacji: osoba prowadząca zespół i kalendarz widzi tu wszystkie zgłoszenia, wizyty, pieniądze
+i decyzje, żeby wiedzieć, komu pomóc dzisiaj, kto z zespołu potrzebuje rozmowy i czym rozliczyć się z dotacji.
+Belka rodzaju wizyt (nad każdym ekranem koordynacji)
+Nad wszystkimi ekranami koordynacji stoi pasek na całą szerokość, wielkimi literami, który mówi, jakie wizyty są
+w tej chwili pokazywane: łącznie, tylko niskopłatne albo tylko pełnopłatne. Domyślnie ustawione jest „łącznie”,
+czyli wszystko. Gdy koordynatorka zawęzi widok, pasek zmienia kolor i zostaje na ekranie do momentu
+przełączenia z powrotem.
+przełączyć wszystkie ekrany na widok „łącznie”, „niskopłatne” albo „pełnopłatne”
+wrócić do pełnego widoku jednym kliknięciem w pasku
+Sam mały przełącznik w rogu nie wystarczył. Zawężone liczby wyglądają dokładnie tak samo poprawnie jak pełne — nic
+w tabeli nie sygnalizuje, że połowa danych jest ukryta, i to najgorszy rodzaj pomyłki, bo nie da się jej zauważyć. Dlatego
+jest pasek, którego trudno nie widzieć. Zawężenie działa jako pierwsze, przed pozostałymi filtrami, więc liczby na górze
+ekranu i tabela pod nimi zawsze mówią o tym samym zbiorze wizyt. Jeden ekran świadomie tę belkę ignoruje — raport
+dla grantodawcy — i pisze o tym wprost, bo sprawozdanie z dotacji musi obejmować całą działalność.
+Pulpit
+Sześć liczb z ostatnich czterech tygodni: rezerwacje, przychód, obłożenie zespołu, odsetek odwołań, odsetek
+nieobecności i kwota zwrotów. Niżej dwa wykresy tydzień po tygodniu — osobno liczba wizyt, osobno pieniądze.
+Dalej pasek pokazujący, co się stało z umówionymi wizytami: ile się odbyło, ile odwołano w terminie, ile po
+terminie, ile było nieobecności i ile odwołań ze strony specjalistów. Na końcu ranking obłożenia poszczególnych
+osób i ścieżka pacjenta: ilu przyszło pierwszy raz, ilu wróciło, ile średnio sesji przypada na osobę i co ile dni ludzie
+się umawiają.
+ustawić osobny zakres dat dla każdej sekcji: 4 tygodnie, 12 tygodni, 26 tygodni albo rok
+rozwinąć pod wykresem tabelę z dokładnymi liczbami tydzień po tygodniu
+najechać na słupek i zobaczyć rozbicie na wizyty niskopłatne i pełnopłatne
+wybrać sekcje i wydrukować je jako raport PDF
+Zakres dat siedzi w każdej sekcji z osobna, a nie jeden na górze ekranu. „Ile mieliśmy wizyt w tym roku” i „jakie jest
+obłożenie w tym miesiącu” to dwa niezależne pytania, a wspólny filtr każe porzucić jedno z nich. Ceną jest raport, w
+którym sekcje mówią o różnych okresach — dlatego zakres jest wypisany w nagłówku każdej sekcji i powtórzony przy
+wydruku, a gdy wybrane sekcje mają różne okresy, pojawia się ostrzeżenie. Wizyty i złotówki są na dwóch osobnych
+wykresach, nigdy na jednym: mają inną skalę i zestawione razem sugerowałyby zależność, której nie ma. Najważniejsza
+pojedyncza liczba to udział odwołań po terminie w ogóle odwołań — jeśli rośnie, problem jest w komunikacji, nie w
+regulaminie: pacjenci dowiadują się o zasadzie za późno.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 39 =====
+Grafik zespołu
+Cały zespół w jednym dniu, godzina po godzinie: kolumna na osobę, w kratkach nazwisko pacjenta, skrót usługi i
+kwota. Ponieważ zespół liczy 111 osób, na ekranie mieści się 8 naraz — resztę wyszukuje się po nazwisku albo
+przewija stronami. Są jeszcze dwa inne ujęcia: tydzień jednej osoby oraz miesiąc całego zespołu bez nazwisk,
+gdzie każdy dzień to kafelek z obłożeniem. Na dole cztery liczby dla całego zespołu: ile wizyt jest tego dnia, ile
+zostało wolnych terminów, jaka jest wartość dnia i ilu specjalistów jest w systemie.
+przełączać się między dniem, tygodniem jednej osoby i miesiącem całego zespołu
+przesuwać się do przodu i do tyłu, a jednym przyciskiem wrócić do dzisiaj
+szukać specjalisty po nazwisku i zawężać widok do samych wizyt umówionych albo samych wolnych
+otworzyć wizytę i zobaczyć pacjenta, usługę, formę, zapłaconą kwotę oraz ile godzin zostało do terminu
+odwołać wizytę jako koordynator — pacjent dostaje wtedy pełny zwrot niezależnie od tego, ile zostało do terminu
+przenieść wizytę na inny termin, przypisać innego specjalistę albo zwrócić pieniądze mimo reguły 24 godzin
+umówić wizytę za osobę, która zadzwoniła, i wybrać, czy dostanie link do płatności, czy wizyta jest opłacona
+przelewem albo bezpłatna
+kliknąć dzień w widoku miesiąca, żeby otworzyć go godzina po godzinie
+Trzy ujęcia zamiast jednego, bo przy 111 osobach jedno nie działa. Siatka „wszyscy razy godziny” czytelnie mieści 8
+osób; siatka „wszyscy razy 7 dni” miałaby ponad 700 kolumn, więc tydzień pokazuje jedną osobę — i tak układa się
+grafik konkretnego terapeuty. Miesiąc nie pokazuje nazwisk w ogóle, bo służy do wyłapywania dziur w kalendarzu, a nie
+do sprawdzania, kto kiedy pracuje; dzień z ponad 85 procentami wykupionych godzin zapala się na żółto. Cztery liczby
+na dole zawsze liczą cały zespół, nie widoczną stronę — inaczej zmieniałyby się przy przewijaniu listy i nic by nie
+znaczyły. Wizyta umówiona przez telefon podlega tej samej regule 24 godzin co każda inna; odstępstwo wymaga
+świadomego kliknięcia „zwróć mimo reguły”.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 40 =====
+Zgłoszenia (pierwszy kontakt)
+Kolejka osób, które wypełniły krótką ankietę na stronie i czekają na skierowanie do konkretnego specjalisty. Przy
+każdym zgłoszeniu widać, czego szuka (najwyżej dwa obszary z gotowej listy), czy była już kiedyś na terapii, czy
+woli online czy stacjonarnie, jak pilna jest sprawa według niej samej, ile godzin czeka i czy prosi o wizytę
+dofinansowaną. Na górze cztery liczby: ile zgłoszeń czeka, ile czeka dłużej niż dobę, ile osób samo oznaczyło
+sprawę jako pilną i ile wynosi typowy czas oczekiwania. Nazwiska są skrócone do inicjału, a numer telefonu jest
+zasłonięty kropkami.
+zawęzić kolejkę do spraw pilnych albo do czekających dłużej niż dobę
+otworzyć zgłoszenie i zobaczyć wszystkie sześć odpowiedzi z ankiety
+wybrać jedną z trzech propozycji specjalisty, które system dobiera po obszarach, formie pracy, mieście i pierwszym
+wolnym terminie
+zmienić rodzaj wizyty na niskopłatną albo pełnopłatną i zobaczyć cenę, jaką osoba zapłaci
+wskazać konkretną godzinę z najbliższych trzech dni pracy wybranej osoby
+wysłać jedną propozycję terminu — zgłoszenie znika z kolejki, a termin jest zablokowany na 2 dni
+odsłonić numer telefonu (odsłonięcie zostaje odnotowane) i poprosić o rozmowę zamiast wysyłać termin
+Ankieta ma sześć pytań z gotowymi odpowiedziami i ani jednego pola „opisz swój problem”. To nie przeoczenie:
+odpowiedzi o zdrowiu psychicznym są danymi szczególnie chronionymi, każde dodatkowe pole trzeba zabezpieczyć,
+przechować i po czasie usunąć, a formularz, który pyta o wszystko, zamyka się częściej, niż wysyła. Osoba, która
+pierwszy raz prosi o pomoc, opowiada swoją historię terapeucie, a nie stronie internetowej; gdy dwie odpowiedzi nie
+wystarczą do skierowania, tańsza jest rozmowa telefoniczna niż trzecie pytanie w ankiecie. System nie zaznacza żadnej
+propozycji z góry — podpowiedź, której nikt nie zmienia, zamienia kwalifikację w automat z ludzkim podpisem. Ekran
+istnieje po to, żeby czytanie 111 biogramów przenieść z osoby w kryzysie na koordynatora; kosztem jest doba zwłoki,
+którą ten ekran mierzy i pokazuje.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 41 =====
+Rezerwacje
+Lista wszystkich wizyt z numerem, pacjentem, specjalistą, terminem, rodzajem usługi, kwotą i statusem. Przy
+kwocie od razu widać, co się stało z pieniędzmi: „zwrot do wykonania”, „bez zwrotu” albo „nieopłacone”. Na górze
+cztery liczby: ile wizyt jest dzisiaj, ile czeka na płatność, ile zwrotów jest w toku i ile było nieobecności w ostatnich
+dwóch tygodniach. Nad tabelą stoją filtry i przyciski statusów, a przy każdym przycisku liczba mówiąca, ile pozycji
+zobaczysz po kliknięciu.
+szukać po numerze rezerwacji albo nazwisku pacjenta
+zawężać po okresie, specjaliście, usłudze, formie wizyty i statusie
+otworzyć historię jednej rezerwacji: kto ją założył, kiedy przyszła płatność, kiedy poszło potwierdzenie i
+przypomnienie, kto i kiedy odwołał, ile trzeba zwrócić
+wysłać potwierdzenie jeszcze raz, gdy pacjent go nie znalazł
+pobrać listę do arkusza
+wyczyścić wszystkie filtry jednym przyciskiem
+Liczby przy przyciskach statusów liczą się z aktualnie zawężonej listy, a nie z całej bazy. Przycisk, który obiecuje 12
+odwołanych, a po kliknięciu pokazuje pustą tabelę, uczy nie ufać żadnej liczbie na ekranie. Tabela pokazuje 60 pozycji i
+wprost pisze, ile jeszcze zostało — ciche ucięcie listy czyta się jak „to wszystko, co jest”. Historia rezerwacji wypisuje
+wyłącznie to, co się już wydarzyło; nie ma tam przypomnienia, które dopiero pójdzie, ani płatności przy wizycie, która
+czeka na opłacenie. Czego tu celowo nie ma: treści rozmów i notatek z sesji. Koordynator widzi organizację wizyty i
+pieniądze, nie to, o czym ona była.
+Pacjenci
+Kartoteka osób, które miały wizyty w ostatnich 120 dniach: kto je prowadzi, ile miały wizyt, jaka jest ich
+frekwencja, ile z 10 wizyt niskopłatnych już wykorzystały i ile dostały bezpłatnie. Pasek przy każdej osobie robi się
+żółty w momencie wyczerpania limitu. Na górze: ilu pacjentów jest w bazie, u ilu limit się skończył, ile wizyt
+niskopłatnych wykorzystano razem i jaki odsetek osób wraca po pierwszej wizycie.
+szukać pacjenta po imieniu i nazwisku
+pokazać tylko osoby z wyczerpanym limitem wizyt niskopłatnych
+otworzyć kartę pacjenta: wizyty odbyte, odwołane, nieobecności, prowadzący, wszyscy specjaliści, u których był, i
+suma wpłat
+zwiększyć limit o 4 wizyty niskopłatne — pacjent dostaje o tym maila
+umówić wizytę za pacjenta
+Prowadzącego nikt nie przypisuje ręcznie i nie ma ekranu „przypisz psychologa” — zostaje nim specjalista pierwszej
+odbytej wizyty. Umówienie się u kogoś innego jest dozwolone i niczego nie zmienia, bo przy pomocy w kryzysie liczy się
+najbliższy wolny termin, a nie ciągłość opieki; trwała zmiana prowadzącego wymaga potwierdzenia koordynatora.
+Decyzja o podniesieniu limitu zostaje w historii pacjenta razem z nazwiskiem osoby, która ją podjęła. Wizyty bezpłatne
+mają własną kolumnę, bo inaczej nikt nie wie, komu i ile fundacja już przyznała. Kartoteka odpowiada na pytania
+organizacyjne — ile wizyt, jaka frekwencja, ile zostało — a nie na pytanie, o czym pacjent rozmawia z terapeutą.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 42 =====
+Lista rezerwowa
+Dwie listy. Górna to terminy, które się zwolniły: kiedy, u kogo, jaki rodzaj wizyty, ile godzin przed spotkaniem
+pacjent odwołał i czy udało się je obsadzić ponownie. Dolna to kolejka osób czekających na wolny termin,
+ustawiona według czasu oczekiwania, z informacją, ile razy ktoś dostał już propozycję i jej nie przyjął oraz czy
+zgadza się na termin w ciągu doby. Na górze cztery liczby: ile osób czeka, jaka jest skuteczność odzysku, ile
+pieniędzy udało się odzyskać i ile mimo wszystko przepadło.
+zawęzić obie listy do jednego specjalisty
+podejrzeć trwającą propozycję: komu poszła, ile czasu jej zostało i kto jest następny w kolejce
+przekazać propozycję dalej ręcznie, gdy wiadomo, że pierwsza osoba jest nieosiągalna
+Gdy pacjent odwoła wizytę później niż 24 godziny przed terminem, godzina zwykle przepada, a specjalista i tak dostaje
+za nią wynagrodzenie — ta lista jest sposobem, żeby ten czas odzyskać. Propozycja idzie mailem i SMS-em
+jednocześnie, a pierwsza osoba ma 4 godziny na odpowiedź; potem termin przechodzi do następnej bez udziału
+koordynatora. Cztery godziny to kompromis: doba ważności marnuje termin zwolniony na jutro, bo wizyta minie, zanim
+propozycja wygaśnie, a kwadrans karze za to, że ktoś jest akurat w pracy albo na sesji. Zegar zatrzymuje się między
+21:00 a 8:00, żeby propozycja wysłana wieczorem nie wygasła, zanim ktokolwiek się obudzi.
+Psycholodzy
+Tabela całego zespołu: jakie usługi dana osoba przyjmuje, jaką ma stawkę, ile godzin wystawiła, jakie ma
+obłożenie, ile wizyt odwołała w ostatnich 30 dniach, jaka jest frekwencja jej pacjentów oraz wpływy razem z
+prowizją fundacji. To jedyne miejsce z pełnym rozliczeniem — specjalista w swoim panelu widzi wyłącznie kwotę,
+którą dostanie. Nad tabelą pojawia się ostrzeżenie, gdy ktoś odwołał więcej niż 10 wizyt w 30 dni. Niżej dwie
+krótsze listy: kto ma kalendarz otwarty krócej niż na 21 dni i które usługi wymagają osobnej zgody fundacji.
+zaprosić nową osobę do zespołu — konto powstaje po ustawieniu przez nią hasła
+otworzyć ustawienia specjalisty: włączyć albo wyłączyć poszczególne usługi, nadpisać stawkę pełnopłatną, zawiesić
+konto
+wysłać prośbę o zwolnienie terminów z podaniem powodu i zakresu godzin
+przypomnieć o uzupełnieniu dostępności
+napisać do osoby, która dużo odwołuje, albo wyciszyć ten sygnał na 30 dni
+pobrać pełny raport o zespole
+Sygnał o odwołaniach liczy sztuki w oknie 30 dni, a nie procent od początku współpracy. Licznik „od zawsze”
+przekroczyłby dziesiątkę u każdej aktywnej osoby w ciągu roku i przestałby cokolwiek znaczyć, a „12 procent odwołań” u
+kogoś z trzema wizytami i u kogoś ze stu to zupełnie inna sprawa — rozmowę trzeba odbyć z tą drugą. Treść jest
+napisana jako zaproszenie do rozmowy, nie jako kara: dziesięć odwołań w miesiącu prawie zawsze znaczy, że po drugiej
+stronie dzieje się coś, czego nie widać w grafiku. Prośba o zwolnienie terminów jest prośbą, nie poleceniem — fundacja
+nie zdejmuje godzin z cudzego grafiku poza sytuacją ratowania pacjenta. Odebranie usługi nie kasuje już umówionych
+wizyt: one się odbędą, zniknie tylko możliwość rezerwowania nowych.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 43 =====
+Wdrożenia
+Lista osób zaproszonych do współpracy i tego, na czym każda z nich stoi. Ścieżka ma siedem kroków:
+zaproszenie, konto, dane i umowa, konto bankowe, uprawnienia do usług, pierwszy grafik i pierwsza wizyta.
+Najważniejsza kolumna to nie postęp, tylko „przyjmuje pacjentów” — ktoś z sześcioma krokami z siedmiu może
+być jeszcze niedostępny, a ktoś z pięcioma już przyjmować. Widać też, kto trzyma sprawę (specjalista, fundacja
+czy pacjent) i od ilu dni nic się nie ruszyło. Niżej dwie sekcje: w którym kroku najczęściej stoją ludzie oraz który
+brak co blokuje.
+zaprosić kolejną osobę
+zawęzić listę do spraw czekających na fundację, na specjalistę, stojących dłużej niż 14 dni albo takich, gdzie nikt
+jeszcze nie może przyjmować pacjentów
+otworzyć kartę osoby i zobaczyć wszystkie siedem kroków z datami zamknięcia
+wysłać jedno przypomnienie obejmujące wszystkie brakujące u tej osoby rzeczy
+zatwierdzić krok po stronie fundacji, w tym nadać uprawnienia do usług
+Kroki nie ważą tyle samo i to jest sedno tego ekranu. Brak podpisanej umowy zatrzymuje wszystko, bo bez niej fundacja
+nie ma podstawy do powierzenia komuś danych osoby w kryzysie. Brak numeru konta nie dotyka pacjenta w żaden
+sposób — wynagrodzenie nalicza się dalej i czeka na przelew — więc wstrzymywanie z tego powodu wizyt byłoby
+ukaraniem pacjenta za cudzą zaległość papierową. Uprawnienie do diagnozy ADHD idzie osobno, bo wymaga
+sprawdzenia dyplomu, i nie wstrzymuje pozostałych usług tej osoby. Przypomnienie zbiera wszystkie braki naraz, bo
+osoba, która dostaje trzy osobne maile w tygodniu, przestaje je czytać. Jedyną akcją wobec specjalisty jest
+przypomnienie, nigdy automatyczne zamknięcie sprawy: system odróżni „czeka od 30 dni” od „zrobione”, ale nie odróżni
+osoby, która się rozmyśliła, od tej, która zgubiła maila.
+Grupy i warsztaty
+Lista wszystkich spotkań grupowych z terminem, prowadzącymi, liczbą zajętych miejsc, ceną i statusem. Pasek
+przy każdym spotkaniu robi się żółty, gdy miejsca się skończyły, a pod nim widać, ile osób czeka na liście
+rezerwowej. Na górze cztery liczby: ile spotkań jest przed nami, jakie jest obłożenie miejsc, ile osób czeka na
+zwolnienie miejsca i ile wpłat przyniosły płatne warsztaty.
+utworzyć nowe spotkanie: rodzaj, forma, nazwa, opis, data, godzina, czas trwania, liczba spotkań w cyklu, rytm, limit
+miejsc, miejsce i cena
+przypisać jedną albo kilka osób prowadzących — każda zobaczy spotkanie w swoim panelu razem z listą
+uczestników
+otworzyć listę uczestników i listę rezerwową
+przenieść osobę z listy rezerwowej na wolne miejsce albo wypisać uczestnika
+podnieść limit miejsc, gdy sala pomieści więcej — osoby z listy awansują natychmiast i dostają maila
+pobrać listę uczestników do arkusza i pełny raport o grupach
+Termin, limit i prowadzących ustala fundacja, a nie specjalista — dlatego tworzenie spotkań jest wyłącznie tutaj, inaczej
+niż przy wizytach jeden na jeden, gdzie godziny wystawia sam specjalista. Rezygnacja z grupy jest możliwa do 2 godzin
+przed spotkaniem, czyli krócej niż 24 godziny przy konsultacjach: miejsce w grupie da się jeszcze przekazać komuś z
+listy rezerwowej, a potem prowadzący ma już ustalony skład i liczy na obecność. Po wyczerpaniu miejsc zapisy się nie
+zamykają — chętni trafiają na listę i awansują sami, gdy ktoś zrezygnuje.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 44 =====
+Wiadomości
+Skrzynka rozmów prowadzonych w trzech kierunkach: pacjent ze specjalistą, specjalista z koordynacją, pacjent z
+koordynacją. Po lewej lista wątków, każdy z nazwą, kontekstem (numer wizyty albo nazwa grupy) i początkiem
+ostatniej wiadomości, z licznikiem nieprzeczytanych. Po prawej otwarta rozmowa i pole do napisania odpowiedzi.
+otworzyć dowolny wątek i przeczytać całą rozmowę
+odpisać — odbiorca dostaje powiadomienie mailem
+Każdy wątek ma przypisany kontekst, czyli numer wizyty albo nazwę grupy. Bez tego po trzech tygodniach nikt nie
+pamięta, czego rozmowa dotyczyła, a moduł zamienia się w drugą skrzynkę mailową, z której nikt nie korzysta. Na
+ekranie stoi ostrzeżenie widoczne dla koordynacji i specjalistów: to nie jest kanał kryzysowy, wiadomości czyta się w
+godzinach pracy, a przy zagrożeniu życia reaguje się telefonicznie i podaje numery kryzysowe.
+Faktury specjalistów
+Lista faktur przysłanych przez specjalistów, ustawiona od tych, które czekają najdłużej. Przy każdej widać okres,
+liczbę rozliczanych wizyt, kwotę z faktury i to, czy zgadza się ona z wyliczeniem systemu — a jeśli nie, o ile się
+różni. Na górze cztery liczby: ile faktur czeka na sprawdzenie i na jaką kwotę, ile zaakceptowano do wypłaty, ile
+odesłano do poprawy i przy ilu jest rozjazd wymagający wyjaśnienia.
+zawęzić listę do faktur czekających, zaakceptowanych, do poprawy albo opłaconych
+otworzyć fakturę, obejrzeć dokument i porównać kwotę z wyliczeniem systemu
+zaakceptować fakturę do wypłaty w najbliższej paczce przelewów
+poprosić o korektę z konkretnym opisem tego, co wymaga poprawy
+Krok sprawdzenia nie jest formalnością i chroni przede wszystkim specjalistę. Kwota z faktury bywa niższa od rozliczenia
+systemu, bo specjalista liczy z własnego kalendarza i pomija godziny opłacone mimo nieobecności pacjenta.
+Automatyczna akceptacja oznaczałaby, że fundacja płaci mniej, niż powinna, a druga strona dowiaduje się o tym po
+miesiącach albo nigdy. Status nazywa się „do poprawy”, a nie „odrzucona” — odrzucenie brzmi jak zarzut, a w dziewięciu
+przypadkach na dziesięć chodzi o pomyłkę w arytmetyce i o człowieka, z którym fundacja chce dalej pracować. System
+nie wystawia faktur za specjalistów, bo rozliczają się na różnych zasadach i dokument musi wychodzić z ich własnej
+księgowości; podpowiada tylko kwotę wynagrodzenia.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 45 =====
+Historia decyzji
+Dziennik wszystkich decyzji podjętych poza regułami systemu: wizyta bezpłatna, podniesienie limitu, zwrot mimo
+przekroczenia 24 godzin, ręczna zmiana prowadzącego i zdjęcie blokady. Przy każdym wpisie widać datę, kogo
+dotyczy, przy której rezerwacji zapadła, uzasadnienie, nazwisko osoby, która ją podjęła, i skutek dla budżetu. Na
+górze cztery liczby, w tym dwie osobne kwoty: pieniądze, które już wyszły, i zobowiązania, czyli podniesione limity,
+które kosztują dopiero wtedy, gdy pacjent te wizyty wykorzysta.
+ustawić okres na 30, 90 albo 180 dni
+zawęzić do jednego rodzaju decyzji albo do jednej osoby z koordynacji
+otworzyć wpis i przeczytać pełne uzasadnienie razem z informacją, czy został później sprostowany
+dopisać uzasadnienie do wpisu, który go nie ma — jako nowa pozycja z dzisiejszą datą
+dodać sprostowanie do decyzji, która okazała się błędna
+wydrukować całość jako załącznik do sprawozdania
+Wpisu nie da się zmienić ani usunąć i nigdzie na tym ekranie nie ma przycisku „edytuj” ani „usuń”, także w oknie
+szczegółów, gdzie szuka się go odruchowo. Dziennik ma jedną operację: dopisanie. Powód nie jest ideologiczny —
+zapis, który wolno zmienić wstecz, przy rozliczeniu dotacji nie jest dowodem, tylko notatnikiem, bo kontroler nie odróżni
+uzasadnienia napisanego w dniu decyzji od dopisanego w noc przed kontrolą. Kosztem jest to, że literówka zostaje na
+zawsze, a poprawka wymaga drugiego wpisu. Pieniądze wydane i zobowiązania nigdy nie są sumowane w jedną liczbę:
+sprawozdanie z dotacji rozlicza wydatki, a nie deklaracje.
+Raport dla grantodawcy
+Komplet liczb do sprawozdania z dotacji za zamknięty kwartał albo rok: ile osób objęto pomocą, ile z nich przyszło
+pierwszy raz, ile odbyło się wizyt, ile z nich było dofinansowanych i ile fundacja do nich dołożyła. Niżej rozbicie
+wizyt na dofinansowane, pełnopłatne i bezpłatne, podział na osoby nowe i kontynuujące, zestawienie środków
+fundacji, najczęstsze obszary problemowe i tabela wskaźników — każdy z kolumną mówiącą, jak dokładnie jest
+liczony. Na końcu rozbicie roku na cztery kwartały razem ze zdaniem wyjaśniającym, dlaczego kwartały nie
+sumują się do roku.
+wybrać rok i okres: konkretny kwartał albo cały rok (bieżący, niezakończony kwartał jest niedostępny)
+otworzyć gotowe zestawienie z nazwami pozycji takimi, jak w formularzu sprawozdania
+skopiować zestawienie i wkleić je do formularza
+pobrać raport jako PDF
+Główną liczbą jest osoba, a nie wizyta, i to dwie różne liczby: 900 wizyt brzmi lepiej niż 280 osób, ale grantodawca
+finansuje zasięg pomocy, nie ruch w kalendarzu. Wynika z tego rzecz nieoczywista, dlatego wypisana na ekranie wprost:
+osób z czterech kwartałów nie wolno dodawać do roku, bo ta sama osoba wraca w kolejnym kwartale i w raporcie
+rocznym liczy się raz; wizyty wolno dodawać, osób nie. Okres to zawsze zamknięty kwartał albo rok, nigdy „ostatnie 30
+dni” — sprawozdanie złożone z ruchomego okna trzeba by korygować przy każdej zmianie w grafiku. „Objęta pomocą”
+znaczy co najmniej jedna odbyta wizyta: osoba, która wszystko odwołała, nie wchodzi do sprawozdania. Raport nie
+zawiera żadnych nazwisk ani powodów zgłoszenia pojedynczych osób i nie mówi nic o efektach terapii — system wie, ile
+spotkań się odbyło, i nie wie, co dały.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 46 =====
+Katalog usług
+Wszystkie usługi fundacji, jedna pod drugą: nazwa, opis, czas trwania, cena albo lista dozwolonych stawek, ilu
+specjalistów daną usługę przyjmuje, jaka jest prowizja i kto ustala cenę. Usługa, której nikt nie przyjmuje, jest
+wyraźnie oznaczona. Widać też, które pozycje wymagają osobnej zgody fundacji.
+dodać nową usługę do katalogu
+zmienić nazwę, czas trwania, model ceny i dozwolone stawki
+zdecydować, czy usługa wymaga osobnego uprawnienia, czy fundacja pobiera od niej prowizję i czy jest widoczna
+w wyszukiwarce dla pacjentów
+Cennik powstaje w jednym miejscu i należy do fundacji — specjalista wybiera tylko, które usługi przyjmuje, a jedyny
+wyjątek to stawka pełnopłatna wybierana z gotowej listy kwot. Zmiana ceny nigdy nie dotyka wizyt już opłaconych:
+rezerwacja pamięta kwotę z dnia zakupu, więc zwrot zawsze równa się temu, co pacjent naprawdę zapłacił. Bez tego
+podniesienie cennika o 10 zł sprawiłoby, że stare zwroty przestałyby się zgadzać z operatorem płatności.
+Powiadomienia SMS
+Wszystkie treści SMS, które system wysyła sam, z podglądem na ekranie telefonu — dokładnie w takiej postaci,
+w jakiej zobaczy je pacjent. Przy każdym szablonie widać, co go wyzwala, ile razy poszedł w ostatnich 30 dniach i
+na ile wiadomości się rozpada. Na górze koszt miesięczny i liczba szablonów, które nie mieszczą się w jednej
+wiadomości. Niżej krótka historia ostatnich wysyłek z przyciętymi numerami telefonów.
+przejrzeć wszystkie szablony i przeczytać ich pełną treść
+zawęzić listę do jednej kategorii wiadomości
+zobaczyć, ile znaków ma wiadomość i na ile części się rozpada
+wysłać wiadomość testową na wskazany numer
+Ekran istnieje po to, żeby fundacja przeczytała te treści przed wdrożeniem — uwagi do słów zbiera się tanio teraz, a
+drogo po podpisaniu umowy z operatorem. Przy okazji policzył koszt, o którym nikt nie pomyślał: polskie znaki wypychają
+wiadomość z alfabetu, w którym mieści się 160 znaków, do takiego, gdzie mieści się 70, a każda część to osobna opłata.
+To 136 zł miesięcznie, czyli 46 procent rachunku. Nie zalecamy pisania bez ogonków — wiadomość od fundacji
+pomocowej wygląda wtedy jak spam i to może kosztować więcej niż te złotówki; tańsza droga to skrócenie treści, bo trzy
+szablony przekraczają limit o kilkanaście znaków. Osobna zasada: w SMS-ach nie ma ani słowa o zdrowiu, nazwie
+usługi ani specjalizacji, bo wiadomość wyświetla się na zablokowanym ekranie, często przy innych ludziach.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 47 =====
+Szablony maili
+Wszystkie treści maili, które system wysyła sam — do pacjentów, specjalistów i koordynacji. Po lewej lista
+szablonów z informacją, do kogo idą, ile razy poszły w ostatnich 30 dniach i czy ktoś je już zmieniał. Po prawej
+podgląd gotowej wiadomości z wypełnionymi danymi przykładowego pacjenta, dokładnie taki, jaki trafi na
+skrzynkę.
+przejrzeć szablony i zawęzić listę do jednej kategorii
+zmienić temat i treść dowolnego maila bez udziału programisty
+wstawić do treści jedną z gotowych wartości, na przykład imię, datę albo kwotę
+przywrócić treść domyślną
+wysłać wiadomość testową na własny adres
+Maile fundacja zmienia sama, SMS-y nie — i to podział wynikający z kosztu, nie z ostrożności. SMS ma sztywny limit
+znaków i płaci się za każdą część, więc dopisanie jednego zdania potrafi podwoić rachunek za wysyłkę idącą codziennie
+do wszystkich pacjentów; mail nie ma tego ograniczenia, a to właśnie w mailach najczęściej trzeba coś dopisać. Ceną tej
+swobody jest ryzyko wysłania trzystu osobom maila z napisem „{imie}”, dlatego edytor sprawdza wstawiane wartości i nie
+pozwala zapisać treści z nazwą, której system nie umie podstawić. Świadomie nie ma tu edytora z kolorami i obrazkami:
+maile transakcyjne mają dotrzeć i dać się przeczytać także na starym telefonie, a rozbudowany wygląd potrafi
+wylądować w spamie albo rozjechać się tak, że nie widać godziny wizyty.
+Zakres wdrożenia
+Dokument, a nie pulpit: rozpiska tego, co system ma robić i co trzeba zbudować, żeby zadziałał naprawdę.
+Podzielona na moduły, każdy z celem, listą ekranów w makiecie, zadaniami rozbitymi na konkretne czynności,
+regułami obowiązującymi w module i ustaleniami projektowymi. Przy zadaniach są zależności i ryzyka. Na górze
+cztery liczby: ile jest modułów, ekranów, zadań i podzadań.
+rozwijać i zwijać poszczególne moduły
+szukać w treści zadań, na przykład po słowie „płatności” albo „RODO”
+zawęzić do jednej warstwy prac
+pobrać całość jako PDF do wysłania
+Dokument świadomie nie zawiera godzin ani kwot. Zakres i wycena odpowiadają na dwa różne pytania i zmieniają się w
+innym tempie: zakres jest stały (te funkcje system ma mieć), a wycena zależy od kolejności wdrażania, od tego, ile
+fundacja robi sama, i od terminu. Liczba wpisana obok zadania zaczyna żyć własnym życiem i wraca w rozmowie jako
+zobowiązanie. Nie ma tu też przenoszenia danych z obecnych narzędzi fundacji — zakres tej pracy zależy od tego, co
+dokładnie trzeba przenieść, a tego jeszcze nie ustaliliśmy.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 48 =====
+Reguły systemu
+Jedno miejsce, w którym zapisane są wszystkie zasady, które system potem wykonuje bez pytania kogokolwiek o
+zdanie. Najpierw czas: do kiedy odwołanie jest bezpłatne, ile razy można przełożyć wizytę, jak wcześnie
+najwcześniej można się umówić, na ile dni otwarty jest kalendarz, ile trwa przerwa między wizytami i jak długo
+termin jest trzymany podczas płatności. Potem tabela ośmiu sytuacji z odpowiedzią, co się dzieje ze zwrotem, z
+terminem i z wynagrodzeniem specjalisty. Dalej pieniądze — prowizje i tryb wypłat — oraz lista powiadomień z
+zaznaczeniem, które idą mailem, a które SMS-em.
+zmienić którąkolwiek z wartości czasowych
+ustawić prowizję od wizyt pełnopłatnych i niskopłatnych oraz częstotliwość wypłat
+włączyć albo wyłączyć kredyt za odsprzedany termin
+zdecydować, które powiadomienia idą mailem, a które także SMS-em
+zapisać reguły — obowiązują od nowych rezerwacji
+Tabela ośmiu sytuacji to cała polityka odwołań i nie ma w niej miejsca na uznaniowość: żaden inny ekran nie decyduje o
+zwrocie samodzielnie, a wyjątki robi człowiek przyciskiem „zwróć mimo reguły” i zostawia po sobie ślad w dzienniku
+decyzji. Zmiana reguły nigdy nie działa wstecz — wizyty już opłacone zachowują zasady z dnia zakupu, bo pacjent
+zgodził się na konkretne warunki. Przypomnienie 24 godziny przed wizytą jest nieprzypadkowe: wypada dokładnie w
+momencie zamykania okna bezpłatnej rezygnacji, więc pacjent dowiaduje się o zasadzie wtedy, kiedy może jeszcze coś
+z tym zrobić. Bez tego maila reguła 24 godzin generuje same skargi. Otwarte pozostaje jedno: czy te 24 godziny liczyć
+zegarowo, także przez weekend (tak jest dzisiaj), czy w dniach roboczych — wtedy wizytę w poniedziałek rano trzeba by
+odwołać do piątku. To decyzja regulaminowa, nie techniczna.
+Zasady obowiązujące w tym obszarze
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 49 =====
+Odwołanie i zmiana terminu są bezpłatne do 24 godzin przed wizytą. Później przyciski znikają z ekranu
+pacjenta.
+Specjalista rezerwuje tę godzinę wyłącznie dla jednej osoby i nie przyjmie w niej nikogo innego. Doba to tyle, ile
+realnie potrzeba, żeby ktoś inny znalazł ten termin i z niego skorzystał. Przyciski znikają, a nie są wyszarzone —
+wyszarzony przycisk kusi, żeby go klikać i szukać sposobu obejścia.
+Wizyta odwołana później niż 24 godziny przed terminem nie podlega zwrotowi, a specjalista dostaje za
+tę godzinę wynagrodzenie.
+Zablokował na nią czas i nie mógł przyjąć nikogo innego. Fundacja nie może przerzucić tego kosztu na osobę, która
+przyszła do pracy i czekała.
+Termin odwołany po czasie i tak wraca do puli wolnych godzin, mimo że pacjent nie dostaje zwrotu.
+Zdarza się, że ktoś inny go wykupi, a lepiej, żeby godzina się odbyła, niż stała pusta. Osoba, która odwołała, nie płaci
+za nią drugi raz — jeśli termin zostanie odsprzedany, dostaje równowartość jako kredyt na kolejną wizytę.
+Zmiana terminu później niż 24 godziny przed wizytą jest niedostępna — tak samo jak odwołanie.
+Gdyby zostawić tę furtkę, nikt by nie odwoływał — wszyscy przekładaliby wizyty, godzina i tak by przepadała, a okno
+24 godzin przestałoby cokolwiek znaczyć. Tak samo rozwiązują to inne systemy rezerwacji wizyt: późne przełożenie
+jest równoznaczne z późnym odwołaniem.
+Jedną rezerwację można przełożyć najwyżej 2 razy.
+Trzecia zmiana terminu zwykle znaczy, że ten termin po prostu nie pasuje. Lepiej odwołać wizytę i wybrać nową, niż
+blokować godzinę specjalisty w nieskończoność.
+Najbliższy termin, jaki można zarezerwować, to 2 godziny od teraz.
+Osoba, która rano czuje, że musi z kimś porozmawiać, może umówić się jeszcze tego samego dnia. To świadomy
+wybór na rzecz osób w kryzysie, kosztem tego, że specjalista dowiaduje się o wizycie na ostatnią chwilę.
+Kalendarz dla pacjenta jest otwarty na 30 dni w przód.
+Dalej niż na miesiąc mało kto planuje wizytę u psychologa, a długi kalendarz kusi do rezerwowania terminów, które
+potem trzeba odwoływać.
+Specjalista wystawia swoje godziny najwyżej 7 dni do przodu — panel blokuje dalsze daty.
+Fundacja chce mieć pewność, że grafik pokazuje realną dostępność, a nie deklaracje sprzed miesiąca. Termin
+sprzed czterech tygodni bardzo często okazuje się już nieaktualny, a pacjent dowiaduje się o tym dopiero po
+rezerwacji.
+Każdemu pacjentowi przysługuje 10 wizyt niskopłatnych po 55 zł.
+Fundacja pokrywa różnicę do pełnej stawki z dotacji, a ta jest skończona. Liczymy spotkania, nie minuty: „3 z 10
+wizyt” nie wymaga tłumaczenia, a „pozostało 1 godzina 40 minut” kończy się telefonem do koordynatora.
+Po wyczerpaniu 10 wizyt niskopłatnych pacjent nie traci dostępu do pomocy — przechodzi na wizyty
+pełnopłatne albo prosi koordynatora o zwiększenie puli.
+Limit dotyczy dofinansowania, nie prawa do pomocy. Nikogo nie odsyłamy z niczym, mówimy tylko, że kolejne
+spotkania są w innej cenie.
+Koordynator podnosi limit skokiem o 4 wizyty, a decyzja zostaje w historii pacjenta razem z jego
+nazwiskiem i uzasadnieniem.
+Fundacja musi umieć powiedzieć przy kontroli dotacji, komu i dlaczego przyznała więcej, niż przewiduje reguła. Bez
+zapisanego uzasadnienia ten wydatek może nie zostać uznany.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 50 =====
+Jeden specjalista może wystawić 4 terminy niskopłatne tygodniowo, a blokada działa przy układaniu
+grafiku, nie przy rezerwacji.
+Pula dofinansowania jest skończona, więc fundacja steruje nią przy wystawianiu godzin. Gdyby ograniczenie działało
+dopiero przy rezerwacji, pacjent widziałby wolny termin i dostawał odmowę przy płatności — w najgorszym możliwym
+momencie, po podjęciu decyzji i wyjęciu karty.
+Kto zaczął leczenie niskopłatnie, rezerwuje kolejne wizyty w tej samej kategorii — u tego samego albo
+innego specjalisty — dopóki nie wykorzysta 10 wizyt.
+Chodzi o to, żeby dofinansowanie szło na proces terapeutyczny, a nie na pojedyncze spotkania rozrzucone po
+zespole.
+Przy rezerwacji na stronie termin jest trzymany 10 minut na czas płatności; potem wraca do puli.
+Osoba, która ma kartę pod ręką, płaci w minutę. Dziesięć minut wystarcza z zapasem, a dłuższa blokada oznacza,
+że wolne godziny znikają z kalendarza dla ludzi, którzy naprawdę chcą się umówić.
+Termin umówiony przez specjalistę po sesji albo zaproponowany przez koordynatora czeka na
+opłacenie 2 dni.
+Sytuacja jest inna niż przy rezerwacji na stronie: pacjent nie siedzi przy komputerze z kartą, tylko wychodzi z
+gabinetu i dostaje link mailem. Dwa dni to weekend plus dzień roboczy — mieści się w tym osoba, która płaci
+przelewem po wypłacie.
+Między wizytami jest 10 minut przerwy.
+Bez przerwy pierwsza spóźniona wizyta przesuwa cały dzień, a specjalista nie ma chwili na zapisanie czegokolwiek
+ani na złapanie oddechu między dwiema trudnymi rozmowami.
+Fundacja pobiera 20 procent od wizyt pełnopłatnych i 0 procent od niskopłatnych. Specjalista widzi w
+swoim panelu wyłącznie kwotę, którą dostanie.
+Przy wizytach niskopłatnych fundacja dopłaca z dotacji, więc nie ma od czego brać prowizji. Pełne rozliczenie —
+wpływ, prowizja, marża — jest widoczne tylko dla koordynacji, bo tak ustalono zasady współpracy.
+Więcej niż 10 odwołań ze strony jednego specjalisty w oknie 30 dni zapala sygnał u koordynatora.
+Taka liczba prawie zawsze znaczy, że po drugiej stronie dzieje się coś, czego nie widać w grafiku: choroba,
+przeciążenie, zbyt gęsto ułożony tydzień. Sygnał ma dotyczyć tego, co dzieje się teraz, dlatego okno to 30 dni, a nie
+cała historia współpracy — licznik „od zawsze” przekroczyłby dziesiątkę u każdej aktywnej osoby w ciągu roku i
+przestałby cokolwiek znaczyć.
+Zwroty wykonuje człowiek, klikając je w panelu płatności. System nigdzie nie pisze „zwrot wykonany”,
+tylko „zwrot do wykonania”, i pokazuje listę zadań.
+Automatyczne zwroty wymagałyby ciągłego uzgadniania stanu między systemem a operatorem płatności oraz
+obsługi zwrotów nieudanych i częściowych — czyli najdroższego kawałka całej integracji. Przy kilkudziesięciu
+zwrotach miesięcznie ręczne kliknięcie jest tańsze niż utrzymywanie tej automatyki.
+Z grupy i warsztatu można zrezygnować bezpłatnie do 2 godzin przed spotkaniem; wtedy też zamykają
+się zapisy.
+Krócej niż 24 godziny przy wizytach jeden na jeden, bo miejsce w grupie da się jeszcze przekazać komuś z listy
+rezerwowej. Po tym czasie prowadzący ma już ustalony skład i przygotowuje spotkanie pod konkretne osoby.
+Osoba z listy rezerwowej ma 4 godziny na przyjęcie zwolnionego terminu, a zegar zatrzymuje się
+między 21:00 a 8:00.
+JakP drzoiapłao szyysctejma w· Faużnndaac jdao Nbieęp omdzaiernlnuije termin zwolniony na jutro — wizyta minie, zanim wygaśnie. Kpwiąatedkr, a7n ssie rzp nkiao l2e0i2 k6a, 1rz2:e09
+za to, że ktoś jest akurat w pracy albo na sesji. Cztery godziny mieszczą się w dniu pracy i pozwalają przejść przez
+===== STRONA 51 =====
+trzy osoby w kolejce, a nocna przerwa istnieje po to, żeby nie karać ludzi za sen.
+Zgłoszenie z ankiety wstępnej powinno dostać odpowiedź w ciągu 24 godzin — po tym czasie zapala
+się na ekranie koordynatora.
+To zobowiązanie fundacji wobec osoby, która pierwszy raz poprosiła o pomoc. Nikogo nie blokuje, ale wprost
+pokazuje, gdzie fundacja przestała dotrzymywać własnej obietnicy.
+Zgłoszenie oznaczone jako „bez pośpiechu” wyprzedza świeże „pilne” po 48 godzinach czekania.
+Sama deklaracja pilności premiuje osoby, które potrafią głośno poprosić, a przy pierwszym kontakcie z pomocą to
+często najbardziej zmęczeni zaznaczają „bez pośpiechu”. Dzięki tej regule nikt nie zostaje w kolejce na zawsze tylko
+dlatego, że nie chciał robić kłopotu.
+Uzasadnienie decyzji uznaniowej krótsze niż 40 znaków jest oznaczane jako „do uzupełnienia”.
+Przy rozliczeniu dotacji różnica między „prośba pacjenta” a „utrata pracy, przejście na pełną odpłatność przerwałoby
+terapię” decyduje o tym, czy wydatek zostanie uznany. Próg mierzy długość, nie treść — ma przypominać o
+obowiązku, a nie udawać kontrolę jakości.
+Dziennik decyzji ma dokładnie jedną operację: dopisanie. Wpisu nie da się zmienić ani usunąć, a
+poprawka jest nowym wpisem z dzisiejszą datą.
+Zapis, który wolno zmienić wstecz, nie jest dowodem, tylko notatnikiem — kontroler nie odróżni uzasadnienia
+napisanego w dniu decyzji od dopisanego w noc przed kontrolą. Kosztem jest to, że literówka zostaje w systemie na
+zawsze.
+Wdrożenie nowego specjalisty ma 7 kroków: 5 z nich wstrzymuje przyjmowanie pacjentów, brak
+numeru konta wstrzymuje wyłącznie wypłatę, a pierwsza wizyta nie blokuje niczego. Sprawa bez ruchu
+dłużej niż 14 dni trafia na listę do interwencji.
+Bez podpisanej umowy fundacja nie ma podstawy do powierzenia komuś danych osoby w kryzysie — tego kroku nie
+da się przesunąć na później. Brak numeru konta nie dotyka pacjenta w żaden sposób: wynagrodzenie nalicza się
+dalej i czeka na przelew, więc wstrzymywanie z tego powodu wizyt byłoby ukaraniem pacjenta za cudzą zaległość
+papierową.
+Specjalista z kalendarzem otwartym krócej niż na 21 dni trafia na listę do przypomnienia, a dzień, w
+którym zespół wykupił ponad 85 procent wystawionych godzin, zapala się w grafiku na żółto.
+Osoba z krótko otwartym kalendarzem jest dla szukającego pacjenta niedostępna, nawet jeśli realnie ma wolne
+godziny. Dzień pod korek oznacza z kolei, że warto poprosić kogoś o dołożenie terminów, zanim ludzie zaczną
+odchodzić z niczym.
+Raport dla grantodawcy obejmuje wyłącznie zamknięty kwartał albo rok, a liczby osób z 4 kwartałów nie
+sumują się do roku.
+Dotacje rozlicza się w okresach kalendarzowych, a sprawozdanie złożone z trwającego kwartału trzeba by potem
+korygować. Ta sama osoba wraca w kolejnym kwartale i w raporcie rocznym liczy się raz — wizyty wolno dodawać,
+osób nie.
+Zmiana reguły albo ceny obowiązuje tylko nowe rezerwacje: przesunięcie okna z 24 na 48 godzin ani
+podniesienie ceny o 10 zł nie dotyka wizyt już opłaconych.
+Pacjent zgodził się na konkretne warunki i konkretną kwotę w dniu zakupu. Bez tej zasady zmiana cennika
+sprawiłaby, że stare zwroty przestałyby zgadzać się z tym, co ludzie faktycznie zapłacili.
+Lista rezerwacji pokazuje 60 pozycji, a kartoteka pacjentów 25 — i obie wprost piszą, ile pozycji ukryły.
+Ciche ucięcie listy czyta się jak „to wszystko, co jest”, i prowadzi do wniosków wyciągniętych z połowy danych. Liczba
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+przy każdym filtrze mówi z góry, ile pozycji zobaczysz po kliknięciu, żeby żaden przycisk nie obiecywał czegoś, czego
+===== STRONA 52 =====
+pod nim nie ma.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 53 =====
+Powiadomienia i płatności
+Koordynacja fundacji ustala tu, co i kiedy system napisze pacjentowi oraz specjaliście, a także pilnuje pieniędzy:
+wpłat przy rezerwacji, zwrotów po odwołaniach i wypłat dla specjalistów.
+Powiadomienia SMS (koordynacja)
+Koordynator widzi listę siedmiu wiadomości tekstowych, które system wysyła sam, i cztery liczby na górze: ile jest
+gotowych treści, ile wiadomości poszło przez ostatnie 30 dni, ile to kosztowało i ile treści nie mieści się w jednej
+wiadomości. Po kliknięciu w wybraną treść z prawej strony pojawia się rysunek telefonu z gotowym tekstem —
+dokładnie takim, jaki zobaczy pacjentka na ekranie. Pod spodem system podaje liczbę znaków i mówi, na ile
+osobno płatnych części rozpadnie się ta wiadomość. Na samym dole jest lista ostatnich wysyłek: przycięty numer
+telefonu, nazwa wiadomości, ile minut temu poszła i czy dotarła.
+Zawęzić listę do jednej kategorii: przypomnienia, potwierdzenia, zmiany i odwołania, obsługa konta
+Kliknąć w wybraną wiadomość i przeczytać ją w podglądzie telefonu, z podstawionymi przykładową datą, godziną i
+adresem
+Sprawdzić przy każdej wiadomości, ile ma znaków i na ile płatnych części się rozpada
+Wpisać numer telefonu i wysłać wiadomość testową — w makiecie nic nie wychodzi, pojawia się tylko komunikat
+Przejrzeć ostatnie wysyłki i zobaczyć, która wiadomość nie dotarła
+Treści wiadomości tekstowych są tu do czytania, a nie do zmieniania — zmienia je wykonawca, bo każde dopisane
+zdanie może podnieść rachunek. Numery telefonów na liście wysyłek są przycięte do trzech ostatnich cyfr: koordynator
+rozpoznaje po nich wysyłkę, a ekran bywa oglądany przy innych osobach.
+Szablony wiadomości e-mail (koordynacja)
+Siedem gotowych maili, które system wysyła sam, z informacją, do kogo idzie każdy z nich: do pacjenta, do
+specjalisty czy do koordynatora. Przy każdym widać, co go uruchamia i ile takich maili poszło przez ostatnie 30
+dni, a przy zmienionych — znacznik, że treść różni się od tej, którą fundacja dostała na starcie. Po prawej stronie
+jest podgląd gotowej wiadomości z podstawionym imieniem, datą, kwotą i adresem — tak, jak zobaczy ją
+odbiorca. Po wejściu w tryb zmiany zamiast podglądu pojawia się pole na temat i pole na treść.
+Zawęzić listę do jednej kategorii: rezerwacja i płatność, przypomnienia, zmiany i odwołania, konto i limity, rozliczenia
+Przeczytać gotową wiadomość w podglądzie
+Zmienić temat i treść wybranego maila i zapisać zmianę — obowiązuje od następnej wysyłki
+Wstawić do treści imię, datę, godzinę czy kwotę jednym kliknięciem z listy dostępnych pozycji
+Przywrócić treść wyjściową, jeśli zmiana okazała się nietrafiona
+Wysłać próbną wiadomość na własny adres
+Maile koordynator zmienia sam, wiadomości tekstowe nie — bo mail nie ma limitu znaków i to w mailach fundacja
+najczęściej chce coś dopisać. Ceną tej swobody jest ryzyko wysłania maila z napisem „{imie}” do trzystu osób, więc
+przed zapisem system sprawdza wszystkie takie wstawki i nie pozwala zapisać nazwy, której nie umie podstawić.
+Celowo nie ma tu pogrubień, kolorów ani obrazków: zwykły tekst dociera zawsze, rozbudowana grafika potrafi
+wylądować w spamie albo rozjechać się tak, że nie widać godziny wizyty. Jedna rzecz do ujednolicenia przed
+wdrożeniem: mail o odwołaniu przez specjalistę obiecuje zwrot w 3 dni robocze, a okno odwołania po stronie pacjentki
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+mówi o 3–5 dniach roboczych.
+===== STRONA 54 =====
+Reguły systemu — część o pieniądzach i powiadomieniach
+Jeden ekran, na którym zapada decyzja, jak system ma się zachować bez pytania kogokolwiek o zdanie. U góry
+listy wyboru z czasami: do kiedy odwołanie jest bezpłatne, ile razy można przełożyć wizytę, jak długo termin jest
+trzymany podczas płatności. Niżej tabela ośmiu sytuacji, która przy każdej odpowiada na trzy pytania: czy pacjent
+dostaje zwrot, czy termin wraca do wolnych i czy specjalista dostaje za tę godzinę wynagrodzenie. Jeszcze niżej
+pieniądze — udział fundacji w wizytach pełnopłatnych, częstotliwość wypłat, kredyt za odsprzedany termin — a na
+końcu lista siedmiu powiadomień, każde z dwoma przełącznikami: mail i wiadomość tekstowa.
+Ustawić, ile godzin przed wizytą kończy się bezpłatne odwołanie
+Ustawić limit zmian terminu, najbliższy możliwy termin, przerwę między wizytami i czas trzymania terminu podczas
+płatności
+Ustawić udział fundacji w wizytach pełnopłatnych i niskopłatnych oraz częstotliwość wypłat
+Włączyć lub wyłączyć kredyt dla pacjenta, którego odwołany termin ktoś inny wykupił
+Przy każdym z siedmiu powiadomień włączyć albo wyłączyć mail i wiadomość tekstową
+Zapisać ustawienia
+Dwa powiadomienia nie mają przełącznika i nie da się ich wyłączyć: potwierdzenie rezerwacji oraz potwierdzenie
+odwołania ze zwrotem. To jedyny dowód, jaki pacjent ma na to, że wizyta istnieje i że pieniądze wracają. Druga rzecz:
+zmiana czasów obowiązuje tylko nowe rezerwacje. Osoba, która już zapłaciła, zgodziła się na konkretne warunki i
+przesunięcie okna z 24 na 48 godzin nie może jej dotyczyć wstecz.
+Płatność przy rezerwacji
+Pacjentka wypełnia dane kontaktowe i zaznacza zgody, a z prawej strony przez cały czas widzi podsumowanie:
+kto, kiedy, jak długo i ile to kosztuje. Pod podsumowaniem odlicza się czas, przez który termin jest trzymany tylko
+dla niej, oraz informacja, że zapłacić można kartą, BLIK-iem, Google Pay i Apple Pay, a fundacja nie przechowuje
+danych karty. Jeśli wizyta jest niskopłatna, w tym samym miejscu pojawia się informacja, która to wizyta z
+przyznanej puli i co się dzieje po jej wyczerpaniu. Ostatnia zgoda przed przyciskiem zapłaty to zasada
+odwoływania, wypisana z konkretną datą i godziną, a nie odesłaniem do regulaminu.
+Wpisać imię, adres e-mail i telefon oraz zaznaczyć, czy to pierwsza wizyta
+Napisać kilka zdań dla specjalisty przed wizytą — nieobowiązkowo
+Zaznaczyć założenie konta z hasłem albo zostać przy rezerwacji jako gość
+Zaznaczyć zgody, w tym potwierdzenie zasady bezpłatnego odwołania z podaną datą i godziną
+Przejść do płatności przyciskiem z wypisaną kwotą
+Wrócić i zmienić termin, zanim skończy się odliczanie
+Stan puli wizyt niskopłatnych pokazujemy przed zapłatą, a nie dopiero w panelu. Osoba, która wykorzystała pulę, ma się
+o tym dowiedzieć w chwili wyboru, a nie po zaksięgowaniu przelewu. Odliczanie jest widoczne wprost, w minutach i
+sekundach — po jego upływie termin wraca do wolnych, więc lepiej, żeby pacjentka to wiedziała, niż żeby dowiedziała
+się przy próbie zapłaty.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 55 =====
+Potwierdzenie po opłaceniu
+Ekran mówi wprost, że wizyta jest zarezerwowana, podaje numer rezerwacji i adres, na który poszło
+potwierdzenie. Niżej zestawienie: termin, usługa, forma i zapłacona kwota z czterema ostatnimi cyframi karty.
+Przy wizycie zdalnej od razu widnieje link do rozmowy, przy stacjonarnej — adres gabinetu, piętro i numer
+domofonu. Osobna ramka wypisuje, co się wydarzy dalej: mail teraz, przypomnienie 24 godziny przed z podaną
+datą i godziną zamknięcia bezpłatnej zmiany, przypomnienie 2 godziny przed i propozycja kolejnego terminu po
+wizycie.
+Skopiować link do rozmowy albo odczytać adres gabinetu
+Dodać wizytę do kalendarza w telefonie lub na komputerze
+Przejść do zarządzania rezerwacją
+Umówić od razu kolejną wizytę na ten sam dzień i godzinę za tydzień, dwa albo trzy
+Link do rozmowy jest dostępny od razu, a nie dopiero w przypomnieniu dwie godziny przed — pacjent, który go szuka na
+ostatnią chwilę, dzwoni do fundacji. Kolejne wizyty proponujemy pojedynczo, bez pakietów i serii: każda jest osobno
+opłacona i osobno odwoływana, więc nie ma czego rozliczać ani zwracać za niewykorzystaną część.
+Wizyty pacjentki — odwołanie, zmiana terminu i zwrot
+Lista nadchodzących wizyt, każda z kwotą, sposobem zapłaty i numerem rezerwacji. Przy wizycie, do której
+zostało więcej niż 24 godziny, widnieje zielona ramka z datą i godziną, do której zmiana i odwołanie są bezpłatne,
+oraz dwa przyciski. Przy wizycie bliższej niż 24 godziny przycisków nie ma w ogóle — jest wyjaśnienie, że wizyta
+jest płatna niezależnie od obecności, i przycisk napisania do specjalisty. W oknie odwołania pacjentka widzi
+zapłaconą kwotę, zasadę zapisaną zwykłym zdaniem i kwotę zwrotu, zanim cokolwiek potwierdzi.
+Przeczytać, do kiedy zmiana i odwołanie są bezpłatne
+Przełożyć termin: wybrać dzień i godzinę z kalendarza tego samego specjalisty, z licznikiem „zmiana 1 z 2”
+Odwołać wizytę po zobaczeniu kwoty zwrotu i podać powód — nieobowiązkowo
+Napisać do specjalisty, gdy do wizyty zostało mniej niż 24 godziny
+Skopiować link do rozmowy albo sprawdzić adres gabinetu
+Przejrzeć historię wcześniejszych wizyt razem ze sposobem zapłaty
+Po upływie 24 godzin przyciski znikają, a nie robią się szare. Szary przycisk kusi, żeby go klikać i szukać sposobu
+obejścia, a potem generuje zgłoszenia „nie działa mi”. Przy zmianie terminu płatność przechodzi na nowy termin i nie
+pobieramy jej drugi raz — to jest napisane wprost w oknie, bo jest to pierwsze pytanie, jakie ludzie zadają.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 56 =====
+Rezerwacje u koordynatora — co się stało z pieniędzmi
+Na górze cztery liczby: wizyty dzisiaj, rezerwacje czekające na płatność, zwroty w toku wraz z kwotą oraz
+nieobecności z ostatnich 14 dni wraz z kwotą, która została u fundacji. Niżej wyszukiwarka, filtry i tabela
+wszystkich rezerwacji, gdzie pod każdą kwotą widnieje dopisek mówiący, co się z nią stało: „zwrot do wykonania”,
+„bez zwrotu” albo „nieopłacone”. Po otwarciu wybranej rezerwacji koordynator dostaje jej pełną historię: kiedy
+powstała, kiedy zaksięgowano płatność i z jakiej karty, kiedy poszło potwierdzenie, kiedy przypomnienie, a przy
+odwołaniu — jaka kwota czeka na zwrot.
+Znaleźć rezerwację po numerze albo nazwisku pacjenta
+Zawęzić listę po okresie, specjaliście, usłudze, formie i stanie rezerwacji
+Otworzyć historię pojedynczej rezerwacji i przeczytać, co się z nią działo
+Wysłać potwierdzenie jeszcze raz, gdy pacjent go nie znalazł
+Pobrać zestawienie rezerwacji do arkusza
+Nigdzie na tym ekranie nie pada zdanie „zwrot wykonany”. Zwroty klika człowiek w panelu operatora płatności, a system
+tylko pokazuje listę tego, co się komu należy — więc dopóki ktoś nie kliknie, prawdziwe jest wyłącznie „zwrot do
+wykonania”. Historia rezerwacji pokazuje tylko to, co już się wydarzyło: nie ma na niej przypomnienia, które dopiero
+pójdzie, ani płatności przy rezerwacji, która jeszcze czeka na opłacenie.
+Rozliczenia specjalisty
+Specjalistka widzi cztery liczby: kwotę do wypłaty za bieżący okres, liczbę godzin w gabinecie, liczbę godzin
+opłaconych mimo braku pacjenta oraz datę najbliższej wypłaty. Niżej tabela wizyt z tego okresu, gdzie przy każdej
+stoi kwota opisana jako „dla Ciebie”, i osobna tabela późnych odwołań i nieobecności — rozliczanych tak samo
+jak wizyty odbyte. Z boku krótka ściągawka, kiedy godzina jest płatna, a kiedy nie, lista przesłanych faktur ze
+stanem każdej z nich oraz historia wypłat z poprzednich miesięcy. Gdy koordynator poprosił o poprawę faktury,
+powód widnieje tu od razu, a nie tylko w mailu.
+Zmienić okres rozliczeniowy na poprzedni miesiąc albo bieżący rok
+Pobrać zestawienie dla własnej księgowości
+Przesłać fakturę za miniony miesiąc
+Sprawdzić stan każdej przesłanej faktury i przeczytać, co wymaga poprawy
+Sprawdzić w ściągawce, czy za daną sytuację godzina jest płatna
+Nie ma tu kolumny „pacjent zapłacił” ani „udział fundacji”. Specjalistka widzi swoją stawkę, bo tylko na nią ma wpływ —
+rozbicie każdej wizyty na kwotę pacjenta i potrącenie nie daje jej żadnej decyzji do podjęcia, a zamienia ekran wypłaty w
+przypomnienie o marży. Pełne rozliczenie widzi wyłącznie koordynator.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 57 =====
+Przesłanie faktury przez specjalistę
+Okno mówi, za który miesiąc jest rozliczenie, ile wizyt obejmuje, do kiedy trzeba je przesłać i jaką kwotę wystawić.
+Pod kwotą stoi wyjaśnienie, skąd się wzięła: to suma stawek za wizyty odbyte w tym okresie razem z godzinami
+opłaconymi mimo nieobecności pacjenta. Niżej pole na numer faktury i miejsce na wgranie pliku. Na końcu trzy
+kroki, co się wydarzy dalej: koordynator sprawdza zgodność, przelew wychodzi na konto z profilu, potwierdzenie
+księgowania przychodzi mailem.
+Wpisać własny numer faktury
+Wgrać plik faktury w formacie PDF, do 10 MB, albo go usunąć i wgrać inny
+Odczytać podpowiedzianą kwotę i porównać ją z własnym wyliczeniem
+Wysłać fakturę — przycisk działa dopiero, gdy jest i numer, i plik
+System podpowiada kwotę, ale faktury nie wystawia. Specjaliści rozliczają się na różnych zasadach — działalność,
+zlecenie, ryczałt — i dokument musi wyjść z ich własnej księgowości. Bez załączonego pliku wysyłka jest zablokowana,
+bo fundacja potrzebuje dokumentu, a nie samej deklaracji kwoty.
+Faktury specjalistów u koordynatora
+Cztery liczby na górze: ile faktur czeka na sprawdzenie i na jaką kwotę, ile jest zaakceptowanych do wypłaty w
+tym miesiącu, ile wróciło do poprawy i przy ilu kwota nie zgadza się z wyliczeniem systemu. Niżej tabela, w której
+obok kwoty z faktury stoi znacznik zgodności — albo „zgodna”, albo różnica ze wskazaniem, ile system naliczył.
+Po otwarciu faktury koordynator widzi sam plik, zestawienie obu kwot, różnicę i zdanie wyjaśniające, co ta różnica
+najczęściej oznacza. Osobne okno służy do napisania, co konkretnie wymaga poprawy.
+Zawęzić listę do faktur czekających na sprawdzenie, zaakceptowanych, do poprawy albo już opłaconych
+Otworzyć fakturę i podejrzeć plik
+Porównać kwotę z faktury z wyliczeniem systemu i zobaczyć różnicę
+Zaakceptować fakturę do wypłaty w najbliższej paczce
+Poprosić o korektę, wpisując wprost, czego brakuje — bez wpisanego powodu przycisk nie działa
+Stan nazywa się „do poprawy”, a nie „odrzucona”. Odrzucenie brzmi jak zarzut, a w dziewięciu przypadkach na dziesięć
+chodzi o pomyłkę w rachunku i o człowieka, z którym fundacja chce dalej pracować. Sprawdzanie faktur chroni przede
+wszystkim specjalistę: kwota bywa niższa od wyliczenia systemu, bo licząc z własnego kalendarza łatwo pominąć
+godziny opłacone mimo nieobecności pacjenta — automatyczna akceptacja oznaczałaby, że fundacja płaci mniej, niż
+powinna.
+Zasady obowiązujące w tym obszarze
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
+===== STRONA 58 =====
+Bezpłatne odwołanie i zmiana terminu są możliwe najpóźniej 24 godziny przed wizytą. Później wizyta
+jest płatna, bez zwrotu i bez możliwości przełożenia.
+Specjalista zablokował tę godzinę wyłącznie dla jednej osoby i w tym czasie nie przyjmie nikogo innego. Doba to tyle,
+ile realnie potrzeba, żeby ktoś inny zdążył ten termin zająć — przy krótszym czasie godzina po prostu przepada.
+Po przekroczeniu 24 godzin przyciski odwołania i zmiany terminu znikają z ekranu, a nie robią się
+szare. Na ich miejscu pojawia się wyjaśnienie i przycisk napisania do specjalisty.
+Szary przycisk kusi, żeby go klikać i szukać obejścia, a potem kończy się telefonem, że system nie działa. Decyzję o
+wyjątku podejmuje człowiek, nie system, więc zamiast zablokowanego przycisku dajemy drogę do rozmowy.
+Odwołanie wcześniej niż 24 godziny przed wizytą oznacza zwrot całej kwoty. Odwołanie później albo
+niestawienie się oznacza brak zwrotu, ale specjalista dostaje za tę godzinę wynagrodzenie, a termin i
+tak wraca do wolnych.
+Specjalista zarezerwował ten czas i nie mógł przyjąć nikogo innego, więc jego wynagrodzenie się nie zmienia. Termin
+mimo to wypuszczamy, bo zdarza się, że ktoś go jeszcze wykupi — lepiej, żeby godzina się odbyła, niż stała pusta.
+Jeżeli po późnym odwołaniu ktoś inny wykupi zwolniony termin, pierwsza osoba dostaje równowartość
+jako kredyt na kolejną wizytę.
+Fundacja nie zarabia dwa razy na jednej godzinie. Specjalista ma tę godzinę opłaconą tak czy inaczej, a różnicę
+pokrywa fundacja z własnych środków — dla pacjenta w kryzysie finansowym to bywa różnica między kolejną wizytą
+a jej brakiem.
+Jedną rezerwację można przełożyć 2 razy. Trzecia zmiana wymaga kontaktu ze specjalistą.
+Każde przesunięcie blokuje kolejną godzinę w grafiku i odbiera ją komuś innemu. Trzecia zmiana zwykle znaczy, że
+ten termin po prostu nie pasuje — wtedy lepiej ustalić nowy razem ze specjalistą niż przesuwać go w
+nieskończoność.
+Przy rezerwacji przez stronę termin jest trzymany 10 minut. Po tym czasie wraca do wolnych.
+Przez te 10 minut nikt inny nie może zająć tej godziny, więc nie da się jej trzymać w nieskończoność. Dziesięć minut
+wystarczy na dokończenie płatności kartą albo BLIK-iem, a nie zostawia terminów wiszących bez wpłaty.
+Gdy termin umawia specjalista podczas sesji, pacjent ma 2 dni na opłacenie go z linku wysłanego
+mailem.
+Ta osoba nie siedzi przy komputerze z kartą w ręce, tylko właśnie wyszła z gabinetu. Dwa dni obejmują weekend i
+jeden dzień roboczy, więc mieści się w tym także ktoś, kto płaci przelewem po wypłacie.
+Za wizytę płaci się z góry pełną kwotę: 55 zł za konsultację niskopłatną, od 115 do 145 zł za pełnopłatną,
+350 zł za diagnozę ADHD, a wsparcie asystenta zdrowienia jest bezpłatne.
+Opłacona wizyta jest wizytą, która się odbywa — przy płatności na miejscu odsetek nieobecności rośnie kilkukrotnie,
+a każda pusta godzina to godzina zabrana komuś z kolejki.
+Zwrot pieniędzy klika człowiek w panelu operatora płatności. System pokazuje wyłącznie listę „zwrot
+do wykonania” i nigdzie nie napisze, że zwrot już poszedł.
+Przy kilkudziesięciu zwrotach miesięcznie ręczne kliknięcie jest tańsze i pewniejsze niż automat, który trzeba
+pilnować i naprawiać, gdy zwrot się nie powiedzie. Dzięki temu żaden ekran nie obiecuje pacjentowi czegoś, czego
+nikt jeszcze nie zrobił.
+Pieniądze wracają na tę samą kartę, z której zapłacono, zwykle w 3 do 5 dni roboczych.
+To czas banku i operatora płatności, nie fundacji — moment kliknięcia zwrotu i moment pojawienia się pieniędzy na
+Jakk dozniacłai es ytsote dmw · iFeu rnódżacnjae Nrzieepcodzzyi.e lWniarto ujednolicić tę liczbę we wszystkich wiadomościach: mail o poidątweko, ł7a nsiieurp pnriaz e20z26, 12:09
+specjalistę mówi dziś o 3 dniach, a okno odwołania o 3 do 5.
+===== STRONA 59 =====
+Jedna wiadomość tekstowa mieści 160 znaków, ale z polskimi ogonkami tylko 70. Każda kolejna część
+to osobna opłata około 8 groszy, a same ogonki dokładają blisko połowę miesięcznego rachunku za
+wysyłkę.
+Dlatego treści wiadomości tekstowych są krótkie i zmienia je wykonawca po policzeniu kosztu. Nie zalecamy pisania
+bez ogonków — wiadomość od fundacji pomocowej wygląda wtedy jak spam i to kosztuje więcej niż te złotówki.
+Tańsza droga to skrócenie zdania.
+W wiadomościach tekstowych nie ma ani słowa o zdrowiu, nazwie usługi ani specjalizacji, a nadawcą
+jest „Niepodzielni”.
+Wiadomość wyświetla się na zablokowanym ekranie, często przy innych ludziach. Dla części pacjentów sam fakt
+korzystania z pomocy jest informacją, której nie chcą pokazywać rodzinie ani współpracownikom.
+Kod do logowania bez hasła jest ważny 10 minut.
+Kod, który leży w skrzynce tygodniami, wpuszcza do konta każdego, kto zobaczy telefon albo pocztę. Dziesięć minut
+wystarczy, żeby przepisać sześć cyfr, i nie wystarczy, żeby ktoś skorzystał z niego później.
+Treści maili koordynator zmienia sam i od razu, treści wiadomości tekstowych zmienia wykonawca.
+Mail nie ma limitu znaków i nie kosztuje za zdanie, a to właśnie w mailach fundacja najczęściej chce coś dopisać:
+informację o parkingu, zmianę godzin dyżuru, prośbę o dokument. Czekanie na wykonawcę przy każdej takiej
+drobnostce kończy się tym, że nikt nic nie poprawia i treści się starzeją.
+Dwóch powiadomień nie da się wyłączyć: potwierdzenia rezerwacji i potwierdzenia odwołania ze
+zwrotem.
+To jedyny dowód, jaki pacjent ma na to, że wizyta istnieje i że pieniądze wracają. Bez niego każda wątpliwość
+zamienia się w telefon do koordynacji.
+Przypomnienie wychodzi dokładnie 24 godziny przed wizytą, a drugie — 2 godziny przed, z linkiem do
+rozmowy.
+Pierwsze wypada w momencie zamykania okna bezpłatnej zmiany, więc pacjent dowiaduje się o zasadzie wtedy,
+kiedy może jeszcze coś z tym zrobić. Bez tego maila zasada 24 godzin generuje same skargi. Drugie oszczędza
+szukania linku w skrzynce na pięć minut przed spotkaniem.
+Wiadomości tekstowe wysyłamy tylko przy dwóch zdarzeniach: przypomnieniu 2 godziny przed i
+odwołaniu wizyty przez specjalistę. Reszta idzie mailem.
+To dwie sytuacje, w których wiadomość musi dotrzeć natychmiast, bo pacjent może być już w drodze. Wszystko inne
+mail obsługuje taniej i bez limitu znaków.
+Zmiana reguł — na przykład przesunięcie okna z 24 na 48 godzin — obowiązuje wyłącznie nowe
+rezerwacje.
+Pacjent, który już zapłacił, zgodził się na konkretne warunki i zaznaczył to w formularzu z datą i godziną. Zmiana
+zasad po fakcie byłaby zmianą umowy bez jego wiedzy.
+Fundacja pobiera 20 procent od wizyt pełnopłatnych i nic od niskopłatnych. Specjalista tej liczby nie
+widzi — w swoim panelu ma wyłącznie kwotę, którą dostanie.
+Rozbicie każdej wizyty na kwotę pacjenta i potrącenie nie daje specjaliście żadnej decyzji do podjęcia, a zamienia
+ekran wypłaty w przypomnienie o marży. Pełne zestawienie — wpływ, prowizja, marża — jest po stronie koordynacji.
+Specjalista przesyła fakturę za miniony miesiąc do 10 dnia miesiąca, a wypłata wychodzi po
+sprawdzeniu przez koordynatora.
+JakK drzoiakła sspysrtaewmd · zFeunndiaa cijsat Nniieepjeod, zbieoln kiwota z faktury bywa niższa od wyliczenia systemu — licząc z wpłiaąstenke, 7g osi ekrpanleian 2d0a26rz, a12:09
+łatwo pominąć godziny opłacone mimo nieobecności pacjenta. Warto rozsunąć te dwie daty: dziś zarówno termin
+===== STRONA 60 =====
+przesłania faktury, jak i termin przelewu przypada na 10 dzień miesiąca, więc faktura złożona ostatniego dnia nie ma
+kiedy zostać sprawdzona.
+Fundacja dofinansowuje 10 wizyt niskopłatnych na osobę, a jeden specjalista może wystawić 4 terminy
+niskopłatne tygodniowo.
+Pula dofinansowania jest skończona, więc fundacja steruje nią przy układaniu grafiku, a nie przy rezerwacji —
+pacjent nigdy nie powinien zobaczyć wolnego terminu i dostać odmowy przy płatności, czyli w najgorszym możliwym
+momencie. Po wykorzystaniu 10 wizyt nikt nie traci dostępu do pomocy: przechodzi na cenę pełną albo prosi o
+zwiększenie puli, co rozpatrujemy zwykle tego samego dnia i bez zaświadczeń.
+Pacjent nie widzi w swoim panelu żadnych sum ani historii wydatków — tylko cenę pojedynczej wizyty
+przed zapłatą.
+Zestawienie „wydałaś dotąd 1400 zł na terapię” nie pomaga nikomu w leczeniu, a części osób realnie utrudnia
+decyzję o kolejnej wizycie.
+Jak działa system · Fundacja Niepodzielni piątek, 7 sierpnia 2026, 12:09
