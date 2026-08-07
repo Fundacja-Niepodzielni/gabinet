@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\SladWylogowania;
+use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
@@ -83,6 +84,37 @@ function punktTokenowZwraca(array $body, int $status = 200): void
     $GLOBALS['odpowiedz_tokenu'] = ['body' => $body, 'status' => $status];
 }
 
+// Flaga awarii MUSI wracać do stanu wyjściowego po KAŻDYM teście, także po
+// tym, który padł w połowie. Bez tego padający test zostawia zepsutą atrapę
+// IdP, a następny melduje zupełnie inną przyczynę niż rzeczywista — zmierzone
+// dwa razy w tej samej sesji.
+afterEach(function (): void {
+    $GLOBALS['awaria_idp'] = false;
+});
+
+/**
+ * Poprawnie podpisany logout token dla wskazanego `sid`.
+ *
+ * Zwracamy TOKEN, nie odpowiedź: `TestResponse` jest klasą generyczną, a jej
+ * typowanie w sygnaturze funkcji pomocniczej kosztuje więcej, niż daje.
+ * Żądanie wysyła sam test — widać wtedy wprost, co jest badane.
+ */
+function logoutTokenDla(string $sid): string
+{
+    $logoutToken = FabrykaTokenow::podpisz([
+        'iss' => FabrykaTokenow::ADRES,
+        'aud' => 'gabinet',
+        'sub' => 'sub-abc-123',
+        'sid' => $sid,
+        'iat' => time(),
+        'exp' => time() + 120,
+        'jti' => 'jti-'.bin2hex(random_bytes(6)),
+        'events' => ['http://schemas.openid.net/event/backchannel-logout' => (object) []],
+    ]);
+
+    return $logoutToken;
+}
+
 /** Surowa zawartość sesji o danym identyfikatorze — wprost z magazynu. */
 function sesjaWMagazynie(string $id): string
 {
@@ -97,6 +129,11 @@ function sesjaWMagazynie(string $id): string
  */
 function zalogujKoordynatora(int $waznoscTokenuS = 600): string
 {
+    // Logowanie ZAWSZE na zdrowym IdP. Bez tego test, który wcześniej ustawił
+    // awarię i padł przed sprzątaniem, psuje logowanie następnemu — a ten
+    // meldowałby wtedy zupełnie inną przyczynę niż rzeczywista.
+    $GLOBALS['awaria_idp'] = false;
+
     $sid = 'sid-'.bin2hex(random_bytes(6));
     $nonce = 'nonce-testowy';
 
@@ -245,58 +282,136 @@ it('zabija sesję NATYCHMIAST po back-channel logout — bez czekania na okno to
     expect(sesjaWMagazynie($idSesji))->toBe('');
 });
 
-it('zabija sesję TAKŻE gdy walidacja padnie wyjątkiem — fail-safe logout', function (): void {
-    // Klauzula fail-safe logout (standard B8, znalezisko sesji `konta`).
-    // Handler pobiera JWKS, więc sięga po sieć. Gdy IdP jest niedostępny,
-    // pierwotna wersja kończyła się kodem 500 — a SESJA ŻYŁA DALEJ, w ciszy.
-    // To dokładnie ten tryb awarii, który back-channel logout ma eliminować.
+it('kończy sesję przy niedostępnym IdP, gdy klucze są w cache — BEZ wchodzenia w tryb awaryjny', function (): void {
+    // Efekt przeprojektowania: `jwksDlaKid()` nie wyrzuca już starych kluczy
+    // przed pobraniem świeżych i nie rzuca przy nieudanym odświeżeniu. Dzięki
+    // temu niedostępny IdP przestał być awarią — poprawny logout token
+    // przechodzi ZWYKŁĄ ścieżką, bo podpis da się sprawdzić kluczami z cache'u.
+    //
+    // Dlatego asercja brzmi: awarii MA NIE BYĆ. To mocniejszy wynik niż
+    // „fail-safe zadziałał": ścieżka awaryjna w ogóle nie jest potrzebna.
     $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+    $idSesji = RejestrSesji::odczytaj($sid)[0];
 
+    expect(sesjaWMagazynie($idSesji))->not->toBe('');
+
+    // Klucze ZOSTAJĄ w cache'u. Awarię wymuszamy na discovery, którego
+    // `metadane()` potrzebuje przy nieznanym `kid`.
+    SladWylogowania::wyczysc();
+    Cache::forget('konta:discovery');
+    $GLOBALS['awaria_idp'] = true;
+
+    $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)]);
+
+    expect($odp->status())->toBe(200)
+        ->and(SladWylogowania::wejscia())->toBe(1, 'Handler nie wystartował — mierzymy nie to zjawisko.')
+        ->and(SladWylogowania::awarie())->toBe(0, 'Handler wszedł w tryb awaryjny, choć klucze były w cache.')
+        ->and($odp->json('skasowane_sesje'))->toBe(1)
+        ->and(sesjaWMagazynie($idSesji))->toBe('');
+});
+
+it('NIE kasuje sesji, gdy podpisu nie da się sprawdzić — i mówi o tym głośno', function (): void {
+    // Druga strona tej samej klauzuli. Bez kluczy w cache'u weryfikacja jest
+    // niemożliwa, więc sesji NIE ruszamy — ale nie milczymy: 503 zaprasza IdP
+    // do ponowienia, a licznik odmów robi z tego sygnał dla operatora.
+    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
     $zarejestrowane = RejestrSesji::odczytaj($sid);
+
+    expect($zarejestrowane)->toHaveCount(1, 'Logowanie nie zarejestrowało sesji — test nie ma czego chronić.');
+
+    $idSesji = $zarejestrowane[0];
+
+    SladWylogowania::wyczysc();
+    Cache::forget('konta:discovery');
+    Cache::forget('konta:jwks');
+    $GLOBALS['awaria_idp'] = true;
+
+    $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)]);
+
+    expect($odp->status())->toBe(503)
+        ->and($odp->json('skasowane_sesje'))->toBe(0)
+        ->and(SladWylogowania::odmowy())->toBe(1, 'Odmowa nie została odnotowana — cisza zamiast sygnału.')
+        ->and(sesjaWMagazynie($idSesji))->not->toBe('');
+});
+
+it('ADWERSARIALNY: napastnik z cudzym sid i wymuszoną awarią NIE wylogowuje ofiary', function (): void {
+    // Pytanie adwersarialne do klauzuli fail-safe: skoro awaryjna ścieżka
+    // kończy sesje, to czy nie jest narzędziem WYMUSZONEGO WYLOGOWANIA?
+    //
+    // Napastnik ma tu WSZYSTKO, co mógłby mieć w rzeczywistości:
+    //   · zna `sid` ofiary (zakładamy najgorszy przypadek — wyciek),
+    //   · kontroluje `kid`, więc potrafi wymusić sięgnięcie do sieci,
+    //   · trafia w moment niedostępności IdP.
+    // Nie ma jednego: klucza prywatnego Kont Niepodzielni.
+    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+    $zarejestrowane = RejestrSesji::odczytaj($sid);
+
+    expect($zarejestrowane)->toHaveCount(1, 'Logowanie nie zarejestrowało sesji — nie ma czego atakować.');
+
     $idSesji = $zarejestrowane[0];
 
     expect(sesjaWMagazynie($idSesji))->not->toBe('');
 
-    $logoutToken = FabrykaTokenow::podpisz([
+    // Token napastnika: poprawny kształt, cudzy `sid`, PODPIS WŁASNYM KLUCZEM.
+    $obcyKlucz = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
+
+    expect($obcyKlucz)->not->toBeFalse('Nie udało się wygenerować klucza napastnika.');
+
+    /** @var OpenSSLAsymmetricKey $obcyKlucz */
+    $naglowek = ['alg' => 'RS256', 'typ' => 'JWT', 'kid' => 'kid-wymyslony-przez-napastnika'];
+    $claims = [
         'iss' => FabrykaTokenow::ADRES,
         'aud' => 'gabinet',
         'sub' => 'sub-abc-123',
         'sid' => $sid,
         'iat' => time(),
         'exp' => time() + 120,
-        'jti' => 'jti-'.bin2hex(random_bytes(6)),
+        'jti' => 'jti-napastnika',
         'events' => ['http://schemas.openid.net/event/backchannel-logout' => (object) []],
-    ]);
+    ];
 
-    // Wstrzykujemy awarię DOKŁADNIE w operację poprzedzającą zabicie sesji:
-    // pobranie JWKS. Cache czyścimy, żeby handler naprawdę poszedł do sieci.
+    $czesci = [
+        rtrim(strtr(base64_encode((string) json_encode($naglowek)), '+/', '-_'), '='),
+        rtrim(strtr(base64_encode((string) json_encode($claims)), '+/', '-_'), '='),
+    ];
+
+    $podpis = '';
+    openssl_sign(implode('.', $czesci), $podpis, $obcyKlucz, OPENSSL_ALGO_SHA256);
+    $czesci[] = rtrim(strtr(base64_encode(Typy::napis($podpis)), '+/', '-_'), '=');
+
+    // Napastnik dostaje NAJGORSZY DLA NAS scenariusz: pusty cache kluczy
+    // i niedostępny IdP. Dopiero wtedy handler wchodzi w ścieżkę AWARYJNĄ —
+    // czyli w tę, w której kiedyś kończyliśmy sesję po niezweryfikowanym
+    // `sid`. Bez wyczyszczenia cache'u atak zatrzymywał się na zwykłej odmowie
+    // walidacji i test nie dotykał badanej furtki (zmierzone: przechodził
+    // także po jej przywróceniu).
     SladWylogowania::wyczysc();
-
-    // Czyścimy WYBIÓRCZO dwa klucze OIDC, żeby handler naprawdę poszedł do
-    // sieci. `Cache::flush()` byłoby tu błędem: rejestr `sid → sesje lokalne`
-    // też mieszka w cache'u, więc czyszczenie wszystkiego kasowało CEL
-    // perturbacji i sesja „przeżywała" awarię, bo nie było czego zabić.
-    // Przyrząd niszczył zjawisko, które miał zmierzyć.
-    Cache::forget('konta:jwks');
     Cache::forget('konta:discovery');
-
+    Cache::forget('konta:jwks');
     $GLOBALS['awaria_idp'] = true;
 
-    $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => $logoutToken]);
+    $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => implode('.', $czesci)]);
 
-    // Handler NIE MOŻE zwrócić 500 z żywą sesją.
-    expect($odp->status())->not->toBe(500);
+    // Handler WSZEDŁ I NAPRAWDĘ wpadł w ścieżkę awaryjną — inaczej test
+    // mierzyłby zwykłą odmowę walidacji, nie odporność tej furtki.
+    expect(SladWylogowania::wejscia())->toBe(1, 'Handler nie wystartował.')
+        ->and(SladWylogowania::awarie())->toBe(1, 'Atak nie dotarł do ścieżki awaryjnej — test nie bada furtki.');
 
-    // DWA NIEZALEŻNE SYGNAŁY — licznik skasowanych sesji sam w sobie myli
-    // „token nie dotarł" z „dotarł i handler padł": oba dają zero. Dlatego
-    // osobno pytamy, czy handler w ogóle wszedł.
-    expect(SladWylogowania::wejscia())->toBe(1, 'Handler w ogóle nie wystartował — mierzymy nie to zjawisko.')
-        ->and(SladWylogowania::awarie())->toBe(1, 'Walidacja nie padła — perturbacja nierozstrzygająca.');
-
-    // I najważniejsze: sesja NIE PRZEŻYŁA awarii.
-    expect(sesjaWMagazynie($idSesji))->toBe('');
-
-    $GLOBALS['awaria_idp'] = false;
+    // SEDNO: sesja ofiary ŻYJE. Niezależnie od tego, którą ścieżką poszedł
+    // handler — awaryjną czy zwykłą odmową walidacji — napastnik bez klucza
+    // prywatnego Kont Niepodzielni NIE MOŻE nikogo wylogować.
+    expect(sesjaWMagazynie($idSesji))->not->toBe('', 'WYMUSZONE WYLOGOWANIE: napastnik wyrzucił ofiarę z systemu.')
+        // Żadna gałąź nie mogła zgłosić sukcesu wylogowania.
+        ->and($odp->json('ok'))->not->toBeTrue()
+        ->and(Typy::liczba($odp->json('skasowane_sesje')))->toBe(0)
+        // Odpowiedź MUSI być odmową — 400 (zły podpis) albo 503 (nie dało się
+        // zweryfikować). Nigdy 200, nigdy 500.
+        ->and(in_array($odp->status(), [400, 503], true))->toBeTrue(
+            'Nieoczekiwany kod odpowiedzi na atak: '.$odp->status()
+        );
 });
 
 it('czyta role Z ACCESS TOKENU, a nie z userinfo — źródła podają RÓŻNE role', function (): void {

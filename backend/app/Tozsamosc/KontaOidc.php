@@ -9,6 +9,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 /**
  * Warstwa OIDC Kont Niepodzielni: discovery, JWKS, wymiana kodu na tokeny,
@@ -126,9 +127,40 @@ final class KontaOidc
             return $jwks;
         }
 
-        Cache::forget(self::KLUCZ_JWKS);
+        // ODŚWIEŻENIE BEZ WYRZUCANIA STARYCH KLUCZY.
+        //
+        // Pierwotnie było tu `Cache::forget()` przed ponownym pobraniem. To
+        // dawało napastnikowi dwie rzeczy naraz, obie niedobre:
+        //   · gdy IdP nie odpowiada, zostawaliśmy BEZ ŻADNYCH kluczy, więc
+        //     nie dało się zweryfikować nawet poprawnych tokenów;
+        //   · `kid` pochodzi z tokenu, czyli od nadawcy żądania — więc to on
+        //     decydował, kiedy wyrzucamy cache i idziemy do sieci.
+        //
+        // Teraz pobieramy do zmiennej i podmieniamy cache DOPIERO po sukcesie.
+        // Nieudane odświeżenie zostawia stare klucze nietknięte i NIE rzuca:
+        // token z nieznanym `kid` po prostu nie przejdzie walidacji podpisu,
+        // co jest poprawnym wynikiem, a nie awarią.
+        try {
+            $metadane = $this->metadane();
+            $odpowiedz = $this->klient()->get(Typy::napis($metadane['jwks_uri']));
 
-        return $this->jwks();
+            if (! $odpowiedz->successful()) {
+                return $jwks;
+            }
+
+            /** @var array<string, mixed> $swieze */
+            $swieze = is_array($odpowiedz->json()) ? $odpowiedz->json() : [];
+
+            if (! isset($swieze['keys']) || ! is_array($swieze['keys']) || $swieze['keys'] === []) {
+                return $jwks;
+            }
+        } catch (Throwable) {
+            return $jwks;
+        }
+
+        Cache::put(self::KLUCZ_JWKS, $swieze, $this->cacheSekundy());
+
+        return $swieze;
     }
 
     /**

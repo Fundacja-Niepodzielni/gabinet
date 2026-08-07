@@ -805,6 +805,26 @@ p_zrodlo_rol() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_wymuszone_wylogowanie() {
+	naglowek "wymuszone wylogowanie — sesja kończona po NIEZWERYFIKOWANYM sid"
+	# Pytanie adwersarialne do klauzuli fail-safe: skoro ścieżka awaryjna kończy
+	# sesje, to czy nie jest narzędziem WYMUSZONEGO WYLOGOWANIA? Pierwsza wersja
+	# klauzuli działała na `sid` z niezweryfikowanego tokenu, a napastnik
+	# CZĘŚCIOWO kontroluje wyzwalacz wyjątku — `kid` pochodzi z jego tokenu.
+	local plik="backend/app/Http/Controllers/BackchannelLogoutController.php"
+	zachowaj "$plik"
+
+	perturbuj logout-niezweryfikowany-sid
+
+	dowod_mutacji "handler znowu kończy sesję po niezweryfikowanym sid" \
+		grep -q "RejestrSesji::zakoncz(WalidatorTokenu::sidNiezweryfikowany" "$plik"
+
+	oczekuj_czerwone "test adwersarialny wykrywa wymuszone wylogowanie ofiary" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -1019,7 +1039,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -1084,6 +1104,7 @@ for NAZWA in $WYBRANE; do
 		role_zamrozone) p_role_zamrozone ;;
 		logout_failsafe) p_logout_failsafe ;;
 		zrodlo_rol) p_zrodlo_rol ;;
+		wymuszone_wylogowanie) p_wymuszone_wylogowanie ;;
 		zamek) p_zamek ;;
 		sonda_bazy) p_sonda_bazy ;;
 		zdrowie) p_zdrowie ;;

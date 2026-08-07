@@ -51,30 +51,40 @@ final class BackchannelLogoutController extends Controller
                 'tolerancja' => $this->oidc->tolerancjaZegara(),
             ]);
         } catch (Throwable $blad) {
-            // FAIL-SAFE. Pobranie JWKS albo discovery sięga po sieć i potrafi
-            // rzucić — niedostępny IdP, timeout, błąd 5xx. Bez tej gałęzi
-            // handler kończył się kodem 500, a SESJA ŻYŁA DALEJ, w ciszy:
-            // dokładnie ten tryb awarii, który back-channel logout ma
-            // eliminować. Odmowa wylogowania jest gorsza niż wylogowanie
-            // nadmiarowe, więc przy błędzie sesję i tak kończymy.
+            // AWARIA WALIDACJI — sesji NIE kasujemy, ale i nie milczymy.
             //
-            // `sid` bierzemy z NIEZWERYFIKOWANEGO tokenu — świadomie. To jedyna
-            // informacja, jaką mamy, a skutkiem jest wyłącznie zakończenie
-            // sesji: nie nadaje uprawnień i nie ujawnia danych. Ścieżka jest
-            // wąska (tylko wyjątek, nie zły podpis), więc nie zamienia się
-            // w wygodne narzędzie do wylogowywania cudzych sesji.
-            $sidAwaryjny = WalidatorTokenu::sidNiezweryfikowany($logoutToken);
-            $skasowane = $sidAwaryjny !== '' ? RejestrSesji::zakoncz($sidAwaryjny) : 0;
-
+            // Historia tej gałęzi jest pouczająca. Pierwsza wersja kończyła
+            // sesję po `sid` z NIEZWERYFIKOWANEGO tokenu, z uzasadnieniem
+            // „skutkiem jest tylko wylogowanie, więc nadmiar bezpieczniejszy
+            // niż brak". Pytanie adwersarialne pokazało, że to furtka na
+            // WYMUSZONE WYLOGOWANIE: napastnik znający `sid` ofiary mógł ją
+            // wyrzucić z systemu, a wyzwalacz wyjątku CZĘŚCIOWO kontrolował,
+            // bo `kid` pochodzi z jego własnego tokenu.
+            //
+            // Naprawa poszła w dwie strony naraz:
+            //   1. `KontaOidc::jwksDlaKid()` nie wyrzuca już starych kluczy
+            //      przed pobraniem świeżych i nie rzuca przy nieudanym
+            //      odświeżeniu — więc niedostępny IdP przestał być awarią,
+            //      dopóki mamy klucze w cache'u. Poprawny logout token
+            //      przechodzi wtedy ZWYKŁĄ ścieżką i sesja ginie normalnie.
+            //   2. Tutaj zostaje przypadek naprawdę beznadziejny: brak kluczy
+            //      i brak łączności. Wtedy NIE MA JAK zweryfikować niczego,
+            //      więc nie kasujemy — bo jedyne, co moglibyśmy zrobić, to
+            //      zaufać napastnikowi.
+            //
+            // Kod 503 zaprasza IdP do ponowienia (back-channel logout ma
+            // ponowienia w specyfikacji), a licznik odmów robi z tego stanu
+            // sygnał widoczny dla operatora zamiast ciszy. To jest różnica
+            // wobec pierwotnej wady: tam było 500 i sesja żyjąca w milczeniu.
             SladWylogowania::awaria($blad::class);
+            SladWylogowania::odmowa();
 
-            Log::warning('Back-channel logout: awaria walidacji, sesja zakończona awaryjnie.', [
+            Log::error('Back-channel logout: NIE UDAŁO SIĘ zweryfikować tokenu — sesja NIE została zakończona.', [
                 'wyjatek' => $blad::class,
-                'skasowane_sesje' => $skasowane,
             ]);
 
             return response()
-                ->json(['ok' => false, 'awaria' => 'walidacja', 'skasowane_sesje' => $skasowane], 503)
+                ->json(['ok' => false, 'awaria' => 'walidacja_niemozliwa', 'skasowane_sesje' => 0], 503)
                 ->header('Cache-Control', 'no-store');
         }
 

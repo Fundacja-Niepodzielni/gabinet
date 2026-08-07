@@ -295,18 +295,26 @@ def role_zamrozone() -> None:
 
 
 def logout_bez_failsafe() -> None:
-    """Usuwa klauzule fail-safe z handlera back-channel logout.
+    """Usuwa obsluge wyjatku z handlera back-channel logout.
 
-    Bez niej niedostepny IdP daje 500, a SESJA ZYJE DALEJ — w ciszy. To ten
-    sam tryb awarii, ktory back-channel logout ma eliminowac (znalezisko
-    sesji `konta`, standard B8).
+    Bez `catch` niedostepny IdP daje 500, a sesja zyje dalej — w ciszy. To ten
+    sam tryb awarii, ktory back-channel logout ma eliminowac (znalezisko sesji
+    `konta`, standard B8).
     """
-    podmien(
-        WYLOGOWANIE,
-        "            $sidAwaryjny = WalidatorTokenu::sidNiezweryfikowany($logoutToken);\n"
-        "            $skasowane = $sidAwaryjny !== '' ? RejestrSesji::zakoncz($sidAwaryjny) : 0;",
-        "            $skasowane = 0;",
-    )
+    tresc = czytaj(WYLOGOWANIE)
+    nl = chr(10)
+    otwarcie = "        try {" + nl
+    poczatek_catch = "        } catch (Throwable $blad) {"
+    koniec_catch = "        }" + nl + nl + "        $claims = $wynik['claims'];"
+
+    if otwarcie not in tresc or poczatek_catch not in tresc or koniec_catch not in tresc:
+        raise SystemExit("PERTURBACJA NIEUDANA: nie rozpoznano konstrukcji try/catch w handlerze")
+
+    przed = tresc[: tresc.index(otwarcie)]
+    srodek = tresc[tresc.index(otwarcie) + len(otwarcie) : tresc.index(poczatek_catch)]
+    po = tresc[tresc.index(koniec_catch) + len(koniec_catch) :]
+
+    pisz(WYLOGOWANIE, przed + srodek + "        $claims = $wynik['claims'];" + po)
 
 
 def role_ze_zlego_zrodla() -> None:
@@ -333,6 +341,22 @@ def role_ze_zlego_zrodla() -> None:
     pisz(KONTROLER, tresc.replace(stare, "Bramki::roleZAccessTokenu($claimsId)"))
 
 
+def logout_na_niezweryfikowanym_sid() -> None:
+    """Przywraca furtke: konczenie sesji po sid z NIEZWERYFIKOWANEGO tokenu.
+
+    Tak wygladala pierwsza wersja klauzuli fail-safe. Rozumowanie („skutkiem
+    jest tylko wylogowanie") bylo za slabe: to furtka na WYMUSZONE
+    WYLOGOWANIE, bo napastnik czesciowo kontroluje wyzwalacz wyjatku przez
+    `kid` we wlasnym tokenie.
+    """
+    podmien(
+        WYLOGOWANIE,
+        "            SladWylogowania::odmowa();",
+        "            RejestrSesji::zakoncz(WalidatorTokenu::sidNiezweryfikowany($logoutToken));\n"
+        "            SladWylogowania::odmowa();",
+    )
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -346,6 +370,7 @@ POLECENIA = {
     "role-zamrozone": role_zamrozone,
     "logout-bez-failsafe": logout_bez_failsafe,
     "role-ze-zlego-zrodla": role_ze_zlego_zrodla,
+    "logout-niezweryfikowany-sid": logout_na_niezweryfikowanym_sid,
     "obietnica-sprzataj": obietnica_sprzataj,
     "suita-pominieta-sprzataj": suita_pominieta_sprzataj,
 }

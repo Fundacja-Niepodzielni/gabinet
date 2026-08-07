@@ -31,6 +31,9 @@ final class SladWylogowania
 
     private const KLUCZ_AWARIE = 'gabinet:wylogowanie:awarie';
 
+    /** Odmowy zakończenia sesji — awaria, w której NIE dało się zweryfikować tokenu. */
+    private const KLUCZ_ODMOWY = 'gabinet:wylogowanie:odmowy';
+
     /** Ślad żyje dobę — tyle, ile najdłuższa sesja SSO. */
     private const CZAS_ZYCIA_S = 86400;
 
@@ -43,6 +46,16 @@ final class SladWylogowania
     {
         Cache::put(self::KLUCZ_AWARIE, self::awarie() + 1, self::CZAS_ZYCIA_S);
         Cache::put(self::KLUCZ_AWARIE.':ostatnia', $klasaWyjatku, self::CZAS_ZYCIA_S);
+    }
+
+    public static function odmowa(): void
+    {
+        Cache::put(self::KLUCZ_ODMOWY, self::odmowy() + 1, self::CZAS_ZYCIA_S);
+    }
+
+    public static function odmowy(): int
+    {
+        return Typy::liczba(Cache::get(self::KLUCZ_ODMOWY));
     }
 
     public static function wejscia(): int
@@ -60,5 +73,6 @@ final class SladWylogowania
         Cache::forget(self::KLUCZ_WEJSCIA);
         Cache::forget(self::KLUCZ_AWARIE);
         Cache::forget(self::KLUCZ_AWARIE.':ostatnia');
+        Cache::forget(self::KLUCZ_ODMOWY);
     }
 }
