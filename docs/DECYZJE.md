@@ -200,12 +200,62 @@ wyłącznie o to, czy 10 obowiązuje na starcie produkcji.
 
 ---
 
+## D-2026-08-07-09 — polityka gałęzi: push zawsze, merge po weryfikacji, deploy za zgodą
+
+**Decyzja właściciela (2026-08-07).** Trzy różne progi, świadomie rozdzielone:
+
+| Operacja | Kiedy wolno | Po co ten próg |
+|---|---|---|
+| **`git push`** | **zawsze** | kopia zapasowa pracy poza maszyną wykonawcy + uruchomienie CI. Kod w repozytorium prywatnym nie jest ekspozycją. |
+| **merge do `main`** | po **zielonej niezależnej weryfikacji** | `main` nadal trzyma wyłącznie pracę zweryfikowaną przez sesję, która jej nie pisała (WYTYCZNE-PRACY §2) |
+| **deploy / wystawienie publiczne** | **wyłącznie za wyraźną zgodą właściciela** | bez zmian — `CLAUDE.md`, „Czego NIE wolno" |
+
+**Co to zmienia w praktyce.** Do tej pory wstrzymywałem się z pushem, więc CI
+nigdy nie jechało i kryterium „CI zielone" zostawało niepotwierdzone przez całą
+sesję. To był zły kompromis: bramka, której się nie uruchamia, nie jest bramką.
+
+**Czego NIE zmienia.** Progu produkcyjnego. Push i deploy to dwie różne rzeczy
+i mylenie ich było źródłem mojej wcześniejszej nadostrożności.
+
+---
+
+## D-2026-08-07-10 — wideo: Jitsi ZATWIERDZONY; infrastruktury nie projektujemy teraz
+
+**Decyzja właściciela (2026-08-07), zamyka status OTWARTE z D-2026-08-07-06.**
+Kierunek: **Jitsi**. Rekomendacja z [`docs/analizy/wideo-jitsi-vs-whereby.md`](analizy/wideo-jitsi-vs-whereby.md)
+przyjęta.
+
+**Świadomie ODŁOŻONE:** rozmiar serwera, wybór self-host vs JaaS i cała
+infrastruktura wideo. Czekają na jedną liczbę — **procent wizyt online** — którą
+dostarczy właściciel. Bez niej projektowanie infrastruktury byłoby zgadywaniem
+skali, a §1 analizy mówi wprost, że od tej liczby zależy, czy rachunek jest
+w tysiącach czy w dziesiątkach tysięcy złotych.
+
+**Co robimy teraz:** nic w infrastrukturze. W F3 wchodzi wyłącznie interfejs
+`DostawcaPokojuWideo` (trzy operacje), żeby wybór hostingu nie dotykał kodu
+rezerwacji. `WIDEO_DOSTAWCA` w `.env.example` zostaje puste do czasu decyzji
+o hostingu.
+
+---
+
+## D-2026-08-07-11 — domena produkcyjna: `gabinet.niepodzielni.com`
+
+**Decyzja właściciela (2026-08-07).** Nazwa zatwierdzona. Wchodzi do zgłoszenia
+klienta OIDC w repo `konta` jako `NK_GABINET_PROD_ORIGIN` oraz do adresu
+back-channel logout (`https://gabinet.niepodzielni.com/oidc/backchannel-logout`).
+
+Adres jest **wyłącznie zapisem w konfiguracji i w zgłoszeniu** — nic nie zostaje
+wystawione publicznie. Ekspozycja to osobna decyzja, w F9.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |
 |---|---|---|---|
-| **Z-01** | **Złożyć wniosek o alfanumerycznego nadawcę SMS „Niepodzielni" w SMSAPI.** | Rejestracja pola nadawcy u polskich operatorów trwa **od kilku dni do kilku tygodni** i wymaga dokumentów fundacji (spec M5/6). Wniosek złożony przy pierwszym SMS-ie (F6) opóźni całą fazę. Do czasu rejestracji wiadomości wychodzą z losowego numeru — czego reguła prywatności z „Jak działa system" (s. 59) nie dopuszcza. | ⬜ do zrobienia |
-| **Z-02** | **Zatwierdzić dostawcę wideo** (D-2026-08-07-06). | Bez tej decyzji nie da się rzetelnie zacząć zadania „link do spotkania" (spec M5/15). Potrzebne przed F3. | ⬜ czeka na właściciela |
+| **Z-01** | **Wniosek o alfanumerycznego nadawcę SMS „Niepodzielni" w SMSAPI.** | Rejestracja pola nadawcy u polskich operatorów trwa **od kilku dni do kilku tygodni** i wymaga dokumentów fundacji (spec M5/6). | 🔵 **właściciel składa wniosek (2026-08-07)** — agent nie przypomina, sprawa wraca dopiero przy konfiguracji bramki SMS w F6 |
+| **Z-02** | ~~Zatwierdzić dostawcę wideo~~ → **ZAMKNIĘTE: Jitsi** (D-2026-08-07-10). | — | ✅ zamknięte 2026-08-07 |
+| **Z-06** | **Podać procent wizyt odbywanych online** (dane z Bookero). | Od tej jednej liczby zależy rozmiar serwera wideo i wybór self-host vs JaaS. Do czasu odpowiedzi infrastruktury wideo NIE projektujemy (D-2026-08-07-10). | ⬜ czeka na właściciela |
 | **Z-03** | **Potwierdzić limit 10 wizyt niskopłatnych na starcie produkcji** (zarząd fundacji). | ROZSTRZYGNIĘTE co do wartości: 10 wizyt (D-2026-08-07-08) — F1 nie jest już zablokowana. Zostaje potwierdzenie, czy 10 wchodzi na produkcję; wartość i tak jest konfiguracją z wersjonowaniem, więc zmiana nie wymaga wdrożenia kodu. | 🟡 nie blokuje |
 | **Z-04** | **Potwierdzić „przelewy miesięczne"** po rozmowie fundacji. | Stripe Connect zmienia **model danych** rozliczeń, nie samą integrację (spec M4/1). Potrzebne przed F4. | ⬜ czeka na fundację |
 | **Z-05** | **Dostarczyć źródła makiety React** (61 ekranów, `DECYZJE.md` wykonawcy makiety §26). | Bez nich F7 nie ma czego podpinać. F0–F6 są od tego niezależne. | ⬜ czeka na właściciela |

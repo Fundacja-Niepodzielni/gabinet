@@ -5,8 +5,10 @@
 (realm ma **jednego autora naraz** — `realm/README.md` §11 pkt 4).
 
 > Ten dokument jest **prośbą z gotową treścią**, a nie zmianą. Sesja Gabinetu
-> świadomie nie dotknęła repozytorium `konta`: w chwili pisania ma ono
-> niezacommitowane zmiany, więc warunek „jeden piszący naraz" nie był spełniony.
+> świadomie nie dotyka repozytorium `konta` — decyzja właściciela z 2026-08-07:
+> zgłoszenie przekazuje właściciel albo sesja pracująca w tamtym repozytorium.
+> Wszystkie wartości poniżej są gotowe do przepisania; nazwa domeny produkcyjnej
+> jest już zatwierdzona.
 
 ---
 
@@ -108,7 +110,7 @@ Do dopisania w `realm/README.md` §9 i do `.env` **wypełniane przez człowieka*
 |---|---|---|
 | `NK_GABINET_SECRET` | dowolna losowa (`openssl rand -base64 32`) | **człowiek przy deployu**, do menedżera haseł fundacji |
 | `NK_GABINET_DEV_ORIGIN` | `http://localhost:8098` | — |
-| `NK_GABINET_PROD_ORIGIN` | — | `https://gabinet.niepodzielni.com` *(nazwa do potwierdzenia przez właściciela)* |
+| `NK_GABINET_PROD_ORIGIN` | — | `https://gabinet.niepodzielni.com` **(zatwierdzona przez właściciela 2026-08-07, D-2026-08-07-11)** |
 | `NK_GABINET_BACKCHANNEL_LOGOUT_URL` | `http://gabinet-app/oidc/backchannel-logout` | `https://gabinet.niepodzielni.com/oidc/backchannel-logout` |
 
 > **Pułapka z kontraktu §3a, warta osobnego zdania:** adres back-channel logout

@@ -54,7 +54,9 @@ Czyli: cały łańcuch walidacji działa na prawdziwych kluczach prawdziwego IdP
 Brakuje **wyłącznie** rejestracji klienta — czyli tego jednego kroku, który
 z definicji należy do repozytorium `konta`.
 
-**Plan powrotu.**
+**Plan powrotu — ROZSTRZYGNIĘTY 2026-08-07.** Zgłoszenie przekazuje **właściciel
+albo sesja pracująca w repo `konta`**. Sesja Gabinetu **nie dotyka tamtego
+repozytorium** — to jest ostateczne, nie „na razie".
 
 1. Właściciel (albo sesja pracująca w repo `konta`) wykonuje zgłoszenie
    [`docs/zgloszenia/klient-gabinet-w-realmie.md`](zgloszenia/klient-gabinet-w-realmie.md)
@@ -66,5 +68,5 @@ z definicji należy do repozytorium `konta`.
    przepływu authorization code i zamyka punkt bramki F0.
 
 **Czego bloker NIE zatrzymuje.** Fazy F1 i F2 (model danych, reguły jako
-konfiguracja, silnik dostępności) nie dotykają logowania. Prace mogą iść dalej
-bez czekania.
+konfiguracja, silnik dostępności) nie dotykają logowania. Decyzją właściciela
+z 2026-08-07 **F1 rusza równolegle, nie czekając na domknięcie BLK-01**.
