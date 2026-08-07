@@ -249,6 +249,36 @@ wystawione publicznie. Ekspozycja to osobna decyzja, w F9.
 
 ---
 
+## D-2026-08-07-12 — skan sekretów jest krokiem bramki, nie osobnym jobem CI
+
+**Decyzja.** Gitleaks biegnie jako krok `skrypty/bramka.sh` (obraz
+`zricethezav/gitleaks`, konfiguracja `.gitleaks.toml`). Osobny job CI z akcją
+`gitleaks/gitleaks-action@v2` **usunięty**.
+
+**Dlaczego — trzy powody, każdy wystarczający.**
+
+1. **Rozjazd bramki.** Skan sekretów istniał wyłącznie w CI. Lokalna bramka mogła
+   być zielona przy wpisanym sekrecie — czyli dokładnie ta sytuacja, przed którą
+   ma chronić reguła „CI woła ten sam skrypt".
+2. **Inne narzędzie po obu stronach.** Lokalnie sprawdzaliśmy obrazem Dockera,
+   w CI akcją. Dwa różne skanery to dwa różne zestawy wyników.
+3. **Licencja.** Dla repozytorium należącego do organizacji akcja wymaga płatnej
+   licencji. Zmierzone na pierwszym przebiegu po pushu:
+   `[Fundacja-Niepodzielni] is an organization. License key is required.`
+   Sam gitleaks jest darmowy — płatny jest wyłącznie wrapper w postaci akcji.
+
+**Skutek dla `PLAN-FAZ.md`.** Punkt F0 mówił „gitleaks z `GITLEAKS_LICENSE`
+z sekretów org". Licencja **nie jest potrzebna** i nie prosimy o nią. Skan
+działa i jest ostrzejszy niż był: `fetch-depth: 0` sprawia, że skanujemy całą
+historię, a nie jeden commit (przy domyślnym płytkim klonie skan meldował
+„1 commits scanned" i przechodził, nie zaglądając w przeszłość).
+
+**Dowód skuteczności, nie samego uruchomienia:** wpisanie wartości do
+`.env.example` zapala regułę `keycloak-client-secret` i kończy skan kodem 1.
+Sprawdzone przez podstawienie przynęty i cofnięcie jej.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |

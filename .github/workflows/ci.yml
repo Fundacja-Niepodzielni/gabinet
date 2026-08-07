@@ -4,6 +4,18 @@
 # Workflow świadomie NIE powtarza logiki bramki: woła dokładnie ten sam skrypt,
 # który wykonawca uruchamia u siebie. Dzięki temu „u mnie przechodzi, w CI nie"
 # może wynikać tylko z różnicy środowiska, nigdy z różnicy kroków.
+#
+# JEDEN JOB, nie dwa. Pierwsza wersja miała osobny job `sekrety` z akcją
+# `gitleaks/gitleaks-action@v2` — i to był podręcznikowy rozjazd bramki:
+#   * skan sekretów istniał WYŁĄCZNIE w CI, lokalna bramka go nie miała,
+#   * akcja skanowała innym narzędziem niż to, którym sprawdzaliśmy lokalnie,
+#   * dla repozytorium należącego do ORGANIZACJI akcja wymaga płatnej licencji
+#     i bez sekretu `GITLEAKS_LICENSE` kończy się błędem — zmierzone:
+#     „[Fundacja-Niepodzielni] is an organization. License key is required."
+#
+# Skan sekretów jest teraz krokiem `skrypty/bramka.sh` (ten sam obraz gitleaksa
+# lokalnie i w CI, ta sama konfiguracja `.gitleaks.toml`), więc osobny job stał
+# się zbędny i szkodliwy naraz.
 # ===========================================================================
 name: ci
 
@@ -23,13 +35,20 @@ permissions:
 jobs:
 
   bramka:
-    name: bramka (stos + Pint + Larastan + Pest)
+    name: bramka (stos + Pint + Larastan + Pest + gitleaks)
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # PEŁNA historia, nie płytki klon. Gitleaks w kroku bramki skanuje
+          # HISTORIĘ, a nie tylko drzewo robocze: sekret usunięty kolejnym
+          # commitem dalej leży w repozytorium i dalej jest wyciekiem.
+          # Przy domyślnym `fetch-depth: 1` skan meldował „1 commits scanned"
+          # i przechodził, nie zaglądając w przeszłość.
+          fetch-depth: 0
 
       - name: Wersje narzędzi
         run: |
@@ -48,26 +67,3 @@ jobs:
       - name: Sprzątanie
         if: always()
         run: docker compose -p gabinet-bramka down -v --remove-orphans || true
-
-  sekrety:
-    name: sekrety (gitleaks)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # Gitleaks skanuje HISTORIĘ, nie tylko working tree — sekret usunięty
-          # kolejnym commitem dalej leży w repozytorium i dalej jest wyciekiem.
-          fetch-depth: 0
-
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Licencja organizacyjna (wymagana przez gitleaks-action dla repozytoriów
-          # należących do organizacji). Sekret ustawiony na poziomie organizacji
-          # Fundacja-Niepodzielni — w repozytorium go nie ma i nie będzie.
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-          GITLEAKS_CONFIG: .gitleaks.toml

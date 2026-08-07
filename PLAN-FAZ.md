@@ -28,7 +28,7 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 ### Blokery i oczekiwania
 
 - **BLK-01** (`docs/BLOKERY.md`): klient `gabinet` nie istnieje w realmie Keycloaka. Nie blokuje F1 ani F2. Gotowe zgłoszenie: `docs/zgloszenia/klient-gabinet-w-realmie.md`.
-- **CI nigdy nie jechało** — commity nie są wypchnięte. Kryterium „CI zielone" jest *niepotwierdzone*, nie „zielone".
+- **CI: `bramka` ZIELONA** (`BRAMKA OK — 17 kroków, 0 nieudanych`, przebieg dla `eadf5c5`). Job `sekrety` był czerwony z powodu braku płatnej licencji `gitleaks-action` — **usunięty**, skan sekretów jest krokiem bramki (D-2026-08-07-12).
 - Czeka na człowieka: Z-01 (nadawca SMS), Z-02 (dostawca wideo), Z-04 (przelewy vs Connect), Z-05 (źródła makiety).
 - Z-03 (limit niskopłatnych) **przestał blokować** — wartość rozstrzygnięta: 10 wizyt (D-2026-08-07-08).
 
