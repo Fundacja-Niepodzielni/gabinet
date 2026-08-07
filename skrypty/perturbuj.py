@@ -112,10 +112,32 @@ def nonce_fail_open() -> None:
     )
 
 
+def lockfile_rozjazd() -> None:
+    """Podbija wersję w composer.lock, nie ruszając zainstalowanego vendora.
+
+    Odtwarza O-4: wolumen `vendor` nie odświeża się z przebudowanego obrazu,
+    więc podbicie lockfile'a (np. łatka bezpieczeństwa) bywało ignorowane
+    BEZ ŻADNEGO SYGNAŁU.
+    """
+    lock = KORZEN / "backend/composer.lock"
+    tresc = czytaj(lock)
+
+    # `content-hash` wiąże lock z composer.json; jego zmiana jest dokładnie
+    # tym, co `composer validate` i `install --dry-run` mają wykryć.
+    znacznik = '"content-hash": "'
+    poczatek = tresc.index(znacznik) + len(znacznik)
+    koniec = tresc.index('"', poczatek)
+    stary = tresc[poczatek:koniec]
+    nowy = ("0" + stary[1:]) if stary[0] != "0" else ("1" + stary[1:])
+
+    pisz(lock, tresc[:poczatek] + nowy + tresc[koniec:])
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-sprzataj": hasla_sprzataj,
     "nonce-fail-open": nonce_fail_open,
+    "lockfile-rozjazd": lockfile_rozjazd,
 }
 
 

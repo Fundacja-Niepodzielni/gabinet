@@ -14,8 +14,14 @@ FROM composer:2.9@sha256:b09bccd91a78fe8a9ab4b33d707b862e8fe54fec17782e32683ad2a
 
 FROM php:8.4-fpm-alpine@sha256:5992f8b7433fe7fa96dfbf67746c86d6c41bc91e686eac38fe531c72a02e40e4
 
+# `PGCONNECT_TIMEOUT` (O-4 w D-2026-08-07-15): bez limitu libpq czeka
+# w nieskończoność. Niezależny weryfikator pokazał, że suita testowa przy
+# `DB_HOST` wskazującym nieistniejący host NIE PADA, tylko wisi — w CI
+# oznaczałoby to timeout joba (25 min) zamiast czytelnej czerwieni.
+# Awaria ma być szybka i głośna.
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_MEMORY_LIMIT=-1
+    COMPOSER_MEMORY_LIMIT=-1 \
+    PGCONNECT_TIMEOUT=5
 
 # Zależności budowania są usuwane w tym samym RUN — obraz nie nosi kompilatora.
 RUN set -eux; \

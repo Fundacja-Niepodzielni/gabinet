@@ -255,6 +255,32 @@ p_nonce() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_lockfile() {
+	naglowek "rozjazd composer.lock — wolumen vendor nie odświeża się z obrazu"
+	local plik="backend/composer.lock"
+	zachowaj "$plik"
+
+	perturbuj lockfile-rozjazd || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	oczekuj_czerwone "composer validate wykrywa rozjazd lock/json" 		dc exec -T app composer validate --strict --no-check-publish
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_zamek() {
+	naglowek "zamek bramki — drugi równoległy przebieg"
+	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
+	# ODMAWIA startu, zamiast produkować fałszywe czerwone.
+	local zamek="${TMPDIR:-/tmp}/gabinet-bramka-perturbacja.zamek"
+	rm -rf "$zamek"
+	mkdir -p "$zamek"
+	echo "$$" > "$zamek/pid"
+
+	oczekuj_czerwone "bramka odmawia startu przy zajętym zamku" 		bash "$KORZEN/skrypty/bramka.sh" --projekt gabinet-bramka-perturbacja --tylko-kod
+
+	rm -rf "$zamek"
+}
+
 p_zdrowie() {
 	naglowek "sonda zdrowia — zatrzymana baza"
 	# Kluczowa perturbacja: pierwsza wersja sondy sprawdzała `extension_loaded()`
@@ -324,7 +350,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita statyka format sekrety hasla nonce zdrowie tozsamosc puls zamrozenie biala_lista"
+WSZYSTKIE="testy pusta_suita statyka format sekrety hasla nonce lockfile zamek zdrowie tozsamosc puls zamrozenie biala_lista"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -347,7 +373,11 @@ for NAZWA in $WYBRANE; do
 		sekrety) p_sekrety ;;
 		hasla) p_hasla ;;
 		nonce) p_nonce ;;
+		lockfile) p_lockfile ;;
+		zamek) p_zamek ;;
 		nonce) p_nonce ;;
+		lockfile) p_lockfile ;;
+		zamek) p_zamek ;;
 		zdrowie) p_zdrowie ;;
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;

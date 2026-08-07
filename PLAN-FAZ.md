@@ -54,14 +54,19 @@ Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista
 | F1.2 | Migracje domenowe: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół**; `timestamptz`; kolumny 🔒 szyfrowane | ⬜ **następne** |
 | F1.5 | Zamrażanie w rezerwacji: `kwota_zamrozona`, `regula_anulacji_zamrozona`, wersja regulaminu | mechanizm gotowy (`ZestawRegul` + `RejestrRegul`, testy zielone); brakuje tabeli `rezerwacja` | 🟡 |
 | F1.7 | Seed o **wiarygodnych proporcjach**: 111 specjalistów, kilkanaście wizyt/pacjenta | limit **różnicuje** pacjentów; wizyt na pacjenta < 40 (dziennik makiety, rozdz. 15) | ⬜ |
+| F1.8 | **Dług O-2/O-4/O-5** z weryfikacji rundy 2 (timeout bazy, rozjazd lockfile, zamek bramki) | każdy z perturbacją dowodzącą czerwieni | ✅ |
 
 **Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
 seed o wiarygodnych proporcjach; migracje w górę i w dół.
 
-**Stan bramki dziś:** `BRAMKA OK — 19 kroków, 0 nieudanych`; **107 testów**
-(294 asercje); CI zielone (`dbe4325`). Granica okna sprawdzona co do sekundy.
-**Perturbacje: `PERTURBACJE OK`** — 12 kontroli udowodniło, że umie zaświecić
-czerwono (D-2026-08-07-13).
+**Stan bramki dziś:** `BRAMKA OK — 19 kroków, 0 nieudanych`; **125 testów**
+(369 asercji); CI zielone. Granica okna sprawdzona co do sekundy.
+**Perturbacje: `PERTURBACJE OK`** — **17 kontroli** udowodniło, że umie
+zaświecić czerwono (D-2026-08-07-13).
+
+**Weryfikacja niezależna:** runda 1 (`0af30ae`) — 5 twierdzeń obalonych;
+runda 2 (`eadf5c5`) — 4 obalone, w tym dwa dotyczące bezpieczeństwa;
+runda 3 — w toku. Reguła zbieżności rund: D-2026-08-07-16.
 
 **Wartości startowe reguł** (do tabeli konfiguracji, wszystkie wersjonowane):
 okno bezpłatnego odwołania 24 h · limit przełożeń 2 · najbliższy termin 2 h ·

@@ -448,6 +448,54 @@ O-2, O-4 i O-5 wchodzą do rozpiski F1 jako zadania bramkowe.
 
 ---
 
+## D-2026-08-07-16 — reguła zbieżności rund weryfikacji
+
+**Decyzja architekta (2026-08-07), żeby weryfikacja nie goniła własnego ogona.**
+
+Poprzednia runda pokazała problem procesowy: weryfikator badał `eadf5c5`, a gdy
+kończył, HEAD był już pięć commitów dalej. Bez reguły każda runda otwierałaby
+fazę na nowo, bo zawsze istnieje nowsza praca.
+
+| Zasada | Treść |
+|---|---|
+| **Weryfikacja dotyczy KONKRETNEGO SHA** | zapisywanego w raporcie; werdykt odnosi się do tamtego stanu, nie do „repozytorium" |
+| **Faza zamknięta przy ZERZE znalezisk** | runda na danym SHA kończąca się bez znalezisk zamyka fazę |
+| **Praca po zweryfikowanym SHA nie otwiera fazy ponownie** | commity F1 nie wracają do F0; obejmuje je bramka fazy bieżącej |
+| **Runda kolejna: HEAD + delty** | pełna bramka na czystym klonie z HEAD, a adwersarialnie **wyłącznie zmiany od SHA rundy poprzedniej** |
+
+**Runda 1:** `0af30ae` — 5 twierdzeń obalonych.
+**Runda 2:** `eadf5c5` — 4 twierdzenia obalone (2 dotyczyły bezpieczeństwa).
+**Runda 3:** SHA zapisane w zleceniu, adwersarialnie delty `eadf5c5..HEAD`.
+
+**Rozszerzenie D-2026-08-07-13 (przyjęte przez architekta):** automat perturbacji
+z **twardym błędem przy nietrafionej mutacji**. Perturbacja, która nie zmieniła
+pliku, musi przerwać z błędem — nie zgłosić sukcesu. Bez tego „kontrola
+udowodniła czerwień" znaczy tylko tyle, że skrypt się wykonał.
+
+---
+
+## D-2026-08-07-17 — O-2, O-4 i O-5 domknięte; O-1 odłożone do F9
+
+Trzy z sześciu długów z D-2026-08-07-15 wchodzą do bramki F1 i są zrobione.
+
+| # | Co było źle | Naprawa | Dowód |
+|---|---|---|---|
+| **O-2** | suita **wisiała** przy niedostępnej bazie zamiast paść (w CI: timeout joba 25 min zamiast czerwieni) | `PGCONNECT_TIMEOUT=5` w obrazie | zmierzone: test pada po **19 s** zamiast wisieć do zabicia |
+| **O-4** | podbicie `composer.lock` bez `down -v` było ignorowane **bez sygnału** (wolumen `vendor` nie odświeża się z przebudowanego obrazu) | krok bramki: `composer validate --strict` + `install --dry-run` z wymogiem „Nothing to install" | perturbacja `lockfile` zapala kontrolę |
+| **O-5** | dwa równoległe przebiegi bramki mieliły jedną bazę `gabinet_test` i dawały fałszywe czerwone | zamek katalogowy per projekt, z przejmowaniem po martwym PID | perturbacja `zamek`; test na żywo: A `BRAMKA OK`, B `ODMOWA`, kod 2 |
+
+**Uwaga warta zapamiętania:** pierwsza wersja zamka używała `flock` — a **`flock`
+nie istnieje w Git Bash na Windows**. Zamek po cichu nie chronił niczego:
+zmierzone, dwa równoległe przebiegi przeszły i **oba** skończyły się
+`BRAMKA CZERWONA — 2 nieudanych`. `mkdir` jest atomowy w każdym systemie plików
+i nie wymaga narzędzia spoza powłoki.
+
+**O-1** (sonda `app` nie sprawdza, czy php-fpm obsługuje FastCGI) — odłożone
+do F9, razem z hartowaniem obrazu; wymaga `cgi-fcgi` i ścieżki `ping`.
+**O-3** i **O-6** zostają jako udokumentowane ograniczenia bez zadania.
+
+---
+
 ## Zadania dla człowieka (nie dla agenta)
 
 | # | Zadanie | Dlaczego teraz | Stan |

@@ -67,6 +67,42 @@ if [ "$PROJEKT" = "$PROJEKT_DEWELOPERA" ]; then
 	exit 2
 fi
 
+# O-5: zamek na równoległy przebieg TEGO SAMEGO projektu.
+#
+# Dwa przebiegi mielą jedną bazę `gabinet_test` i produkują fałszywe czerwone
+# („duplicate key ... migrations") — niezależny weryfikator potknął się o to sam
+# i musiał unieważnić własny wynik.
+#
+# `mkdir`, nie `flock`: flock NIE ISTNIEJE w Git Bash na Windows. Pierwsza
+# wersja zamka używała flocka i po cichu nie chroniła niczego — zmierzone:
+# dwa równoległe przebiegi przeszły przez zamek i oba skończyły się
+# `BRAMKA CZERWONA — 2 nieudanych`. `mkdir` jest atomowy w każdym systemie
+# plików i nie wymaga żadnego narzędzia poza powłoką.
+ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka-${PROJEKT}.zamek"
+
+zwolnij_zamek() {
+	[ -d "$ZAMEK" ] && rm -rf "$ZAMEK"
+}
+
+if mkdir "$ZAMEK" 2>/dev/null; then
+	echo "$$" > "$ZAMEK/pid"
+	trap zwolnij_zamek EXIT INT TERM
+else
+	# Zamek po przerwanym przebiegu nie może blokować w nieskończoność:
+	# jeśli proces właściciela już nie żyje, przejmujemy zamek.
+	STARY_PID="$(cat "$ZAMEK/pid" 2>/dev/null || echo '')"
+
+	if [ -n "$STARY_PID" ] && kill -0 "$STARY_PID" 2>/dev/null; then
+		echo "ODMOWA: bramka dla projektu '$PROJEKT' już biegnie (PID $STARY_PID)." >&2
+		echo "Równoległe przebiegi mielą tę samą bazę testową i dają fałszywe wyniki." >&2
+		exit 2
+	fi
+
+	echo "UWAGA: przejmuję porzucony zamek po PID ${STARY_PID:-nieznanym}." >&2
+	echo "$$" > "$ZAMEK/pid"
+	trap zwolnij_zamek EXIT INT TERM
+fi
+
 KROK=0
 NIEUDANE=0
 
@@ -163,6 +199,23 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 		echo "    vendor/autoload.php istnieje"
 	else
 		echo "    vendor/autoload.php NIE powstał — instalacja nie doszła do końca"
+		zle
+	fi
+
+	krok "zależności zgodne z composer.lock (rozjazd wolumenu `vendor`)"
+	# O-4: wolumen `vendor` NIE odświeża się z przebudowanego obrazu. Podbicie
+	# lockfile'a (np. łatka bezpieczeństwa) bez `down -v` było dotąd ignorowane
+	# BEZ ŻADNEGO SYGNAŁU — README ostrzegał prozą, nic tego nie egzekwowało.
+	dc exec -T app composer validate --strict --no-check-publish || zle
+
+	SUCHY="$(dc exec -T app composer install --dry-run --no-scripts 2>&1)"
+	if printf '%s' "$SUCHY" | grep -q 'Nothing to install, update or remove'; then
+		echo "    zainstalowane zależności zgadzają się z composer.lock"
+	else
+		echo "    ROZJAZD: wolumen `vendor` nie odpowiada composer.lock"
+		printf '%s
+' "$SUCHY" | tail -15
+		echo "    naprawa: docker compose down -v && docker compose build app && docker compose up -d"
 		zle
 	fi
 
