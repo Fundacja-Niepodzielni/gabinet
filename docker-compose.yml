@@ -201,7 +201,14 @@ services:
 
 networks:
   gabinet:
-    name: gabinet
+    # Nazwa MUSI nosić prefiks — tak samo jak kontenery i wolumeny.
+    # Przy nazwie na sztywno drugi stos z tego samego pliku wpina się w sieć
+    # pierwszego i alias `postgres` rozwiązuje się LOSOWO na jeden z dwóch
+    # serwerów. Zmierzone przez niezależnego weryfikatora: 6 trafień w bazę
+    # dewelopera na 10 prób. Bramka kasowałaby wtedy `gabinet_test`
+    # dewelopera mniej więcej co drugi przebieg.
+    name: ${GABINET_PREFIX:-gabinet}
+    driver: bridge
 
 volumes:
   pg-data:
