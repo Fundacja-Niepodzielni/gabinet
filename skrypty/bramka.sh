@@ -118,13 +118,42 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	krok "budowanie obrazu aplikacji"
 	dc build app || zle
 
-	krok "start stosu (gotowość rozstrzygają SONDY, nie kod wyjścia polecenia)"
+	krok "start stosu"
 	# Zależności przyjeżdżają z OBRAZU i montują się jako nazwany wolumen
 	# (Dockerfile + docker-compose.yml). Entrypoint generuje tylko autoloader.
-	# Trzy wcześniejsze podejścia instalowały przy starcie i wszystkie
-	# kończyły się tym samym: bramka na czystym klonie leciała po
-	# niekompletnym `vendor/`, bo instalacja trwała ~10 minut w tle.
-	dc up -d --wait --wait-timeout 600 || zle
+	dc up -d || zle
+
+	krok "czekam, aż KAŻDA usługa zgłosi zdrowie (stan, nie kod wyjścia \`up\`)"
+	# Świadomie BEZ `--wait`. Zmierzone na czystym klonie: `up --wait` wraca
+	# z błędem („container ... exited (0)"), gdy którykolwiek kontener wyjdzie
+	# przejściowo w trakcie startu — mimo że `restart: unless-stopped` zaraz go
+	# podnosi i stos po chwili jest w komplecie zdrowy. Kod wyjścia `up` jest
+	# więc DEKLARACJĄ o jednej chwili; my pytamy o STAN aż do zbieżności.
+	USLUGI="postgres redis app web horizon scheduler"
+	STOS_OK=0
+
+	for _ in $(seq 1 120); do
+		NIEZDROWE=""
+
+		for USLUGA in $USLUGI; do
+			STAN="$(docker inspect "${PROJEKT}-${USLUGA}" \
+				--format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo brak)"
+			case "$STAN" in
+				healthy|running) ;;
+				*) NIEZDROWE="$NIEZDROWE ${USLUGA}=${STAN}" ;;
+			esac
+		done
+
+		if [ -z "$NIEZDROWE" ]; then
+			STOS_OK=1
+			echo "    wszystkie usługi zdrowe:$(printf ' %s' $USLUGI)"
+			break
+		fi
+
+		sleep 5
+	done
+
+	[ "$STOS_OK" -eq 1 ] || { echo "    nie zbiegło się:$NIEZDROWE"; zle; }
 
 	krok "stan: vendor/autoload.php realnie istnieje"
 	if dc exec -T app test -f vendor/autoload.php; then
