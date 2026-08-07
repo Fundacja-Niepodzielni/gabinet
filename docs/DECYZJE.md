@@ -668,3 +668,38 @@ Wpisane do `WYTYCZNE-PRACY.md`.
 Wynik po naprawach: `PERTURBACJE OK — 28 kontroli`, każda czerwień z kodem
 wyjścia i niepustym wyjściem. Żadna perturbacja nie opierała się na milczącym
 padnięciu.
+
+---
+
+## D-2026-08-08-23 — dyscyplina gałęzi: `main` zostaje, gałęzie ruszają od rundy 5
+
+**Rozbieżność.** Decyzja właściciela po sesji 1 brzmiała: „push zawsze dozwolony
+(backup + CI); **merge do `main` po zielonej niezależnej weryfikacji**".
+Polecenie architekta z 08.08: „**nie scalaj do `main` przed zieloną rundą**".
+Obie mówią to samo — ale wykonawca **nigdy nie założył gałęzi roboczej**
+i pracował bezpośrednio na `main`, więc „scalanie po zielonej rundzie" nie
+miało jak zaistnieć. Siedem commitów rund 4–5 (`e66c6a1`…`b2084fc`) trafiło
+na `main` i zostało wypchniętych.
+
+**Rozstrzygnięcie (architekt, 08.08).** NIE przepisujemy wypchniętej historii.
+Force-push to operacja destrukcyjna, która kupiłaby wyłącznie czystość
+konceptualną — dziś nic od `main` Gabinetu nie zależy. Obecny `main` zostaje
+jako baza.
+
+**Zasada od następnej partii:** praca na gałęzi (`faza-1` albo per-partia),
+scalanie do `main` **po zielonej niezależnej rundzie**.
+
+**Runda 5 jest weryfikacją obecnego `main@b2084fc`:**
+
+| wynik rundy 5 | co dalej |
+|---|---|
+| zielona | `main` uznany za zweryfikowany do `b2084fc`; dyscyplina gałęzi rusza stąd |
+| znaleziska | poprawki na gałęzi odbitej od `b2084fc`; po zielonym przebiegu merge — `main` zbiega **bez force-push** |
+
+**Wniosek do zapamiętania.** Rozbieżność wyszła dopiero wtedy, gdy wykonawca
+zgłosił ją wprost, podając obie wersje dosłownie, stan systemu i koszt
+cofnięcia (reguła „sprzeczne polecenia" z `WYTYCZNE-PRACY.md`). Gdyby wybrał
+po cichu którąkolwiek wersję, przez kolejne tygodnie nikt nie odtworzyłby,
+dlaczego repozytorium wygląda tak, a nie inaczej. Rekomendacja tańszej opcji
+została przyjęta — co jest argumentem za tym, żeby przy zgłaszaniu rozbieżności
+ZAWSZE podawać koszt cofnięcia, a nie samo „jest niezgodność".
