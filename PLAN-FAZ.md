@@ -48,15 +48,20 @@ Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista
 | # | Zadanie | Kryterium „zrobione" | Stan |
 |---|---|---|---|
 | F1.1 | **DPIA-checklista** — art. 9, retencje, dostępy, podprocesorzy | dokument kończy się wymaganiami dla migracji, nie opisem | ✅ |
-| F1.2 | Migracje: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół**; `timestamptz`; kolumny 🔒 szyfrowane | ⬜ |
-| F1.3 | Konfiguracja reguł **z wersjonowaniem i datą obowiązywania** + macierz odwołań **jako dane** | zmiana reguły nie działa wstecz — test na rezerwacji sprzed zmiany | ⬜ |
-| F1.4 | **Jedna funkcja rozstrzygająca** zwrot / możliwość przełożenia / płatność godziny | wołana przez wszystkie moduły; żaden ekran nie decyduje sam | ⬜ |
-| F1.5 | Zamrażanie: `kwota_zamrozona`, `regula_anulacji_zamrozona` (pełny zrzut), wersja regulaminu | test: podwyżka cennika **nie rusza** starej rezerwacji | ⬜ |
-| F1.6 | Strefy czasowe: UTC w bazie, okna liczone w Europe/Warsaw | testy na dobach **23 h i 25 h** (zmiana czasu) | ⬜ |
+| F1.3 | Konfiguracja reguł **z wersjonowaniem i datą obowiązywania** + macierz odwołań **jako dane** | zmiana reguły nie działa wstecz — test na rezerwacji sprzed zmiany | ✅ |
+| F1.4 | **Jedna funkcja rozstrzygająca** zwrot / możliwość przełożenia / płatność godziny | czysta funkcja, bez bazy i bez „teraz"; 8 sytuacji macierzy jako dane | ✅ |
+| F1.6 | Strefy czasowe: UTC w bazie, okna liczone w Europe/Warsaw | doby **23 h i 25 h** + ten sam werdykt w 4 strefach | ✅ |
+| F1.2 | Migracje domenowe: `pacjent`, `specjalista` (klucz `sub`), `usluga` (flaga fundacja/komercja, prowizja per usługa), `rezerwacja`, `zgoda`, `zdarzenie` | migracje w górę **i w dół**; `timestamptz`; kolumny 🔒 szyfrowane | ⬜ **następne** |
+| F1.5 | Zamrażanie w rezerwacji: `kwota_zamrozona`, `regula_anulacji_zamrozona`, wersja regulaminu | mechanizm gotowy (`ZestawRegul` + `RejestrRegul`, testy zielone); brakuje tabeli `rezerwacja` | 🟡 |
 | F1.7 | Seed o **wiarygodnych proporcjach**: 111 specjalistów, kilkanaście wizyt/pacjenta | limit **różnicuje** pacjentów; wizyt na pacjenta < 40 (dziennik makiety, rozdz. 15) | ⬜ |
 
 **Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
 seed o wiarygodnych proporcjach; migracje w górę i w dół.
+
+**Stan bramki dziś:** `BRAMKA OK — 19 kroków, 0 nieudanych`; **107 testów**
+(294 asercje); CI zielone (`dbe4325`). Granica okna sprawdzona co do sekundy.
+**Perturbacje: `PERTURBACJE OK`** — 12 kontroli udowodniło, że umie zaświecić
+czerwono (D-2026-08-07-13).
 
 **Wartości startowe reguł** (do tabeli konfiguracji, wszystkie wersjonowane):
 okno bezpłatnego odwołania 24 h · limit przełożeń 2 · najbliższy termin 2 h ·
