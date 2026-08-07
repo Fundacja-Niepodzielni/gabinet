@@ -480,9 +480,9 @@ Trzy z sześciu długów z D-2026-08-07-15 wchodzą do bramki F1 i są zrobione.
 
 | # | Co było źle | Naprawa | Dowód |
 |---|---|---|---|
-| **O-2** | suita **wisiała** przy niedostępnej bazie zamiast paść (w CI: timeout joba 25 min zamiast czerwieni) | `PGCONNECT_TIMEOUT=5` w obrazie | zmierzone: test pada po **19 s** zamiast wisieć do zabicia |
+| **O-2** | suita **wisiała** przy niedostępnej bazie zamiast paść (w CI: timeout joba 25 min zamiast czerwieni) | ~~`PGCONNECT_TIMEOUT=5` w obrazie~~ → **sonda TCP w `tests/Pest.php`** | ⚠ **SPROSTOWANE w D-2026-08-07-18 (U-3)**: pomiar 19 s był nieprawdziwy — zmienna nie miała mierzalnego efektu (~169 s z nią i bez niej). Po naprawie: **5 s** |
 | **O-4** | podbicie `composer.lock` bez `down -v` było ignorowane **bez sygnału** (wolumen `vendor` nie odświeża się z przebudowanego obrazu) | krok bramki: `composer validate --strict` + `install --dry-run` z wymogiem „Nothing to install" | perturbacja `lockfile` zapala kontrolę |
-| **O-5** | dwa równoległe przebiegi bramki mieliły jedną bazę `gabinet_test` i dawały fałszywe czerwone | zamek katalogowy per projekt, z przejmowaniem po martwym PID | perturbacja `zamek`; test na żywo: A `BRAMKA OK`, B `ODMOWA`, kod 2 |
+| **O-5** | dwa równoległe przebiegi bramki mieliły jedną bazę `gabinet_test` i dawały fałszywe czerwone | zamek katalogowy per projekt, z przejmowaniem po martwym PID | perturbacja `zamek` — ⚠ **SPROSTOWANE w D-2026-08-07-18 (U-2)**: mierzyła inny plik niż bramka; kod wyjścia to teraz **3** |
 
 **Uwaga warta zapamiętania:** pierwsza wersja zamka używała `flock` — a **`flock`
 nie istnieje w Git Bash na Windows**. Zamek po cichu nie chronił niczego:
@@ -506,3 +506,120 @@ do F9, razem z hartowaniem obrazu; wymaga `cgi-fcgi` i ścieżki `ping`.
 | **Z-03** | **Potwierdzić limit 10 wizyt niskopłatnych na starcie produkcji** (zarząd fundacji). | ROZSTRZYGNIĘTE co do wartości: 10 wizyt (D-2026-08-07-08) — F1 nie jest już zablokowana. Zostaje potwierdzenie, czy 10 wchodzi na produkcję; wartość i tak jest konfiguracją z wersjonowaniem, więc zmiana nie wymaga wdrożenia kodu. | 🟡 nie blokuje |
 | **Z-04** | **Potwierdzić „przelewy miesięczne"** po rozmowie fundacji. | Stripe Connect zmienia **model danych** rozliczeń, nie samą integrację (spec M4/1). Potrzebne przed F4. | ⬜ czeka na fundację |
 | **Z-05** | **Dostarczyć źródła makiety React** (61 ekranów, `DECYZJE.md` wykonawcy makiety §26). | Bez nich F7 nie ma czego podpinać. F0–F6 są od tego niezależne. | ⬜ czeka na właściciela |
+
+---
+
+## D-2026-08-07-18 — runda 3 weryfikacji: 11 znalezisk, wszystkie naprawione
+
+Niezależny weryfikator obalił na SHA `a660753` jedenaście twierdzeń. Poniżej
+komplet, bo dwa z nich to **sprostowania wcześniejszych wpisów tego dziennika**.
+
+| # | Co było źle | Naprawa | Dowód |
+|---|---|---|---|
+| **U-1** | kontrola CLAUDE.md §2 przepuszczała KOMPLETNY, działający mechanizm haseł pod nazwami spoza jakiegokolwiek słownika (`sekret_logowania`, `pin_dostepu`, `sodium_crypto_pwhash_str`) | wersja TRZECIA testu: **zadeklarowany schemat bazy, zadeklarowane trasy, zamknięta lista prymitywów** — skan całego `backend/` poza `vendor/` i `storage/` | perturbacja `hasla_v2` odtwarza atak weryfikatora co do nazwy |
+| **U-2** | perturbacja zamka budowała INNĄ ścieżkę niż bramka i nie odróżniała kodu wyjścia; samo przejęcie zamka miało wyścig | ścieżkę podaje `bramka.sh --pokaz-zamek`; przejęcie objęte drugim, atomowym `mkdir`; osobny kod wyjścia **3** | perturbacja `zamek` sprawdza kod 3 **i** kierunek odwrotny |
+| **U-3** | **SPROSTOWANIE D-2026-08-07-17:** teza „test pada po 19 s dzięki `PGCONNECT_TIMEOUT=5`" była **nieprawdziwa** — weryfikator zmierzył ~169 s z tą zmienną i bez niej | sonda TCP w `tests/Pest.php` z własnym limitem, niezależna od sterownika | zmierzone: **5 s** zamiast 169 s; perturbacja `sonda_bazy` mierzy CZAS, nie samą czerwień |
+| **U-4** | test białej listy pisał `config(['konta.bramki.panel.koordynacji' => …])` — nazwa bramki zawiera kropkę, więc powstawał NOWY klucz zagnieżdżony, a prawdziwy wpis zostawał nietknięty; test nic nie mutował | podmiana CAŁEJ mapy + **dowód mutacji** przed asercją + kierunek odwrotny | `BramkiTest` |
+| **U-5** | `trap … INT` nie kończył skryptu (bash wraca do przerwanej instrukcji); sprzątanie po perturbacji haseł nie było w trapie | osobna procedura sygnałowa z jawnym `exit 130`; `hasla-sprzataj` w trapie | `bramka.sh`, `perturbacje.sh` |
+| **U-6** | licznik testów zwracał **0** przy „1 failed, 135 passed" — podłoga meldowała „suita się nie uruchomiła" przy pełnym przebiegu; zmienna środowiskowa pozwalała wyłączyć kontrolę bez śladu w repozytorium | sumowanie WSZYSTKICH stanów; podłoga jako **stała**, nie zmienna środowiskowa; jeden wspólny plik `skrypty/licz-testy.sh` dla bramki i perturbacji | perturbacja `licznik` na PRAWDZIWYM wyniku z zepsutym testem |
+| **U-7** | **zwrot mógł przekroczyć wpłatę**: wpis `zwrot_procent = 500` dawał 725 zł z wpłaconych 145 zł; kwota ujemna dawała ujemny zwrot | walidacja 0..100 przy wejściu, odrzucenie kwoty ujemnej, **trzeci zamek**: zwrot nigdy większy od wpłaty | `GranicePienidzyTest` liczy KWOTY |
+| **U-8** | krok „zależności zgodne z lockiem" czytał wyłącznie METADANE; brak perturbacji na gałąź `install --dry-run` | dodatkowa kontrola obecności pakietów NA DYSKU (`skrypty/zaleznosci-obecne.php`) | perturbacja `vendor` — obie gałęzie + powrót na zielone |
+| **U-9** | `dodajWersje` z datą wsteczną **przepisywało historię**: odpowiedź na „co obowiązywało 15 sierpnia" zmieniała się po dopisaniu wersji | odrzucenie daty wcześniejszej niż ostatnia obowiązująca | `RejestrRegulTest` sprawdza WARTOŚĆ przed i po |
+| **U-10** | macierz niepełna była przyjmowana, a `OcenaAnulacji` dobierała brakujące sytuacje **z kodu** — zamrożony zrzut przestawał być samowystarczalny (wbrew §4) | odrzucenie macierzy niepełnej; brak klucza w zamrożonym zrzucie = błąd, nie zgadywanie | `GranicePienidzyTest` |
+| **U-11** | **backticki bez ucieczki w cudzysłowach `bramka.sh`** — bash wykonywał `vendor` jako polecenie przy KAŻDYM przebiegu; rozbieżności liczb w dokumentach | apostrofy zamiast cudzysłowów; liczby w `PLAN-FAZ.md` przeliczone | `bash -n` + przebieg bramki bez „command not found" |
+
+**Wniosek do zapamiętania.** Dwa znaleziska (U-2, U-3) to kontrole, które
+**wyglądały na udowodnione perturbacją**, a mierzyły nie to zjawisko. Sama
+perturbacja nie wystarcza — musi mieć **dowód mutacji** (czy naruszenie
+naprawdę weszło w życie) i **kierunek odwrotny** (czy kontrola nie świeci
+czerwono zawsze). Oba wymogi są teraz w nagłówku `perturbacje.sh`.
+
+---
+
+## D-2026-08-07-19 — wzmacniacz żądań do Kont Niepodzielni (lekcja zespołu hubu)
+
+**Reguła:** każda ścieżka „cache-miss → żądanie w górę" wymaga pytania, **kto
+kontroluje wejście decydujące o tym missie**. Jeśli atakujący — to wzmacniacz.
+
+`kid` z nagłówka tokenu to dane nadawcy żądania, jeszcze **przed** weryfikacją
+podpisu. Naiwna obsługa rotacji kluczy („nie znam kid → dociągnij JWKS")
+zamienia strumień podrobionych tokenów w strumień żądań do Kont Niepodzielni —
+a `POST /oidc/backchannel-logout` jest publiczny i nieuwierzytelniony.
+
+Gabinet w chwili zgłoszenia **nie miał wzmacniacza** (JWKS tylko z TTL), ale nie
+obsługiwał też rotacji kluczy — a naturalną łatką na to jest dokładnie ten
+wzmacniacz. Wprowadzono więc od razu wersję bezpieczną: `KontaOidc::jwksDlaKid()`
+z bramką częstotliwości opartą o **atomowe `Cache::add`** (domyślnie 60 s,
+`KEYCLOAK_JWKS_ODSTEP_S`).
+
+Dowód: `WzmacniaczZadanTest` **liczy żądania HTTP** — 100 tokenów z nieznanym
+`kid` daje **dokładnie jedno** pobranie JWKS; znany `kid` daje zero; po
+wygaśnięciu okna wchodzi kolejne jedno (inaczej zablokowalibyśmy rotację
+kluczy na zawsze). Perturbacja `wzmacniacz` usuwa bramkę i test pada.
+
+Czwarty test stosuje **wzorzec perturbacji mechanizmów samonaprawczych**: nie
+kasuje cache'u (to mierzyłoby tempo odbudowy), tylko **zatruwa treść** pod tym
+samym kluczem i potwierdza, że samonaprawa się NIE uruchomiła — licznik
+odświeżeń zostaje na zerze.
+
+---
+
+## D-2026-08-07-20 — retencja RODO działa w obie strony (lekcja zespołu helpdesku)
+
+**Reguła:** pilnujemy „nie trzymaj za długo", ale rekord, którego ŻADNE zadanie
+czyszczące nie wybierze — bo brakuje mu pola, po którym retencja filtruje —
+zostaje **na zawsze**. To też naruszenie, tylko ciche: nic nie pada, nic nie
+alarmuje. Druga zasada: **retencja idzie za POCHODZENIEM rekordu**, nie za jego
+bieżącym stanem ani kolejką — inaczej przeniesienie albo eskalacja po cichu
+przesuwa okres przechowywania.
+
+Zadania czyszczące powstają w F2, ale kontrola **strukturalna** działa już
+teraz i odwraca ciężar dowodu tak samo jak kontrola §2: `RetencjaTest` trzyma
+**rejestr retencji** (tabela → kolumna pochodzenia → podstawa → sposób
+usunięcia). Każda tabela w bazie musi być albo w rejestrze, albo na jawnej
+liście „bez danych osobowych". Nowa tabela zapala test na czerwono, dopóki
+człowiek świadomie nie dopisze jej podstawy retencji.
+
+Kontrola pilnuje trzech rzeczy naraz: kolumna pochodzenia **istnieje** (bez niej
+zadanie nie wybrałoby ani jednego rekordu), **nie jest kolumną stanu**
+(`status`, `updated_at`, `zanonimizowany_at`), i każdy wpis mówi **jak** rekord
+znika, nie tylko kiedy. Perturbacja `retencja` dowodzi OBU kierunków awarii:
+tabela z danymi osobowymi bez wpisu → czerwone; wpis wskazujący nieistniejącą
+kolumnę → czerwone.
+
+Do domknięcia w F2: dla każdej kategorii **test, że rekord PO TERMINIE JEST
+wybierany przez swoje zadanie** — nie tylko że świeży nie jest.
+
+---
+
+## D-2026-08-07-21 — E2E logowania przez żywy Keycloak: cztery pułapki spoza kontraktu
+
+Lekcja zespołu hubu. Trzy pierwsze punkty są **do zastosowania w F3** (konta
+pacjentów + panel personelu, testy przeglądarkowe ról z markerem `wymaga-2fa`).
+Czwarty obowiązuje **od zaraz** — to nowy gatunek błędu bramki.
+
+1. **Akcja wymagana przychodzi PRZEKIEROWANIEM, nie w treści odpowiedzi.**
+   `CONFIGURE_TOTP` i pokrewne objawiają się jako redirect na ekran
+   required-action. Suita parsująca samo ciało odpowiedzi zobaczy pustkę
+   i zgłosi „błąd logowania" przy **poprawnym haśle** — czyli wskaże złą
+   przyczynę. Śledzimy przekierowania, nie ciało.
+2. **`totpSecret` z Keycloaka jest SUROWY** (20 znaków, małe litery), **nie
+   Base32**. Potraktowany jak Base32 daje kod odrzucany bez czytelnej
+   przyczyny — objaw wygląda jak „złe hasło".
+3. **Formularz konfiguracji TOTP musi ODESŁAĆ `totpSecret`** — Keycloak dopiero
+   po nim wiąże kod z ziarnem.
+   Wzorzec do przepisania: `konta/tests/theme/lib/totp.js`.
+4. **META-LEKCJA — kontrola, która zmienia stan, psuje go swojemu następnemu
+   przebiegowi.** Kontrola E2E konfigurująca TOTP zostawia gotowe
+   poświadczenie; drugi przebieg zastaje **inny ekran** i mierzy co innego niż
+   pierwszy. Wymóg: bramka **zdejmuje poświadczenie OTP przed każdym
+   przepływem**, a wynik uznajemy dopiero po **≥3 przebiegach z rzędu**.
+
+**Zastosowanie u nas, natychmiast.** Punkt 4 to czwarta reguła perturbacji,
+obok trzech dotychczasowych (dowód mutacji · odporność na samonaprawę · dowód
+w obie strony). Brzmi: **perturbacja musi zostawiać repozytorium i stos
+dokładnie w stanie zastanym**, a zestaw uznajemy za sprawny dopiero, gdy
+**trzy przebiegi z rzędu dają identyczny wynik**. Nasze perturbacje modyfikują
+pliki i wolumen `vendor` — to dokładnie ten gatunek ryzyka. Zmierzone:
+`skrypty/perturbacje.sh` trzy razy pod rząd, ten sam wynik, `git status`
+czysty po każdym przebiegu.

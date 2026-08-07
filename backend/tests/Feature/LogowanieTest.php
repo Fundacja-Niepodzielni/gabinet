@@ -7,42 +7,6 @@ use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Http;
 use Tests\Wsparcie\FabrykaTokenow;
 
-const IDP = 'https://idp.test/realms/niepodzielni';
-
-/**
- * Podstawia atrapę IdP: discovery + JWKS z klucza wygenerowanego w teście.
- * Dzięki temu cała warstwa `KontaOidc` działa naprawdę (cache, przepisywanie
- * endpointów, kontrola issuera) — atrapowany jest wyłącznie ruch sieciowy.
- */
-/**
- * @param  array<string, mixed>  $nadpisaniaDiscovery
- */
-function udawajIdp(array $nadpisaniaDiscovery = []): void
-{
-    config([
-        'konta.issuer_publiczny' => IDP,
-        'konta.issuer_wewnetrzny' => IDP,
-        'konta.client_id' => 'gabinet',
-        'konta.wymagana_audiencja' => 'gabinet',
-        'konta.redirect_uri' => 'http://localhost/auth/callback',
-        'konta.tolerancja_zegara' => 30,
-    ]);
-
-    $discovery = array_merge([
-        'issuer' => IDP,
-        'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
-        'token_endpoint' => IDP.'/protocol/openid-connect/token',
-        'jwks_uri' => IDP.'/protocol/openid-connect/certs',
-        'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
-        'userinfo_endpoint' => IDP.'/protocol/openid-connect/userinfo',
-    ], $nadpisaniaDiscovery);
-
-    Http::fake([
-        'idp.test/*/.well-known/openid-configuration' => Http::response($discovery),
-        'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
-    ]);
-}
-
 it('odpowiada 401 na /auth/ja bez zalogowania', function (): void {
     $this->getJson('/auth/ja')
         ->assertStatus(401)
@@ -58,7 +22,7 @@ it('przekierowuje /auth/login do IdP z PKCE, state i nonce', function (): void {
     $cel = (string) $odpowiedz->headers->get('Location');
     parse_str((string) parse_url($cel, PHP_URL_QUERY), $parametry);
 
-    expect($cel)->toStartWith(IDP.'/protocol/openid-connect/auth')
+    expect($cel)->toStartWith(FabrykaTokenow::ADRES.'/protocol/openid-connect/auth')
         ->and($parametry['client_id'])->toBe('gabinet')
         ->and($parametry['response_type'])->toBe('code')
         ->and($parametry['code_challenge_method'])->toBe('S256')
@@ -106,22 +70,22 @@ it('przeprowadza pełne logowanie: kod → tokeny → sesja → role → bramki'
     udawajIdp();
 
     $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'nonce' => 'nonce-z-sesji',
     ]));
 
     $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'realm_access' => ['roles' => ['psycholog', 'offline_access']],
     ]));
 
     Http::fake([
         'idp.test/*/.well-known/openid-configuration' => Http::response([
-            'issuer' => IDP,
-            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
-            'token_endpoint' => IDP.'/protocol/openid-connect/token',
-            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
-            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+            'issuer' => FabrykaTokenow::ADRES,
+            'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
+            'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
+            'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
         ]),
         'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
         'idp.test/*/protocol/openid-connect/token' => Http::response([
@@ -171,9 +135,9 @@ it('nie wpuszcza markera wymaga-2fa do uprawnień po zalogowaniu', function (): 
     // żeby żaden konsument API nie zbudował logiki na „ma jakąś rolę".
     udawajIdp();
 
-    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => FabrykaTokenow::ADRES, 'nonce' => 'n']));
     $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'realm_access' => ['roles' => [
             'koordynator', 'wymaga-2fa', 'offline_access',
             'uma_authorization', 'default-roles-niepodzielni',
@@ -182,11 +146,11 @@ it('nie wpuszcza markera wymaga-2fa do uprawnień po zalogowaniu', function (): 
 
     Http::fake([
         'idp.test/*/.well-known/openid-configuration' => Http::response([
-            'issuer' => IDP,
-            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
-            'token_endpoint' => IDP.'/protocol/openid-connect/token',
-            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
-            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+            'issuer' => FabrykaTokenow::ADRES,
+            'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
+            'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
+            'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
         ]),
         'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
         'idp.test/*/protocol/openid-connect/token' => Http::response([
@@ -218,19 +182,19 @@ it('loguje konto bez roli merytorycznej, ale nie otwiera mu niczego', function (
     // zalogować i nie dostać ani jednej bramki.
     udawajIdp();
 
-    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => FabrykaTokenow::ADRES, 'nonce' => 'n']));
     $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'realm_access' => ['roles' => ['offline_access', 'uma_authorization', 'default-roles-niepodzielni']],
     ]));
 
     Http::fake([
         'idp.test/*/.well-known/openid-configuration' => Http::response([
-            'issuer' => IDP,
-            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
-            'token_endpoint' => IDP.'/protocol/openid-connect/token',
-            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
-            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+            'issuer' => FabrykaTokenow::ADRES,
+            'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
+            'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
+            'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
         ]),
         'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
         'idp.test/*/protocol/openid-connect/token' => Http::response([
@@ -255,20 +219,20 @@ it('nie wpuszcza, gdy access token ma cudzą audiencję', function (): void {
     // Ta sama ścieżka co wyżej, zmieniona DOKŁADNIE w jednym miejscu.
     udawajIdp();
 
-    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => IDP, 'nonce' => 'n']));
+    $idToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId(['iss' => FabrykaTokenow::ADRES, 'nonce' => 'n']));
     $accessToken = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'aud' => ['account'],
         'azp' => 'psychon-web',
     ]));
 
     Http::fake([
         'idp.test/*/.well-known/openid-configuration' => Http::response([
-            'issuer' => IDP,
-            'authorization_endpoint' => IDP.'/protocol/openid-connect/auth',
-            'token_endpoint' => IDP.'/protocol/openid-connect/token',
-            'jwks_uri' => IDP.'/protocol/openid-connect/certs',
-            'end_session_endpoint' => IDP.'/protocol/openid-connect/logout',
+            'issuer' => FabrykaTokenow::ADRES,
+            'authorization_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/auth',
+            'token_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/token',
+            'jwks_uri' => FabrykaTokenow::ADRES.'/protocol/openid-connect/certs',
+            'end_session_endpoint' => FabrykaTokenow::ADRES.'/protocol/openid-connect/logout',
         ]),
         'idp.test/*/protocol/openid-connect/certs' => Http::response(FabrykaTokenow::jwks()),
         'idp.test/*/protocol/openid-connect/token' => Http::response([
@@ -317,7 +281,7 @@ it('przyjmuje poprawny logout token i odpowiada bez cache', function (): void {
     udawajIdp();
 
     $logoutToken = FabrykaTokenow::podpisz([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'aud' => 'gabinet',
         'sub' => 'sub-abc-123',
         'sid' => 'sid-abc-123',
@@ -337,7 +301,7 @@ it('nie przyjmuje logout tokenu wystawionego dla innego klienta', function (): v
     udawajIdp();
 
     $logoutToken = FabrykaTokenow::podpisz([
-        'iss' => IDP,
+        'iss' => FabrykaTokenow::ADRES,
         'aud' => 'psychon-api',
         'sid' => 'sid-abc-123',
         'iat' => time(),

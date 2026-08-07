@@ -106,3 +106,33 @@ it('przerywa, gdy nie ma żadnej obowiązującej wersji', function (): void {
     expect(fn () => app(RejestrRegul::class)->obowiazujace())
         ->toThrow(RuntimeException::class, 'Brak konfiguracji reguł');
 });
+
+it('nie pozwala wpisać wersji obowiązującej WSTECZ', function (): void {
+    // U-9 z rundy 3: formalnie to był INSERT, więc dziennik „tylko dopisujemy"
+    // wyglądał na nienaruszony. Skutek był jednak dokładnie taki, przed jakim
+    // chroni CLAUDE.md §4: odpowiedź na pytanie „co obowiązywało 15 sierpnia"
+    // ZMIENIAŁA SIĘ po dopisaniu wersji z datą wsteczną.
+    $rejestr = app(RejestrRegul::class);
+
+    $rejestr->dodajWersje(
+        ['okno_bezplatnego_odwolania_godzin' => 48],
+        CarbonImmutable::parse('2026-09-01 00:00:00', 'UTC'),
+        autor: 'koordynator',
+        uzasadnienie: 'Wydłużenie okna.',
+    );
+
+    $pytanie = CarbonImmutable::parse('2026-09-15 12:00:00', 'UTC');
+    $przed = $rejestr->obowiazujaceW($pytanie)->oknoBezplatnegoOdwolaniaGodzin;
+
+    expect(fn () => $rejestr->dodajWersje(
+        ['okno_bezplatnego_odwolania_godzin' => 6],
+        CarbonImmutable::parse('2026-08-20 00:00:00', 'UTC'),
+        autor: 'kto-inny',
+        uzasadnienie: 'Próba przepisania historii.',
+    ))->toThrow(InvalidArgumentException::class, 'wcześniej niż poprzednia');
+
+    // Kontrola liczy WARTOŚĆ, nie sam fakt wyjątku: odpowiedź na to samo
+    // pytanie musi być identyczna jak przed próbą.
+    expect($rejestr->obowiazujaceW($pytanie)->oknoBezplatnegoOdwolaniaGodzin)->toBe($przed)
+        ->and(DB::table('konfiguracja_regul')->count())->toBe(2);
+});

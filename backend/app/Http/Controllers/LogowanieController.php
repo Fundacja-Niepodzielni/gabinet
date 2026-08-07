@@ -82,7 +82,9 @@ final class LogowanieController extends Controller
             return response()->json(['ok' => false, 'blad' => 'wymiana_kodu', 'status' => $tokeny['status']], 401);
         }
 
-        $jwks = $this->oidc->jwks();
+        $jwks = $this->oidc->jwksDlaKid(
+            WalidatorTokenu::kidNiezweryfikowany(Typy::napis($tokeny['body']['id_token'] ?? null))
+        );
 
         // ID token: dowód TOŻSAMOŚCI. `aud` = client_id, `nonce` z naszej sesji.
         $idToken = Typy::napis($tokeny['body']['id_token'] ?? null);

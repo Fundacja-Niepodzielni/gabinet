@@ -25,6 +25,9 @@ final class KontaOidc
 
     private const KLUCZ_JWKS = 'konta:jwks';
 
+    /** Znacznik „JWKS odświeżano niedawno" — patrz `jwksDlaKid()`. */
+    private const KLUCZ_ODSWIEZANIE = 'konta:jwks-odswiezone';
+
     /**
      * Metadane z discovery, z endpointami back-channel przepisanymi na trasę
      * wewnętrzną.
@@ -86,6 +89,72 @@ final class KontaOidc
             /** @var array<string, mixed> */
             return $odpowiedz->json();
         });
+    }
+
+    /**
+     * JWKS zawierający wskazany `kid` — z OGRANICZONYM odświeżaniem.
+     *
+     * Problem, którego ta metoda pilnuje (lekcja zespołu hubu, perturbacje
+     * JWKS): `kid` pochodzi z NAGŁÓWKA tokenu, czyli z danych wejściowych,
+     * których jeszcze nie zweryfikowaliśmy — kontroluje go ten, kto wysyła
+     * żądanie. Naiwna obsługa rotacji kluczy („nie znam kid → dociągnij
+     * JWKS") zamienia więc Gabinet we WZMACNIACZ ŻĄDAŃ: strumień tokenów
+     * z losowym `kid` staje się strumieniem żądań do Kont Niepodzielni,
+     * przy czym atakujący nie musi mieć konta ani ważnego podpisu.
+     *
+     * Dlatego odświeżenie stoi za bramką częstotliwości. `Cache::add` jest
+     * atomowe — ustawia klucz tylko wtedy, gdy go nie ma — więc nawet przy
+     * równoległych żądaniach do IdP idzie DOKŁADNIE JEDNO zapytanie na okno.
+     * Kto znacznika nie zdobędzie, dostaje JWKS z cache'u i po prostu odrzuci
+     * token: nieznany `kid` to i tak najczęściej token podrobiony.
+     *
+     * Reguła ogólna: każda ścieżka „cache-miss → żądanie w górę" wymaga
+     * pytania, kto kontroluje wejście decydujące o tym missie. Jeśli
+     * atakujący — potrzebna jest bramka.
+     *
+     * @return array<string, mixed>
+     */
+    public function jwksDlaKid(string $kid): array
+    {
+        $jwks = $this->jwks();
+
+        if ($kid === '' || self::maKid($jwks, $kid)) {
+            return $jwks;
+        }
+
+        if (! Cache::add(self::KLUCZ_ODSWIEZANIE, 1, $this->odstepOdswiezaniaSekundy())) {
+            return $jwks;
+        }
+
+        Cache::forget(self::KLUCZ_JWKS);
+
+        return $this->jwks();
+    }
+
+    /**
+     * @param  array<string, mixed>  $jwks
+     */
+    private static function maKid(array $jwks, string $kid): bool
+    {
+        foreach (Typy::mapa($jwks['keys'] ?? null) as $klucz) {
+            if (Typy::napis(Typy::mapa($klucz)['kid'] ?? null) === $kid) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Najkrótszy odstęp między odświeżeniami JWKS wywołanymi nieznanym `kid`.
+     *
+     * 60 s to kompromis: rotacja klucza w IdP zaczyna działać najpóźniej po
+     * minucie, a koszt zalewu żądań spada do jednego zapytania na minutę
+     * niezależnie od tego, ile ich przyjdzie.
+     */
+    private function odstepOdswiezaniaSekundy(): int
+    {
+        return max(1, Typy::liczba(config('konta.jwks_odstep_odswiezania_s'), 60));
     }
 
     /**

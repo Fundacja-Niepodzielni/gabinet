@@ -19,6 +19,33 @@
 # Każda perturbacja: sztucznie łamie jedną regułę → sprawdza, że odpowiednia
 # kontrola bramki pada → PRZYWRACA stan wyjściowy. Przywrócenie idzie przez
 # `trap`, więc działa także przy przerwaniu skryptu.
+#
+# ---------------------------------------------------------------------------
+# DRUGA ZASADA (lekcja zespołu helpdesku, przyjęta do puli ekosystemu):
+#
+#   PERTURBACJA MUSI CELOWAĆ W STAN, KTÓREGO SYSTEM NIE PRZYWRÓCI SAM —
+#   albo w taki, którego przywrócenie nie unieważnia naruszenia.
+#
+# Inaczej mierzysz szybkość mechanizmu samonaprawczego, nie czujność kontroli.
+# U nich Zammad odbudowywał skasowany indeks, zanim suita doszła do kontroli:
+# perturbacja „przechodziła" losowo, zależnie od tempa przebiegu.
+#
+# U NAS trafiło to w `p_puls`: harmonogram zapisuje puls co minutę, więc
+# skasowanie wpisu i sprawdzenie kontroli było wyścigiem. Naprawa: najpierw
+# ZATRZYMUJEMY harmonogram, dopiero potem psujemy puls — wtedy naruszenie
+# przeżywa tak długo, jak trzeba.
+#
+# Dotyczy każdego mechanizmu samonaprawczego: cache z unieważnianiem
+# (materializacja slotów w F2), kolejki z ponowieniami, zadania cron.
+# Reguła projektowa: mutacja i jej kontrola stanowią PARĘ ATOMOWĄ
+# (mutacja → dowód mutacji → kontrola → sprzątanie), nigdy „zmutuj wszystko,
+# potem jedź suitą".
+#
+# TRZECIA ZASADA (z tej samej rundy): perturbacja potrafi KŁAMAĆ o sprawnej
+# kontroli — ich U5 czytała stary znacznik, gdy init jeszcze pracował.
+# Dlatego dowód mutacji obowiązuje W OBIE STRONY: zanim uznamy, że kontrola
+# zareagowała, sprawdzamy NIEZALEŻNIE, że mutacja naprawdę jest w mocy.
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 #
 # WYMAGA stojącego stosu bramki albo deweloperskiego. Domyślnie używa
@@ -53,17 +80,19 @@ dc() { docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@
 # dociera do windowsowego Pythona dosłownie i staje się `D:\d\KOD\...`.
 perturbuj() { python3 "$(sciezka_hosta skrypty/perturbuj.py)" "$@"; }
 
-# Liczba testów z wyjścia pesta — DOKŁADNIE ta sama procedura co w bramce.
-# Pest koloruje wynik nawet przy NO_COLOR, a `[32;1m` zawiera cyfry, więc
-# bez usunięcia pełnych sekwencji ANSI parser wyłuskuje „39" albo zero.
-policz_testy() {
-	local liczba
-	liczba="$(printf '%s' "$1" \
-		| sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' \
-		| sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
-	printf '%s' "${liczba:-0}"
-}
+# Liczba testów — DOKŁADNIE ta sama procedura co w bramce, bo ten sam plik.
+. "$KORZEN/skrypty/licz-testy.sh"
 
+# REGUŁA 4 (lekcja zespołu hubu, E2E logowania): KONTROLA, KTÓRA ZMIENIA STAN,
+# PSUJE GO SWOJEMU NASTĘPNEMU PRZEBIEGOWI. U nich kontrola E2E konfigurowała
+# TOTP i drugi przebieg zastawał gotowe poświadczenie — czyli INNY EKRAN i inne
+# zjawisko niż przebieg pierwszy. Nasze perturbacje modyfikują pliki, migracje
+# i wolumen `vendor`, więc ryzyko jest dokładnie to samo.
+#
+# Wymóg: perturbacja zostawia repozytorium i stos w stanie ZASTANYM, a zestaw
+# uznajemy za sprawny dopiero, gdy TRZY PRZEBIEGI Z RZĘDU dają ten sam wynik.
+# Sprawdzenie: skrypty/perturbacje-powtarzalne.sh
+#
 # --- przywracanie stanu ----------------------------------------------------
 # Lista plików, których kopie zrobiliśmy. `trap` przywraca je zawsze:
 # przy sukcesie, przy błędzie i przy Ctrl-C.
@@ -84,9 +113,19 @@ przywroc_wszystko() {
 		nazwa="$(printf '%s' "$plik" | tr '/' '_')"
 		[ -f "$KOPIE/$nazwa" ] && cp "$KOPIE/$nazwa" "$plik"
 	done
+	# U-5: pliki DODANE przez perturbacje (model `Personel`, `app/Wejscie`)
+	# nie mają kopii zapasowej — kopiowanie ich nie przywróci. Kasujemy je
+	# tutaj, bo przerwanie skryptu zostawiało je w drzewie roboczym i kolejny
+	# przebieg startował na zanieczyszczonym repozytorium.
+	perturbuj hasla-sprzataj >/dev/null 2>&1 || true
 	rm -rf "$KOPIE"
 }
-trap przywroc_wszystko EXIT INT TERM
+
+# `trap ... INT TERM` nie kończy skryptu sam z siebie — bez jawnego `exit`
+# bash wraca do przerwanej instrukcji i perturbacje mielą dalej po Ctrl-C.
+przerwano_perturbacje() { przywroc_wszystko; trap - EXIT; exit 130; }
+trap przywroc_wszystko EXIT
+trap przerwano_perturbacje INT TERM
 
 # --- raportowanie ----------------------------------------------------------
 naglowek() { printf '\n=== PERTURBACJA: %s\n' "$*"; }
@@ -102,6 +141,31 @@ oczekuj_czerwone() {
 		printf '    ✓ %s — kontrola zapaliła się na czerwono\n' "$opis"
 		UDANE=$((UDANE + 1))
 	fi
+}
+
+# Wiek pulsu w sekundach, czytany WPROST z cache'u.
+dc_wiek_pulsu() {
+	dc exec -T app php artisan tinker --execute="echo time() - (int) Cache::get('gabinet:puls-harmonogramu', 0);" 2>/dev/null | tr -dc '0-9'
+}
+export -f dc_wiek_pulsu 2>/dev/null || true
+
+# Dowód, że mutacja NAPRAWDĘ jest w mocy — czytany niezależnie od kontroli,
+# którą za chwilę sprawdzamy. Bez tego „kontrola zapaliła się na czerwono"
+# może znaczyć „coś innego poszło nie tak", a „kontrola przeszła" —
+# „mutacja nigdy nie weszła w życie".
+dowod_mutacji() {
+	local opis="$1"; shift
+
+	if "$@" >/dev/null 2>&1; then
+		printf '    · dowód mutacji: %s
+' "$opis"
+		return 0
+	fi
+
+	printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: %s — perturbacja nierozstrzygająca
+' "$opis"
+	NIEUDANE=$((NIEUDANE + 1))
+	return 1
 }
 
 pominieta() {
@@ -241,6 +305,27 @@ p_hasla() {
 	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 }
 
+p_hasla_v2() {
+	naglowek "CLAUDE.md §2 — atak RUNDY 3: nazwy spoza jakiegokolwiek wzorca"
+	# `sekret_logowania`, `poswiadczenia_wejsciowe`, `pin_dostepu`,
+	# `sodium_crypto_pwhash_str()` i prymityw schowany w `routes/`.
+	# Wersja druga testu przepuściła to wszystko przy zielonej bramce.
+	local migracja="backend/database/migrations/0001_01_01_000000_create_users_table.php"
+	local trasy="backend/routes/web.php"
+	zachowaj "$migracja"
+	zachowaj "$trasy"
+
+	perturbuj hasla-podloz-v2 || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
+
+	oczekuj_czerwone "test §2 wykrywa mechanizm ukryty pod obcymi nazwami" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+
+	perturbuj hasla-sprzataj
+	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
+	cp "$KOPIE/$(printf '%s' "$trasy" | tr '/' '_')" "$trasy"
+	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
+}
+
 p_nonce() {
 	naglowek "nonce — fail-open kontroli bezpieczeństwa"
 	local plik="backend/app/Tozsamosc/WalidatorTokenu.php"
@@ -267,18 +352,290 @@ p_lockfile() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+# Kontrola musi paść z KONKRETNYM kodem wyjścia. „Cokolwiek niezerowego"
+# przechodzi także wtedy, gdy skrypt padł z zupełnie innego powodu — i
+# dokładnie tak perturbacja zamka „przechodziła" w rundzie 3.
+oczekuj_kodu() {
+	local opis="$1" oczekiwany="$2"; shift 2
+	local kod=0
+
+	"$@" >/dev/null 2>&1 || kod=$?
+
+	if [ "$kod" -eq "$oczekiwany" ]; then
+		printf '    ✓ %s — kod wyjścia %s, zgodnie z oczekiwaniem\n' "$opis" "$kod"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ %s — kod wyjścia %s zamiast %s\n' "$opis" "$kod" "$oczekiwany"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
+p_sonda_bazy() {
+	naglowek "sonda bazy — suita przy bazie kierującej w próżnię"
+	# U-3 z rundy 3: naprawa O-2 (`PGCONNECT_TIMEOUT=5` w obrazie) NIE MIAŁA
+	# MIERZALNEGO EFEKTU — weryfikator zmierzył ~169 s zarówno z nią, jak i bez.
+	# Perturbacja mierzy CZAS, nie sam fakt czerwieni: czerwień po 169 s w CI
+	# oznacza zabity job, a zabity job nie mówi, co jest zepsute.
+	#
+	# Adres 10.255.255.1 nie odpowiada (czarna dziura), więc mierzymy limit
+	# na gnieździe, a nie szybkość odmowy połączenia.
+	local start koniec czas wynik
+	start="$(date +%s)"
+	wynik="$(dc exec -T -e DB_HOST=10.255.255.1 app ./vendor/bin/pest tests/Feature/SzkieletTest.php 2>&1)"
+	koniec="$(date +%s)"
+	czas=$((koniec - start))
+
+	if printf '%s' "$wynik" | grep -q 'BAZA TESTOWA NIEOSIĄGALNA'; then
+		printf '    · dowód mutacji: suita zgłosiła nieosiągalną bazę\n'
+	else
+		printf '    ✗ suita nie rozpoznała nieosiągalnej bazy — perturbacja nierozstrzygająca\n'
+		NIEUDANE=$((NIEUDANE + 1))
+		return
+	fi
+
+	if [ "$czas" -le 20 ]; then
+		printf '    ✓ suita pada po %s s zamiast wisieć (~169 s przed naprawą)\n' "$czas"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ suita wisiała %s s — limit na gnieździe nie działa\n' "$czas"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	# Kierunek odwrotny: sonda nie może blokować przy ZDROWEJ bazie.
+	if dc exec -T app ./vendor/bin/pest tests/Unit/GranicePienidzyTest.php >/dev/null 2>&1; then
+		printf '    ✓ przy zdrowej bazie sonda przepuszcza suitę — nie blokuje zawsze\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ sonda blokuje suitę także przy zdrowej bazie\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
+p_vendor_niekompletny() {
+	naglowek "wolumen vendor — pakiet zniknięty z dysku"
+	# U-8 z rundy 3: perturbacja `lockfile` sprawdzała wyłącznie gałąź
+	# `composer validate` (rozjazd content-hash). Druga gałąź kroku —
+	# `composer install --dry-run` i kontrola obecności pakietów — nie miała
+	# ŻADNEJ perturbacji, więc formalnie nie istniała (D-0013).
+	#
+	# Mutacja celuje w stan, którego system sam nie przywróci: przeniesiony
+	# katalog nie wraca ani przez restart kontenera, ani przez cache Composera.
+	local pakiet="nesbot/carbon"
+
+	if ! dc exec -T app sh -c "mv /srv/gabinet/backend/vendor/${pakiet} /tmp/perturbacja-vendor" >/dev/null 2>&1; then
+		pominieta "wolumen vendor — pakiet zniknięty z dysku" "nie udało się przenieść ${pakiet}"
+		return
+	fi
+
+	dowod_mutacji "katalog vendor/${pakiet} zniknął z dysku" \
+		dc exec -T app sh -c "[ ! -d /srv/gabinet/backend/vendor/${pakiet} ]"
+
+	oczekuj_czerwone "kontrola obecności zależności wykrywa brak ${pakiet}" \
+		dc exec -T app php /srv/gabinet/skrypty/zaleznosci-obecne.php
+
+	# Druga gałąź tego samego kroku bramki — `install --dry-run`. Sprawdzamy ją
+	# osobno, bo to osobna asercja i osobny sposób, w jaki może przestać działać.
+	local suchy
+	suchy="$(dc exec -T app composer install --dry-run --no-scripts 2>&1)"
+
+	if printf '%s' "$suchy" | grep -q 'Nothing to install, update or remove'; then
+		printf '    ✗ composer install --dry-run melduje „nothing to install" przy brakującym pakiecie\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	else
+		printf '    ✓ composer install --dry-run wykrywa brakujący pakiet\n'
+		UDANE=$((UDANE + 1))
+	fi
+
+	dc exec -T app sh -c "mv /tmp/perturbacja-vendor /srv/gabinet/backend/vendor/${pakiet}" >/dev/null 2>&1
+
+	# Kierunek odwrotny — po przywróceniu kontrola MUSI wrócić na zielone,
+	# inaczej „czerwono przy braku" przechodzi także dla kontroli zawsze czerwonej.
+	if dc exec -T app php /srv/gabinet/skrypty/zaleznosci-obecne.php >/dev/null 2>&1; then
+		printf '    ✓ po przywróceniu pakietu kontrola wraca na zielone\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ kontrola pozostaje czerwona mimo kompletnego vendora\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
+p_wzmacniacz() {
+	naglowek "wzmacniacz żądań — JWKS odświeżane na każdy nieznany kid"
+	# Lekcja zespołu hubu: `kid` z nagłówka tokenu to dane NADAWCY żądania,
+	# jeszcze niezweryfikowane. Bez bramki częstotliwości strumień tokenów
+	# z losowym `kid` staje się strumieniem żądań do Kont Niepodzielni — a
+	# endpoint back-channel logout jest publiczny i nieuwierzytelniony.
+	local plik="backend/app/Tozsamosc/KontaOidc.php"
+	zachowaj "$plik"
+
+	perturbuj wzmacniacz-zadan
+
+	dowod_mutacji "bramka częstotliwości zniknęła z kodu" \
+		bash -c "! grep -q 'KLUCZ_ODSWIEZANIE, 1' '$plik'"
+
+	oczekuj_czerwone "test liczby żądań wykrywa wzmacniacz" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WzmacniaczZadanTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_retencja() {
+	naglowek "retencja — tabela z danymi osobowymi bez ścieżki usunięcia"
+	# Lekcja zespołu helpdesku: awaria retencji działa W OBIE STRONY. Rekord,
+	# którego żadne zadanie czyszczące nie wybierze, zostaje NA ZAWSZE — i nic
+	# o tym nie krzyknie. Sprawdzamy oba kierunki awarii osobno.
+	local plik="backend/database/migrations/9999_99_99_999999_perturbacja_retencji.php"
+
+	cat > "$plik" <<'MIGRACJA'
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('zgloszenia_pierwszego_kontaktu', function (Blueprint $table): void {
+            $table->id();
+            $table->string('imie');
+            $table->string('telefon');
+            $table->text('opis_sytuacji');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('zgloszenia_pierwszego_kontaktu');
+    }
+};
+MIGRACJA
+
+	dowod_mutacji "migracja z nową tabelą danych osobowych leży w drzewie" \
+		test -f "$plik"
+
+	oczekuj_czerwone "rejestr retencji wykrywa tabelę bez decyzji o retencji" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/RetencjaTest.php
+
+	rm -f "$plik"
+
+	# Drugi kierunek: tabela JEST w rejestrze, ale znika kolumna, po której
+	# retencja filtruje. Zadanie czyszczące nie wybrałoby wtedy ani jednego
+	# rekordu — cisza, nie błąd. To trudniejszy przypadek i dlatego ważniejszy.
+	local rejestr="backend/tests/Feature/RetencjaTest.php"
+	zachowaj "$rejestr"
+
+	python3 - "$rejestr" <<'PYTON'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+s = s.replace(
+    "    'pacjenci' => [\n        'kolumna_pochodzenia' => 'created_at',",
+    "    'pacjenci' => [\n        'kolumna_pochodzenia' => 'kolumna_ktorej_nie_ma',",
+    1,
+)
+io.open(p, 'w', encoding='utf-8', newline='\n').write(s)
+PYTON
+
+	dowod_mutacji "rejestr wskazuje nieistniejącą kolumnę pochodzenia" \
+		grep -q "kolumna_ktorej_nie_ma" "$rejestr"
+
+	oczekuj_czerwone "kontrola wykrywa rekord bez pola, po którym retencja filtruje" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/RetencjaTest.php
+
+	cp "$KOPIE/$(printf '%s' "$rejestr" | tr '/' '_')" "$rejestr"
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
 	# ODMAWIA startu, zamiast produkować fałszywe czerwone.
-	local zamek="${TMPDIR:-/tmp}/gabinet-bramka-perturbacja.zamek"
-	rm -rf "$zamek"
+	#
+	# U-2 z rundy 3: ta perturbacja składała ścieżkę zamka RĘCZNIE i składała
+	# ją inaczej niż bramka (`gabinet-bramka-perturbacja.zamek` wobec
+	# `gabinet-bramka-gabinet-bramka-perturbacja.zamek`). Zajmowała więc plik,
+	# o który nikt nie pytał, bramka szła dalej i padała z innego powodu —
+	# a perturbacja meldowała sukces. Teraz ścieżkę podaje SAMA BRAMKA.
+	local projekt="gabinet-bramka-perturbacja"
+	local zamek
+	zamek="$(bash "$KORZEN/skrypty/bramka.sh" --projekt "$projekt" --pokaz-zamek)"
+
+	if [ -z "$zamek" ]; then
+		printf '    ✗ bramka nie potrafi podać ścieżki zamka — perturbacja nierozstrzygająca\n'
+		NIEUDANE=$((NIEUDANE + 1))
+		return
+	fi
+
+	printf '    · zajmuję zamek wskazany przez bramkę: %s\n' "$zamek"
+	rm -rf "$zamek" "$zamek.przejecie"
 	mkdir -p "$zamek"
+	# PID ŻYWEGO procesu (własny) — inaczej bramka słusznie przejmie zamek
+	# po nieboszczyku i perturbacja zmierzy nie to zjawisko.
 	echo "$$" > "$zamek/pid"
 
-	oczekuj_czerwone "bramka odmawia startu przy zajętym zamku" 		bash "$KORZEN/skrypty/bramka.sh" --projekt gabinet-bramka-perturbacja --tylko-kod
+	dowod_mutacji "zamek istnieje i wskazuje żywy proces $$" \
+		bash -c "[ -d '$zamek' ] && kill -0 \"\$(cat '$zamek/pid')\"" || { rm -rf "$zamek"; return; }
 
+	oczekuj_kodu "bramka odmawia startu przy zajętym zamku" 3 \
+		bash "$KORZEN/skrypty/bramka.sh" --projekt "$projekt" --tylko-kod
+
+	# Kierunek odwrotny: bez niego „kod 3" przechodzi także wtedy, gdyby
+	# bramka zwracała 3 zawsze. Po zwolnieniu zamka MUSI ruszyć dalej —
+	# a skoro stos tego projektu nie stoi, padnie na czymś innym niż 3.
 	rm -rf "$zamek"
+
+	local kod=0
+	bash "$KORZEN/skrypty/bramka.sh" --projekt "$projekt" --tylko-kod >/dev/null 2>&1 || kod=$?
+
+	if [ "$kod" -ne 3 ]; then
+		printf '    ✓ po zwolnieniu zamka bramka rusza dalej (kod %s ≠ 3) — nie odmawia zawsze\n' "$kod"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ bramka odmawia startu także przy WOLNYM zamku — kontrola zawsze na czerwono\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	rm -rf "$zamek" "$zamek.przejecie"
+}
+
+p_licznik_testow() {
+	naglowek "licznik testów — przebieg z jednym niezaliczonym testem"
+	# U-6 z rundy 3: parser wyłuskiwał liczbę tuż przed słowem „passed"
+	# licząc od „Tests:". Przy „Tests: 1 failed, 135 passed" nie trafiał
+	# w nic i zwracał ZERO — czyli podłoga meldowała „suita się nie
+	# uruchomiła", choć uruchomiła się w komplecie. Diagnoza szła w las.
+	#
+	# Perturbacja celuje w PRAWDZIWE wyjście pesta z realnie zepsutym testem,
+	# nie w napis ułożony w skrypcie — ten błąd popełniliśmy już raz.
+	local plik="backend/app/Reguly/OcenaAnulacji.php"
+	zachowaj "$plik"
+
+	sed -i 's/\$sekundDoWizyty >= \$sekundOkna/\$sekundDoWizyty > \$sekundOkna/' "$plik"
+
+	local wynik liczba
+	wynik="$(dc exec -T app ./vendor/bin/pest 2>&1)"
+	liczba="$(policz_testy "$wynik")"
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	if printf '%s' "$wynik" | grep -qE 'failed'; then
+		printf '    · dowód mutacji: pest zgłasza niezaliczone testy\n'
+	else
+		printf '    ✗ mutacja nie wywołała ani jednego niezaliczonego testu — perturbacja nierozstrzygająca\n'
+		NIEUDANE=$((NIEUDANE + 1))
+		return
+	fi
+
+	if [ "$liczba" -ge 100 ]; then
+		printf '    ✓ licznik widzi %s wykonanych testów mimo niezaliczonych — podłoga nie kłamie\n' "$liczba"
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ licznik zgubił się na wyniku z niezaliczonymi testami (policzył: %s)\n' "$liczba"
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
 }
 
 p_zdrowie() {
@@ -350,7 +707,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita statyka format sekrety hasla nonce lockfile zamek zdrowie tozsamosc puls zamrozenie biala_lista"
+WSZYSTKIE="testy pusta_suita licznik statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -372,12 +729,18 @@ for NAZWA in $WYBRANE; do
 		format) p_format ;;
 		sekrety) p_sekrety ;;
 		hasla) p_hasla ;;
+		hasla_v2) p_hasla_v2 ;;
+		nonce) p_nonce ;;
+		wzmacniacz) p_wzmacniacz ;;
+		lockfile) p_lockfile ;;
+		licznik) p_licznik_testow ;;
+		hasla_v2) p_hasla_v2 ;;
 		nonce) p_nonce ;;
 		lockfile) p_lockfile ;;
+		vendor) p_vendor_niekompletny ;;
+		retencja) p_retencja ;;
 		zamek) p_zamek ;;
-		nonce) p_nonce ;;
-		lockfile) p_lockfile ;;
-		zamek) p_zamek ;;
+		sonda_bazy) p_sonda_bazy ;;
 		zdrowie) p_zdrowie ;;
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;

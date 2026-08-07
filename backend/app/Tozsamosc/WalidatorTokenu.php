@@ -142,6 +142,25 @@ final class WalidatorTokenu
     }
 
     /**
+     * `kid` z nagłówka tokenu — BEZ WERYFIKACJI PODPISU.
+     *
+     * Nazwa metody ma o tym krzyczeć: to dane atakującego. Jedyne dozwolone
+     * zastosowanie to wybór klucza do sprawdzenia podpisu (i decyzja, czy
+     * warto odświeżyć JWKS — patrz `KontaOidc::jwksDlaKid()`, gdzie stoi
+     * bramka częstotliwości). Nic poza tym nie może od tej wartości zależeć.
+     */
+    public static function kidNiezweryfikowany(string $jwt): string
+    {
+        $rozlozony = self::rozloz($jwt);
+
+        if ($rozlozony === null) {
+            return '';
+        }
+
+        return Typy::napis($rozlozony['naglowek']['kid'] ?? null);
+    }
+
+    /**
      * @param  array<string, mixed>  $jwks
      * @return array<string, mixed>|null
      */

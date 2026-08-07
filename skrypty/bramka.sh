@@ -40,6 +40,9 @@ export MSYS2_ARG_CONV_EXCL='*'
 KORZEN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$KORZEN"
 
+# Wspólna procedura licząca testy — ten sam kod, którym mierzą perturbacje.
+. "$KORZEN/skrypty/licz-testy.sh"
+
 PROJEKT_DEWELOPERA="gabinet"
 PROJEKT="${GABINET_BRAMKA_PROJEKT:-gabinet-bramka}"
 PORT_HTTP="${GABINET_BRAMKA_PORT_HTTP:-8099}"
@@ -48,15 +51,22 @@ PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
 ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # Podłoga liczby testów. Rośnie razem z suitą — obniżenie MUSI być świadomą
 # zmianą w repozytorium (zasada D-0013: pusta suita to zielone CI bez testów).
-MINIMUM_TESTOW="${GABINET_MINIMUM_TESTOW:-100}"
+#
+# STAŁA, nie zmienna środowiskowa (U-2/U-6 z rundy 3): dopóki dało się ustawić
+# `GABINET_MINIMUM_TESTOW=0`, kontrolę wyłączało się bez śladu w repozytorium —
+# a kontrola, którą można wyłączyć niewidocznie, nie jest kontrolą. Obniżenie
+# podłogi ma być widoczne w `git diff` i przejść przez przegląd.
+MINIMUM_TESTOW=100
 ZOSTAW=0
 TYLKO_KOD=0
+POKAZ_ZAMEK=0
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--zostaw) ZOSTAW=1; shift ;;
 		--tylko-kod) TYLKO_KOD=1; ZOSTAW=1; shift ;;
 		--projekt) PROJEKT="$2"; shift 2 ;;
+		--pokaz-zamek) POKAZ_ZAMEK=1; shift ;;
 		-h|--help) sed -n '2,33p' "$0"; exit 0 ;;
 		*) echo "nieznany argument: $1" >&2; exit 2 ;;
 	esac
@@ -78,29 +88,69 @@ fi
 # dwa równoległe przebiegi przeszły przez zamek i oba skończyły się
 # `BRAMKA CZERWONA — 2 nieudanych`. `mkdir` jest atomowy w każdym systemie
 # plików i nie wymaga żadnego narzędzia poza powłoką.
-ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka-${PROJEKT}.zamek"
+#
+# Nazwa ścieżki: U-2 z rundy 3. Wzorzec `gabinet-bramka-${PROJEKT}` dawał dla
+# projektu `gabinet-bramka-perturbacja` ścieżkę z podwojonym prefiksem, więc
+# perturbacja zamka tworzyła INNY plik niż ten, o który pytała bramka — i
+# „przechodziła" na czerwonym z zupełnie innego powodu. Ścieżkę wypisuje teraz
+# sam skrypt (`--pokaz-zamek`); nikt jej drugi raz nie składa ręcznie.
+ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka.${PROJEKT}.zamek"
+
+# Osobny kod wyjścia dla zajętego zamka. Bez niego perturbacja stwierdzała
+# tylko „bramka czerwona" — a czerwona bywa z kilkunastu powodów naraz.
+KOD_ZAMEK_ZAJETY=3
+
+if [ "$POKAZ_ZAMEK" -eq 1 ]; then
+	printf '%s\n' "$ZAMEK"
+	exit 0
+fi
 
 zwolnij_zamek() {
-	[ -d "$ZAMEK" ] && rm -rf "$ZAMEK"
+	# Tylko właściciel sprząta. Przy przejęciu porzuconego zamka poprzedni
+	# właściciel już nie żyje, więc nie ma kto skasować cudzego katalogu.
+	if [ -d "$ZAMEK" ] && [ "$(cat "$ZAMEK/pid" 2>/dev/null || echo '')" = "$$" ]; then
+		rm -rf "$ZAMEK"
+	fi
 }
+
+# `trap ... INT TERM` sam z siebie NIE kończy skryptu (U-5): po powrocie
+# z procedury bash wraca do przerwanej instrukcji i bramka mieli dalej.
+# Dlatego sygnały mają własną procedurę, która jawnie wychodzi.
+przerwano() { zwolnij_zamek; trap - EXIT; exit 130; }
+trap zwolnij_zamek EXIT
+trap przerwano INT TERM
 
 if mkdir "$ZAMEK" 2>/dev/null; then
 	echo "$$" > "$ZAMEK/pid"
-	trap zwolnij_zamek EXIT INT TERM
 else
 	# Zamek po przerwanym przebiegu nie może blokować w nieskończoność:
 	# jeśli proces właściciela już nie żyje, przejmujemy zamek.
-	STARY_PID="$(cat "$ZAMEK/pid" 2>/dev/null || echo '')"
+	#
+	# U-2: sekwencja „odczytaj PID → kill -0 → nadpisz PID" NIE JEST atomowa.
+	# Dwa przebiegi startujące jednocześnie po porzuconym zamku obydwa widziały
+	# martwego właściciela i obydwa wpisywały swój PID — zamek przepuszczał
+	# dokładnie to, przed czym miał chronić. Samo przejęcie jest więc objęte
+	# drugim, atomowym `mkdir`: procedurę wykonuje ten, kto go zdobył.
+	PRZEJECIE="${ZAMEK}.przejecie"
 
-	if [ -n "$STARY_PID" ] && kill -0 "$STARY_PID" 2>/dev/null; then
-		echo "ODMOWA: bramka dla projektu '$PROJEKT' już biegnie (PID $STARY_PID)." >&2
-		echo "Równoległe przebiegi mielą tę samą bazę testową i dają fałszywe wyniki." >&2
-		exit 2
+	if mkdir "$PRZEJECIE" 2>/dev/null; then
+		STARY_PID="$(cat "$ZAMEK/pid" 2>/dev/null || echo '')"
+
+		if [ -n "$STARY_PID" ] && kill -0 "$STARY_PID" 2>/dev/null; then
+			rmdir "$PRZEJECIE" 2>/dev/null || true
+			echo "ODMOWA: bramka dla projektu '$PROJEKT' już biegnie (PID $STARY_PID)." >&2
+			echo "Równoległe przebiegi mielą tę samą bazę testową i dają fałszywe wyniki." >&2
+			exit "$KOD_ZAMEK_ZAJETY"
+		fi
+
+		echo "UWAGA: przejmuję porzucony zamek po PID ${STARY_PID:-nieznanym}." >&2
+		echo "$$" > "$ZAMEK/pid"
+		rmdir "$PRZEJECIE" 2>/dev/null || true
+	else
+		# Ktoś inny właśnie przejmuje zamek — to znaczy, że przebieg trwa.
+		echo "ODMOWA: bramka dla projektu '$PROJEKT' jest właśnie przejmowana przez inny przebieg." >&2
+		exit "$KOD_ZAMEK_ZAJETY"
 	fi
-
-	echo "UWAGA: przejmuję porzucony zamek po PID ${STARY_PID:-nieznanym}." >&2
-	echo "$$" > "$ZAMEK/pid"
-	trap zwolnij_zamek EXIT INT TERM
 fi
 
 KROK=0
@@ -202,7 +252,7 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 		zle
 	fi
 
-	krok "zależności zgodne z composer.lock (rozjazd wolumenu `vendor`)"
+	krok 'zależności zgodne z composer.lock (rozjazd wolumenu vendor)'
 	# O-4: wolumen `vendor` NIE odświeża się z przebudowanego obrazu. Podbicie
 	# lockfile'a (np. łatka bezpieczeństwa) bez `down -v` było dotąd ignorowane
 	# BEZ ŻADNEGO SYGNAŁU — README ostrzegał prozą, nic tego nie egzekwowało.
@@ -212,12 +262,19 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 	if printf '%s' "$SUCHY" | grep -q 'Nothing to install, update or remove'; then
 		echo "    zainstalowane zależności zgadzają się z composer.lock"
 	else
-		echo "    ROZJAZD: wolumen `vendor` nie odpowiada composer.lock"
+		echo '    ROZJAZD: wolumen vendor nie odpowiada composer.lock'
 		printf '%s
 ' "$SUCHY" | tail -15
 		echo "    naprawa: docker compose down -v && docker compose build app && docker compose up -d"
 		zle
 	fi
+
+	# U-8: powyższe czyta wyłącznie METADANE (`composer.lock` kontra
+	# `vendor/composer/installed.json`). Skasowanie zawartości pakietu
+	# w wolumenie `vendor` przechodziło przez ten krok bez słowa. Pytamy więc
+	# o STAN DYSKU. Podmiana treści istniejącego pliku pozostaje niewykryta —
+	# to dług O-7, nie przeoczenie.
+	dc exec -T app php /srv/gabinet/skrypty/zaleznosci-obecne.php || zle
 
 	krok "migracje"
 	dc exec -T app php artisan migrate --force || zle
@@ -339,7 +396,12 @@ krok "testy realnie SIĘ WYKONAŁY (podłoga: ${MINIMUM_TESTOW})"
 	# przy NO_COLOR, a `[32;1m` zawiera cyfry — parser bez tego czyszczenia
 	# wyłuskiwał „39" albo zero zamiast liczby testów. Zmierzone: CI zapaliło
 	# się na czerwono przy 107 zielonych testach, bo kontrola widziała 0.
-	LICZBA_TESTOW="$(printf '%s' "$WYNIK_TESTOW" | sed -e 's/\[[0-9;]*[A-Za-z]//g' | sed -n 's/.*Tests:[^0-9]*\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
+	# Sumujemy KAŻDY stan z wiersza „Tests:", nie tylko `passed` (U-6 z rundy 3):
+	# przy „1 failed, 135 passed" wzorzec szukający liczby tuż przed słowem
+	# „passed" nie trafiał w nic i podłoga widziała ZERO wykonanych testów —
+	# meldowała „suita się nie uruchomiła", choć uruchomiła się w całości,
+	# a diagnoza kierowała w zupełnie złe miejsce.
+	LICZBA_TESTOW="$(policz_testy "$WYNIK_TESTOW")"
 LICZBA_TESTOW="${LICZBA_TESTOW:-0}"
 
 if [ "$LICZBA_TESTOW" -ge "$MINIMUM_TESTOW" ]; then

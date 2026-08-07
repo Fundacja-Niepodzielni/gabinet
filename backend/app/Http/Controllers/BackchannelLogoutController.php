@@ -29,7 +29,10 @@ final class BackchannelLogoutController extends Controller
 
         $wynik = WalidatorTokenu::sprawdz($logoutToken, [
             'issuer' => $this->oidc->issuerPubliczny(),
-            'jwks' => $this->oidc->jwks(),
+            // Odświeżenie JWKS pod nieznany `kid` chroni bramka częstotliwości:
+            // ten endpoint jest PUBLICZNY i nieuwierzytelniony, więc bez niej
+            // każdy token z losowym `kid` byłby żądaniem do Kont Niepodzielni.
+            'jwks' => $this->oidc->jwksDlaKid(WalidatorTokenu::kidNiezweryfikowany($logoutToken)),
             // Logout token ma `aud` == client_id (nie wymagana audiencja API).
             'audience' => $this->oidc->clientId(),
             'tolerancja' => $this->oidc->tolerancjaZegara(),

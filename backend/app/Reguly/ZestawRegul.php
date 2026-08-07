@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Reguly;
 
 use App\Wsparcie\Typy;
+use InvalidArgumentException;
 
 /**
  * Niezmienny zrzut reguł systemu — dokładnie to, co trafia do
@@ -97,11 +98,41 @@ final readonly class ZestawRegul
 
         foreach (Typy::mapa($dane['macierz_odwolan'] ?? null) as $sytuacja => $skutek) {
             $skutek = Typy::mapa($skutek);
+            $procent = Typy::liczba($skutek['zwrot_procent'] ?? null);
+
+            // U-7 z rundy 3 weryfikacji: bez tego warunku zapis
+            // `zwrot_procent = 500` dawał ZWROT PIĘĆ RAZY WIĘKSZY niż wpłata
+            // (14 500 gr → 72 500 gr). W module, który wg CLAUDE.md §1 jest
+            // jedyną funkcją rozstrzygającą o pieniądzach, zakres musi być
+            // egzekwowany przy WEJŚCIU, a nie zakładany.
+            if ($procent < 0 || $procent > 100) {
+                throw new InvalidArgumentException(
+                    "Zwrot dla sytuacji [{$sytuacja}] musi mieścić się w 0..100, podano {$procent}."
+                );
+            }
+
             $macierz[$sytuacja] = [
-                'zwrot_procent' => Typy::liczba($skutek['zwrot_procent'] ?? null),
+                'zwrot_procent' => $procent,
                 'termin_wraca' => Typy::prawda($skutek['termin_wraca'] ?? null),
                 'godzina_platna' => Typy::prawda($skutek['godzina_platna'] ?? null),
             ];
+        }
+
+        // U-10: macierz częściowa była przyjmowana bez protestu, a `OcenaAnulacji`
+        // sięgała wtedy po wartości Z KODU. Zamrożony zrzut przestawał być
+        // samowystarczalny — wbrew CLAUDE.md §4 — i werdykt dla starej
+        // rezerwacji zmieniałby się przy każdej zmianie stałej.
+        if ($macierz !== []) {
+            $brakujace = array_diff(
+                array_map(static fn (Sytuacja $s): string => $s->value, Sytuacja::cases()),
+                array_keys($macierz)
+            );
+
+            if ($brakujace !== []) {
+                throw new InvalidArgumentException(
+                    'Macierz odwołań jest niepełna — brakuje: '.implode(', ', $brakujace)
+                );
+            }
         }
 
         return new self(

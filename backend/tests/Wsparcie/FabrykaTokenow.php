@@ -18,6 +18,9 @@ use RuntimeException;
  */
 final class FabrykaTokenow
 {
+    /** Adres atrapy IdP — jedno źródło dla wszystkich testów tożsamości. */
+    public const ADRES = 'https://idp.test/realms/niepodzielni';
+
     private static ?OpenSSLAsymmetricKey $klucz = null;
 
     public const KID = 'test-kid-gabinet';

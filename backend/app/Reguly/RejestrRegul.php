@@ -7,6 +7,7 @@ namespace App\Reguly;
 use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -75,6 +76,19 @@ final class RejestrRegul
         string $autor,
         string $uzasadnienie,
     ): ZestawRegul {
+        // U-9 z rundy 3: data wsteczna PRZEPISYWAŁA historię — zapytanie
+        // „jaka reguła obowiązywała 3 marca" zaczynało zwracać co innego niż
+        // przed zmianą. Formalnie to był INSERT, ale skutek dokładnie taki,
+        // przed jakim ostrzega docblock tej klasy.
+        $ostatnia = DB::table('konfiguracja_regul')->max('obowiazuje_od');
+
+        if ($ostatnia !== null && CarbonImmutable::parse(Typy::napis($ostatnia))->greaterThan($obowiazujeOd)) {
+            throw new InvalidArgumentException(
+                'Nowa wersja reguł nie może obowiązywać wcześniej niż poprzednia ('
+                .Typy::napis($ostatnia).').'
+            );
+        }
+
         $nastepnaWersja = Typy::liczba(DB::table('konfiguracja_regul')->max('wersja')) + 1;
 
         $nowy = ZestawRegul::zTablicy(array_merge(

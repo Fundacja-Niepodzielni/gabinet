@@ -25,6 +25,8 @@ MIGRACJA = KORZEN / "backend/database/migrations/0001_01_01_000000_create_users_
 TRASY = KORZEN / "backend/routes/web.php"
 MODEL = KORZEN / "backend/app/Models/Personel.php"
 WALIDATOR = KORZEN / "backend/app/Tozsamosc/WalidatorTokenu.php"
+OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
+WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 
 
 def czytaj(sciezka: Path) -> str:
@@ -101,6 +103,64 @@ def hasla_podloz() -> None:
 
 def hasla_sprzataj() -> None:
     MODEL.unlink(missing_ok=True)
+    WEJSCIE.unlink(missing_ok=True)
+
+    if WEJSCIE.parent.exists() and not any(WEJSCIE.parent.iterdir()):
+        WEJSCIE.parent.rmdir()
+
+
+def hasla_podloz_v2() -> None:
+    """Atak z RUNDY 3 — nazwy, ktorych zaden wzorzec nie przewidzi.
+
+    Weryfikator obalil wersje druga testu, uzywajac `sekret_logowania`,
+    `poswiadczenia_wejsciowe`, `pin_dostepu`, `sodium_crypto_pwhash_str()`
+    i tras `/wejscie` — plus schowal `Hash::make` w `routes/web.php`,
+    ktorego skan w ogole nie obejmowal. Mechanizm DZIALAL.
+    """
+    podmien(
+        MIGRACJA,
+        "$table->string('email')->nullable();",
+        "$table->string('email')->nullable();\n"
+        "            $table->string('sekret_logowania')->nullable();\n"
+        "            $table->string('odcisk_urzadzenia')->nullable();",
+    )
+
+    podmien(
+        MIGRACJA,
+        "        Schema::create('sessions', function (Blueprint $table): void {",
+        "        Schema::create('poswiadczenia_wejsciowe', function (Blueprint $table): void {\n"
+        "            $table->id();\n"
+        "            $table->string('odcisk_uwierzytelnienia');\n"
+        "            $table->string('pin_dostepu');\n"
+        "        });\n\n"
+        "        Schema::create('zetony_odnowienia_dostepu', function (Blueprint $table): void {\n"
+        "            $table->string('zeton')->primary();\n"
+        "        });\n\n"
+        "        Schema::create('sessions', function (Blueprint $table): void {",
+    )
+
+    # Prymityw POZA `app/` — w `routes/`, ktorego stary skan nie widzial.
+    pisz(
+        TRASY,
+        czytaj(TRASY)
+        + "\nRoute::get('/wejscie/zaloz', fn () => \\Illuminate\\Support\\Facades\\Hash::make('tajne123'));\n",
+    )
+
+    # Prymityw spoza starej listy czterech funkcji.
+    WEJSCIE.parent.mkdir(parents=True, exist_ok=True)
+    pisz(
+        WEJSCIE,
+        "<?php\n\ndeclare(strict_types=1);\n\n"
+        "namespace App\\Wejscie;\n\n"
+        "final class Poswiadczenia\n{\n"
+        "    public static function utworz(string $sekret): string\n"
+        "    {\n        return sodium_crypto_pwhash_str(\n"
+        "            $sekret,\n"
+        "            SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,\n"
+        "            SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE\n        );\n    }\n\n"
+        "    public static function sprawdz(string $skrot, string $sekret): bool\n"
+        "    {\n        return sodium_crypto_pwhash_str_verify($skrot, $sekret);\n    }\n}\n",
+    )
 
 
 def nonce_fail_open() -> None:
@@ -133,11 +193,29 @@ def lockfile_rozjazd() -> None:
     pisz(lock, tresc[:poczatek] + nowy + tresc[koniec:])
 
 
+def wzmacniacz_zadan() -> None:
+    """Usuwa bramke czestotliwosci odswiezania JWKS.
+
+    Odtwarza naiwna obsluge rotacji kluczy: „nie znam kid → dociagnij JWKS".
+    Wyglada niewinnie i jest czesta — a zamienia usluge we wzmacniacz zadan
+    do IdP, bo `kid` kontroluje nadawca zadania, jeszcze przed weryfikacja
+    podpisu (lekcja zespolu hubu z perturbacji JWKS).
+    """
+    podmien(
+        OIDC,
+        "        if (! Cache::add(self::KLUCZ_ODSWIEZANIE, 1, $this->odstepOdswiezaniaSekundy())) {" + chr(10)
+        + "            return $jwks;" + chr(10)
+        + "        }" + chr(10) + chr(10),
+        "",
+    )
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
+    "hasla-podloz-v2": hasla_podloz_v2,
     "hasla-sprzataj": hasla_sprzataj,
     "nonce-fail-open": nonce_fail_open,
     "lockfile-rozjazd": lockfile_rozjazd,
+    "wzmacniacz-zadan": wzmacniacz_zadan,
 }
 
 

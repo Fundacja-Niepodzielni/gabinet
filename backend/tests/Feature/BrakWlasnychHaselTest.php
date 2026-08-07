@@ -2,71 +2,255 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use App\Wsparcie\Typy;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Regresja na CLAUDE.md §2: „ŻADNYCH własnych haseł w tym systemie".
  *
- * WERSJA DRUGA. Pierwsza sprawdzała LITERALNE nazwy (`password`,
- * `remember_token`, `password_reset_tokens`, model `User`) i została obalona
- * przez niezależnego weryfikatora: podłożył kolumny `users.haslo_hash`
- * i `users.token_zapamietania`, tabele `konta_lokalne(hash_hasla)`
- * i `zetony_resetu`, model `Personel extends Authenticatable` oraz trasy
- * `/reset-hasla` i `/zaloguj-haslem` — i **cała bramka została zielona**.
+ * WERSJA TRZECIA — i zmiana podejścia, nie tylko wzorców.
  *
- * Wniosek: test na liście zakazanych nazw sprawdza słownik, nie regułę.
- * Ta wersja szuka WZORCÓW w całym schemacie, we wszystkich modelach
- * i we wszystkich trasach — po polsku i po angielsku.
+ * Wersja pierwsza sprawdzała LITERALNE nazwy. Obalona: wystarczyło nazwać
+ * kolumny po polsku (`haslo_hash`, `zetony_resetu`).
+ *
+ * Wersja druga sprawdzała WZORCE nazw (`hasl|password|reset`). Też obalona:
+ * weryfikator użył `sekret_logowania`, `odcisk_urzadzenia`,
+ * `poswiadczenia_wejsciowe`, `pin_dostepu`, `sodium_crypto_pwhash_str()`
+ * i tras `/wejscie` — nic z tego nie pasuje do wzorca, a mechanizm DZIAŁAŁ
+ * (`GET /wejscie/sprawdz?sekret=tajne123` → `{"zalogowany":true}`).
+ *
+ * Wniosek po dwóch obaleniach: **lista zakazanych nazw nigdy nie będzie pełna**,
+ * bo przeciwnik wybiera nazwy. Odwracamy więc ciężar dowodu:
+ *
+ *   1. **Schemat bazy jest ZADEKLAROWANY.** Zbiór tabel i kolumn musi być
+ *      DOKŁADNIE taki, jak w `OCZEKIWANY_SCHEMAT`. Nowa kolumna — obojętne
+ *      jak nazwana — zapala test, dopóki człowiek świadomie nie dopisze jej
+ *      do listy. Wtedy pytanie „po co nam kolumna `sekret_logowania`" pada
+ *      przy przeglądzie, a nie nigdy.
+ *   2. **Trasy są ZADEKLAROWANE.** Ta sama zasada.
+ *   3. **Prymitywy kryptograficzne** skanujemy w CAŁYM `backend/` (bez
+ *      `vendor/`), nie tylko w `app/` — weryfikator schował `Hash::check`
+ *      w `routes/web.php`, którego poprzedni skan w ogóle nie widział.
+ *      Lista prymitywów jest zamknięta i krótka, bo w PHP nie da się
+ *      sprawdzić hasła inaczej niż jednym z nich.
  */
-
-/** Wzorce nazw, które w systemie bez haseł nie mają prawa wystąpić. */
-const WZORZEC_HASLA = '/(hasl|password|passwd|\bpwd\b|remember_token|token_zapamietania)/i';
-
-/** Wzorce nazw tabel: hasła i wszystko, co je resetuje. */
-const WZORZEC_TABELI = '/(hasl|password|passwd|reset)/i';
 
 /**
- * @return list<string>
+ * Pełny, zadeklarowany schemat domenowy.
+ *
+ * Kolumny posortowane alfabetycznie — porównanie jest zbiorami, nie kolejnością.
  */
-function wszystkieTabele(): array
-{
-    $wiersze = DB::select(
-        "select tablename from pg_tables where schemaname = 'public' order by tablename"
-    );
+const OCZEKIWANY_SCHEMAT = [
+    'users' => [
+        'created_at', 'email', 'email_potwierdzony', 'id', 'keycloak_sub',
+        'nazwa_wyswietlana', 'ostatnie_logowanie_at', 'updated_at',
+    ],
+    'konfiguracja_regul' => [
+        'autor', 'created_at', 'id', 'obowiazuje_od', 'reguly', 'uzasadnienie', 'wersja',
+    ],
+    'uslugi' => [
+        'cena_gr', 'created_at', 'id', 'kod', 'konto_stripe', 'minuty', 'model_ceny',
+        'nazwa', 'prowizja_bp', 'updated_at', 'widelki_gr', 'widoczna_publicznie',
+        'wymaga_uprawnienia',
+    ],
+    'specjalisci' => [
+        'created_at', 'id', 'imie', 'keycloak_sub', 'nazwisko', 'przyjmuje_pacjentow',
+        'stawka_pelna_gr', 'updated_at',
+    ],
+    'specjalista_usluga' => [
+        'created_at', 'id', 'specjalista_id', 'updated_at', 'usluga_id', 'wlaczona',
+    ],
+    'pacjenci' => [
+        'created_at', 'email', 'email_skrot', 'id', 'imie', 'keycloak_sub',
+        'limit_niskoplatnych_indywidualny', 'nazwisko', 'prowadzacy_specjalista_id',
+        'strefa_czasowa', 'telefon', 'updated_at', 'zanonimizowany_at',
+    ],
+    'zgody' => [
+        'created_at', 'id', 'ip', 'pacjent_id', 'rodzaj', 'rozstrzygnieta_at',
+        'udzielona', 'wersja_dokumentu',
+    ],
+    'rezerwacje' => [
+        'created_at', 'czas_trwania_minut', 'forma', 'id', 'konto_stripe',
+        'kwota_zamrozona_gr', 'liczba_przelozen', 'link_spotkania', 'numer',
+        'pacjent_id', 'prowizja_bp_zamrozona', 'regula_anulacji_zamrozona',
+        'specjalista_id', 'status', 'stripe_payment_intent', 'termin', 'updated_at',
+        'usluga_id', 'wersja_regul', 'wersja_regulaminu',
+    ],
+    'zdarzenia_rezerwacji' => [
+        'aktor_identyfikator', 'aktor_rodzaj', 'created_at', 'id', 'rezerwacja_id',
+        'szczegoly', 'typ',
+    ],
+];
 
-    $nazwy = [];
+/** Tabele frameworka — nie projektujemy ich schematu. */
+const TABELE_TECHNICZNE = [
+    'migrations', 'sessions', 'cache', 'cache_locks',
+    'jobs', 'job_batches', 'failed_jobs',
+];
+
+/**
+ * Zadeklarowane trasy aplikacji.
+ *
+ * `/auth/login` NIE jest własnym logowaniem — to przekierowanie do IdP,
+ * bez pola na hasło (CLAUDE.md §2).
+ */
+const OCZEKIWANE_TRASY = [
+    'GET /',
+    'GET /api/wersja',
+    'GET /auth/callback',
+    'GET /auth/ja',
+    'GET /auth/login',
+    'GET /auth/wyloguj',
+    'POST /oidc/backchannel-logout',
+];
+
+/*
+ * `/up` NIE jest na liście powyżej, bo jego domknięcie żyje w `vendor/` —
+ * trasę włącza `withRouting(health: '/up')` w `bootstrap/app.php`, a lista
+ * dotyczy tras zdefiniowanych w NASZYCH plikach. Żeby nie stracić pokrycia,
+ * jej istnienie sprawdza osobna asercja niżej.
+ */
+
+/**
+ * Prymitywy, którymi w PHP da się utworzyć albo sprawdzić sekret
+ * uwierzytelniający. Lista jest ZAMKNIĘTA — nie da się zweryfikować hasła
+ * bez jednego z nich (albo bez własnej kryptografii, co samo w sobie byłoby
+ * czerwoną flagą przy przeglądzie).
+ */
+const PRYMITYWY_POSWIADCZEN = '/('
+    .'password_hash\s*\(|password_verify\s*\(|'
+    .'crypt\s*\(|'
+    .'sodium_crypto_pwhash|'
+    .'Hash::|'
+    .'\bbcrypt\s*\(|'
+    .'Auth::attempt|->attempt\s*\(|'
+    .'PasswordBroker|CanResetPassword|'
+    .'Authenticatable'
+    .')/';
+
+/**
+ * @return array<string, list<string>> tabela => posortowane kolumny
+ */
+function schematDomenowy(): array
+{
+    $wiersze = DB::select(<<<'SQL'
+        select table_name, column_name
+        from information_schema.columns
+        where table_schema = 'public'
+        order by table_name, column_name
+    SQL);
+
+    $schemat = [];
 
     foreach ($wiersze as $wiersz) {
-        $nazwy[] = Typy::napis(Typy::mapa((array) $wiersz)['tablename'] ?? null);
-    }
+        $dane = Typy::mapa((array) $wiersz);
+        $tabela = Typy::napis($dane['table_name'] ?? null);
 
-    return $nazwy;
-}
-
-/**
- * @return list<string> pozycje w formacie `tabela.kolumna`
- */
-function wszystkieKolumny(): array
-{
-    $wynik = [];
-
-    foreach (wszystkieTabele() as $tabela) {
-        foreach (Schema::getColumnListing($tabela) as $kolumna) {
-            $wynik[] = $tabela.'.'.Typy::napis($kolumna);
+        if (in_array($tabela, TABELE_TECHNICZNE, true)) {
+            continue;
         }
+
+        $schemat[$tabela][] = Typy::napis($dane['column_name'] ?? null);
     }
 
-    return $wynik;
+    foreach ($schemat as $tabela => $kolumny) {
+        sort($kolumny);
+        $schemat[$tabela] = $kolumny;
+    }
+
+    ksort($schemat);
+
+    return $schemat;
 }
 
 /**
- * Kod PHP bez komentarzy — żeby kontrola patrzyła na to, co się wykonuje,
- * a nie na to, co ktoś o tym napisał.
+ * Wszystkie pliki PHP repozytorium poza `vendor/` — łącznie z `routes/`,
+ * `bootstrap/`, `config/` i `database/`.
+ *
+ * @return list<string>
  */
+function plikiPhpProjektu(): array
+{
+    $katalog = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(base_path(), FilesystemIterator::SKIP_DOTS)
+    );
+
+    $pliki = [];
+
+    foreach ($katalog as $plik) {
+        if (! $plik instanceof SplFileInfo || $plik->getExtension() !== 'php') {
+            continue;
+        }
+
+        $sciezka = str_replace('\\', '/', $plik->getPathname());
+
+        if (str_contains($sciezka, '/vendor/') || str_contains($sciezka, '/storage/')) {
+            continue;
+        }
+
+        // Ten plik jest WYŁĄCZONY z własnego skanu: wzorce poświadczeń są
+        // jego treścią, więc zawsze trafiłby sam w siebie. To jedyny wyjątek
+        // i jest wąski — nie „katalog tests/", tylko ten jeden plik.
+        if (str_ends_with($sciezka, 'tests/Feature/BrakWlasnychHaselTest.php')) {
+            continue;
+        }
+
+        $pliki[] = $sciezka;
+    }
+
+    sort($pliki);
+
+    return $pliki;
+}
+
+/**
+ * Czy trasa jest zdefiniowana w NASZYM kodzie?
+ *
+ * Rozstrzyga plik definicji, nie adres. Trasy pakietów (`Horizon`, `Scramble`)
+ * mają kontrolery w `vendor/` i nie podlegają deklaracji — ale trasa schowana
+ * pod `/horizon/coś` z naszym kontrolerem albo domknięciem zostanie policzona.
+ */
+/**
+ * Nazwa klasy z zapisu `Kontroler@metoda`.
+ *
+ * @return class-string
+ */
+function klasaZAkcji(string $akcja): string
+{
+    /** @var class-string */
+    return explode('@', $akcja)[0];
+}
+
+function trasaZNaszegoKodu(Illuminate\Routing\Route $trasa): bool
+{
+    $akcja = $trasa->getAction('uses');
+
+    try {
+        $plik = match (true) {
+            $akcja instanceof Closure => (new ReflectionFunction($akcja))->getFileName(),
+            is_string($akcja) && str_contains($akcja, '@') => (new ReflectionClass(klasaZAkcji($akcja)))->getFileName(),
+            is_string($akcja) && class_exists($akcja) => (new ReflectionClass($akcja))->getFileName(),
+            default => null,
+        };
+    } catch (ReflectionException) {
+        return false;
+    }
+
+    if (! is_string($plik)) {
+        // Trasa bez rozpoznawalnego pliku (np. `Route::view`) traktowana jest
+        // jako NASZA — bezpieczniejszy kierunek: pojawi się na liście różnic.
+        return true;
+    }
+
+    $plik = str_replace(DIRECTORY_SEPARATOR, '/', $plik);
+
+    return ! str_contains($plik, '/vendor/');
+}
+
+/** Kod bez komentarzy — kontrola patrzy na to, co się WYKONUJE. */
 function bezKomentarzy(string $kod): string
 {
     $wynik = '';
@@ -82,148 +266,129 @@ function bezKomentarzy(string $kod): string
     return $wynik;
 }
 
-/**
- * @return list<string> ścieżki plików PHP w `app/`
- */
-function plikiAplikacji(): array
-{
-    $katalog = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(base_path('app'), FilesystemIterator::SKIP_DOTS)
+// ---------------------------------------------------------------------------
+// SCHEMAT ZADEKLAROWANY — odwrócony ciężar dowodu
+// ---------------------------------------------------------------------------
+
+it('ma schemat DOKŁADNIE taki, jak zadeklarowany — ani jednej kolumny więcej', function (): void {
+    // To jest właściwa obrona przed CLAUDE.md §2. Kolumna `sekret_logowania`
+    // przechodziła przez wzorce; przez zadeklarowany schemat nie przejdzie
+    // ŻADNA nowa kolumna, dopóki człowiek jej tu nie dopisze.
+    $rzeczywisty = schematDomenowy();
+    $oczekiwany = OCZEKIWANY_SCHEMAT;
+
+    ksort($oczekiwany);
+
+    expect(array_keys($rzeczywisty))->toBe(
+        array_keys($oczekiwany),
+        'Zbiór tabel domenowych różni się od zadeklarowanego.'
     );
 
-    $pliki = [];
+    foreach ($oczekiwany as $tabela => $kolumny) {
+        sort($kolumny);
 
-    foreach ($katalog as $plik) {
-        if ($plik instanceof SplFileInfo && $plik->getExtension() === 'php') {
-            $pliki[] = $plik->getPathname();
-        }
+        expect($rzeczywisty[$tabela] ?? [])->toBe(
+            $kolumny,
+            "Kolumny tabeli {$tabela} różnią się od zadeklarowanych."
+        );
     }
-
-    sort($pliki);
-
-    return $pliki;
-}
-
-// ---------------------------------------------------------------------------
-// SCHEMAT BAZY — wzorce, nie lista zakazanych nazw
-// ---------------------------------------------------------------------------
-
-it('nie ma w CAŁYM schemacie ani jednej kolumny wyglądającej na hasło', function (): void {
-    $podejrzane = array_values(array_filter(
-        wszystkieKolumny(),
-        fn (string $kolumna): bool => preg_match(WZORZEC_HASLA, $kolumna) === 1
-    ));
-
-    expect($podejrzane)->toBe([], 'Kolumny wyglądające na mechanizm haseł: '.implode(', ', $podejrzane));
 });
 
-it('nie ma ani jednej tabeli od haseł albo ich resetu', function (): void {
-    $podejrzane = array_values(array_filter(
-        wszystkieTabele(),
-        fn (string $tabela): bool => preg_match(WZORZEC_TABELI, $tabela) === 1
-    ));
-
-    expect($podejrzane)->toBe([], 'Tabele od haseł/resetu: '.implode(', ', $podejrzane));
-});
-
-it('sprawdza schemat, który realnie ma tabele — nie pustkę', function (): void {
-    // Bez tego dwa testy wyżej przechodzą także wtedy, gdy migracje w ogóle
-    // się nie wykonały. Kontrola musi wiedzieć, że miała czego szukać.
-    expect(wszystkieTabele())->toContain('users', 'konfiguracja_regul')
-        ->and(count(wszystkieKolumny()))->toBeGreaterThan(10);
+it('sprawdza schemat, który realnie istnieje', function (): void {
+    // Asercja „miałem czego szukać": bez niej test wyżej przechodzi także
+    // przy pustej bazie (obie listy byłyby puste).
+    expect(count(schematDomenowy()))->toBe(count(OCZEKIWANY_SCHEMAT))
+        ->and(count(schematDomenowy()))->toBeGreaterThan(5);
 });
 
 // ---------------------------------------------------------------------------
-// MODELE — żaden nie może umieć uwierzytelniać hasłem
+// TRASY ZADEKLAROWANE
 // ---------------------------------------------------------------------------
 
-it('nie ma w app/ ANI JEDNEJ klasy zdolnej do uwierzytelniania hasłem', function (): void {
-    // Weryfikator podłożył `App\Models\Personel extends Authenticatable`
-    // w osobnym pliku — poprzedni test patrzył wyłącznie na `App\Models\User`.
-    $podejrzane = [];
-
-    foreach (plikiAplikacji() as $plik) {
-        // Usuwamy komentarze: kontrola ma patrzeć na to, co się WYKONUJE,
-        // a nie na to, co ktoś o tym napisał. Bez tego zdanie „NIE dziedziczy
-        // po Authenticatable" w komentarzu modelu zapala test, który pilnuje
-        // czegoś dokładnie odwrotnego.
-        $tresc = bezKomentarzy((string) file_get_contents($plik));
-
-        if (preg_match('/\bAuthenticatable\b/', $tresc) === 1) {
-            $podejrzane[] = str_replace(base_path().'/', '', $plik);
-        }
-    }
-
-    expect($podejrzane)->toBe([], 'Pliki odwołujące się do Authenticatable: '.implode(', ', $podejrzane));
-});
-
-it('nie miesza w kodzie ani jednego skrótu hasła', function (): void {
-    // `Hash::make`, `bcrypt()`, `password_hash()`, `Hash::check` — obecność
-    // któregokolwiek znaczy, że gdzieś powstaje albo jest sprawdzane hasło.
-    $podejrzane = [];
-
-    foreach (plikiAplikacji() as $plik) {
-        $tresc = bezKomentarzy((string) file_get_contents($plik));
-
-        if (preg_match('/(Hash::(make|check)|\bbcrypt\s*\(|\bpassword_hash\s*\(|\bpassword_verify\s*\()/', $tresc) === 1) {
-            $podejrzane[] = str_replace(base_path().'/', '', $plik);
-        }
-    }
-
-    expect($podejrzane)->toBe([], 'Pliki mieszające skróty haseł: '.implode(', ', $podejrzane));
-});
-
-it('przegląda realny zbiór plików aplikacji — nie pustą listę', function (): void {
-    // Ta sama zasada co przy schemacie: kontrola musi wiedzieć, że miała
-    // czego szukać. Bez tego dwa testy wyżej przechodzą przy pustym katalogu.
-    expect(count(plikiAplikacji()))->toBeGreaterThan(10);
-});
-
-// ---------------------------------------------------------------------------
-// TRASY — po polsku i po angielsku
-// ---------------------------------------------------------------------------
-
-it('nie wystawia ani jednej trasy hasłowej', function (): void {
-    // Weryfikator dołożył `/reset-hasla` i `/zaloguj-haslem`. Poprzedni test
-    // szukał `haslo` — a odmiana „hasła"/„hasłem" go omijała.
-    $podejrzane = [];
+it('wystawia DOKŁADNIE zadeklarowane trasy', function (): void {
+    // Weryfikator dołożył `/wejscie/sprawdz` — nazwę, której żaden wzorzec
+    // nie przewidzi. Lista zadeklarowana przewiduje wszystkie.
+    //
+    // Liczymy WYŁĄCZNIE trasy zdefiniowane w NASZYCH plikach. Rozstrzyga
+    // plik definicji (klasa kontrolera albo domknięcie przez refleksję),
+    // a nie przedrostek adresu — inaczej dałoby się schować trasę pod
+    // `/horizon/...` i wyjść spod kontroli. Horizon i Scramble rejestrują
+    // własne trasy z `vendor/` i te są tu nieistotne.
+    $rzeczywiste = [];
 
     foreach (Route::getRoutes()->getRoutes() as $trasa) {
-        $sciezka = $trasa->uri();
-        $nazwa = Typy::napis($trasa->getName());
+        if (! trasaZNaszegoKodu($trasa)) {
+            continue;
+        }
 
-        if (preg_match(WZORZEC_HASLA, $sciezka.' '.$nazwa) === 1) {
-            $podejrzane[] = $sciezka;
+        foreach ($trasa->methods() as $metoda) {
+            if (in_array($metoda, ['HEAD', 'OPTIONS'], true)) {
+                continue;
+            }
+
+            if (! is_string($metoda)) {
+                continue;
+            }
+
+            $rzeczywiste[] = $metoda.' /'.ltrim($trasa->uri(), '/');
         }
     }
 
-    expect($podejrzane)->toBe([], 'Trasy hasłowe: '.implode(', ', $podejrzane));
+    $rzeczywiste = array_values(array_unique($rzeczywiste));
+    sort($rzeczywiste);
+
+    $oczekiwane = OCZEKIWANE_TRASY;
+    sort($oczekiwane);
+
+    expect($rzeczywiste)->toBe($oczekiwane, 'Zbiór tras różni się od zadeklarowanego.');
+});
+
+// ---------------------------------------------------------------------------
+// PRYMITYWY POŚWIADCZEŃ — w CAŁYM repozytorium, nie tylko w app/
+// ---------------------------------------------------------------------------
+
+it('nie używa ANI JEDNEGO prymitywu tworzącego lub sprawdzającego hasło', function (): void {
+    // Weryfikator schował `Hash::make`/`Hash::check` w `routes/web.php`,
+    // a `sodium_crypto_pwhash_str()` w `app/Wejscie/` — poprzedni skan
+    // obejmował wyłącznie `app/` i wyłącznie cztery funkcje.
+    $podejrzane = [];
+
+    foreach (plikiPhpProjektu() as $plik) {
+        $tresc = bezKomentarzy((string) file_get_contents($plik));
+
+        if (preg_match(PRYMITYWY_POSWIADCZEN, $tresc) === 1) {
+            $podejrzane[] = str_replace(base_path().'/', '', $plik);
+        }
+    }
+
+    expect($podejrzane)->toBe([], 'Pliki z prymitywami poświadczeń: '.implode(', ', $podejrzane));
+});
+
+it('przeszukuje realny zbiór plików, w tym routes/ i bootstrap/', function (): void {
+    // Asercja „miałem czego szukać" — plus dowód, że skan sięga POZA `app/`,
+    // bo dokładnie tam weryfikator schował mechanizm.
+    $pliki = plikiPhpProjektu();
+    $sklejone = implode(' ', $pliki);
+
+    expect(count($pliki))->toBeGreaterThan(30)
+        ->and($sklejone)->toContain('/routes/')
+        ->and($sklejone)->toContain('/bootstrap/')
+        ->and($sklejone)->toContain('/database/');
 });
 
 // ---------------------------------------------------------------------------
 // KONFIGURACJA
 // ---------------------------------------------------------------------------
 
-it('nie ma czego resetować — tabela brokera haseł nie istnieje', function (): void {
-    // `config('auth.passwords')` NIE jest dowodem: Laravel 11+ scala
-    // konfigurację aplikacji z domyślną konfiguracją frameworka, więc
-    // usunięcie klucza przywraca wartość domyślną. Zmierzone.
-    $tabelaBrokera = Typy::napis(config('auth.passwords.users.table'), 'password_reset_tokens');
-
-    expect(Schema::hasTable($tabelaBrokera))->toBeFalse();
+it('wystawia sondę zdrowia /up włączoną konfiguracją', function (): void {
+    // Trasa pochodzi z frameworka (`withRouting(health:)`), więc nie ma jej
+    // na liście zadeklarowanej — ale jej zniknięcie ma zapalić bramkę.
+    $this->get('/up')->assertOk();
 });
 
-it('nie ma ani jednego strażnika nad providerem zdolnym do haseł', function (): void {
-    // Strażnik bez providera nie ma kogo sprawdzić. Gdyby ktoś dołożył
-    // providera Eloquent nad modelem `Authenticatable`, złapie to test wyżej.
-    $providery = Typy::mapa(config('auth.providers'));
+it('nie ma modelu zdolnego do uwierzytelniania hasłem', function (): void {
+    $model = Typy::napis(config('auth.providers.users.model'), User::class);
 
-    foreach ($providery as $nazwa => $provider) {
-        $model = Typy::napis(Typy::mapa($provider)['model'] ?? null);
-
-        if ($model !== '') {
-            expect(is_subclass_of($model, Authenticatable::class))
-                ->toBeFalse("Provider {$nazwa} wskazuje model zdolny do uwierzytelniania: {$model}");
-        }
-    }
+    expect(is_subclass_of($model, Authenticatable::class))->toBeFalse()
+        ->and(is_subclass_of(User::class, Authenticatable::class))->toBeFalse();
 });

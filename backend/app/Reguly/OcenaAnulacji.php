@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Reguly;
 
 use Carbon\CarbonImmutable;
+use InvalidArgumentException;
 
 /**
  * JEDNA FUNKCJA ROZSTRZYGAJĄCA — zwrot, możliwość przełożenia, płatność godziny.
@@ -32,7 +33,6 @@ final class OcenaAnulacji
      * @param  CarbonImmutable  $terminWizyty  termin wizyty (dowolna strefa — porównujemy chwile)
      * @param  CarbonImmutable  $chwilaDecyzji  kiedy pada decyzja
      * @param  int  $kwotaZamrozonaGr  kwota zapłacona, w groszach
-     * @param  int  $liczbaPrzelozen  ile razy TĘ rezerwację już przełożono
      */
     public static function oceń(
         ZestawRegul $reguly,
@@ -40,8 +40,14 @@ final class OcenaAnulacji
         CarbonImmutable $terminWizyty,
         CarbonImmutable $chwilaDecyzji,
         int $kwotaZamrozonaGr,
-        int $liczbaPrzelozen = 0,
     ): Werdykt {
+        // U-7: kwota ujemna dawała ujemny zwrot, a `PHP_INT_MAX` wywracał
+        // `intdiv()`. Rozstrzyganie o pieniądzach zaczyna się od sprawdzenia,
+        // czy pieniądze mają sens.
+        if ($kwotaZamrozonaGr < 0) {
+            throw new InvalidArgumentException("Kwota zamrożona nie może być ujemna: {$kwotaZamrozonaGr}.");
+        }
+
         // Godziny do wizyty liczone w SEKUNDACH i dopiero potem porównywane
         // z oknem. Liczenie w „pełnych godzinach" gubi 59 minut i przesuwa
         // granicę o godzinę — a granica jest tu całą regułą.
@@ -64,14 +70,26 @@ final class OcenaAnulacji
             default => $sytuacja,
         };
 
-        $skutek = $reguly->macierzOdwolan[$rozstrzygnieta->value]
-            ?? Sytuacja::macierzDomyslna()[$rozstrzygnieta->value];
+        // U-10: BEZ cichego sięgania po wartości domyślne z kodu. Zamrożony
+        // zrzut ma być samowystarczalny; brak klucza to błąd danych, nie
+        // zaproszenie do zgadywania.
+        if (! array_key_exists($rozstrzygnieta->value, $reguly->macierzOdwolan)) {
+            throw new InvalidArgumentException(
+                "Zamrożona macierz nie zna sytuacji [{$rozstrzygnieta->value}]."
+            );
+        }
+
+        $skutek = $reguly->macierzOdwolan[$rozstrzygnieta->value];
 
         $zwrotProcent = $skutek['zwrot_procent'];
 
         // Liczymy w GROSZACH i dzielimy na końcu — inaczej 55 zł przy 100%
         // potrafi wyjść 54,99 zł, a zwrot musi zgadzać się ze Stripe co do grosza.
         $kwotaZwrotuGr = intdiv($kwotaZamrozonaGr * $zwrotProcent, 100);
+
+        // Trzeci zamek: choćby oba poprzednie zawiodły, zwrot NIGDY nie
+        // przekroczy tego, co pacjent naprawdę zapłacił.
+        $kwotaZwrotuGr = min($kwotaZwrotuGr, $kwotaZamrozonaGr);
 
         return new Werdykt(
             sytuacja: $rozstrzygnieta,

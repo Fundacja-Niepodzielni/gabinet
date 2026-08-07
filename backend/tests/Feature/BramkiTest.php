@@ -98,10 +98,31 @@ it('nie autoryzuje markerem, NAWET gdyby ktoś wpisał go do mapy bramek', funct
     // przez pomyłkę dopisał marker do listy ról otwierających bramkę.
     // Biała lista ma to zatrzymać KONSTRUKCYJNIE, a nie polegać na tym,
     // że nikt się nie pomyli.
-    config(['konta.bramki.panel.koordynacji' => ['wymaga-2fa']]);
+    //
+    // U-4 z rundy 3: pierwsza wersja pisała `config(['konta.bramki.panel.koordynacji' => …])`.
+    // Nazwa bramki SAMA ZAWIERA KROPKĘ, więc Laravel utworzył NOWY zagnieżdżony
+    // klucz `bramki → panel → koordynacji`, a prawdziwy wpis `'panel.koordynacji'`
+    // został nietknięty. Test przechodził, nie zmutowawszy niczego — czyli
+    // niczego nie dowodził. Podmieniamy więc CAŁĄ mapę i sprawdzamy, że
+    // podmiana naprawdę weszła w życie, zanim cokolwiek asertujemy.
+    $mapa = Bramki::mapa();
+    $mapa['panel.koordynacji'] = ['wymaga-2fa'];
+    config(['konta.bramki' => $mapa]);
+
+    // Dowód mutacji — bez niego „biała lista zadziałała" bywa nieodróżnialne
+    // od „mutacja nigdy nie weszła".
+    expect(Bramki::mapa()['panel.koordynacji'])->toBe(['wymaga-2fa']);
 
     expect(Bramki::pozwala(['wymaga-2fa'], 'panel.koordynacji'))->toBeFalse()
         ->and(Bramki::dlaRol(['wymaga-2fa'])['panel.koordynacji'])->toBeFalse();
+
+    // Kierunek odwrotny: mapa nadal DZIAŁA dla roli z białej listy. Inaczej
+    // „false" powyżej mogłoby wynikać z rozwalonej konfiguracji, nie z reguły.
+    $mapa['panel.koordynacji'] = ['koordynator', 'wymaga-2fa'];
+    config(['konta.bramki' => $mapa]);
+
+    expect(Bramki::pozwala(['koordynator'], 'panel.koordynacji'))->toBeTrue()
+        ->and(Bramki::pozwala(['wymaga-2fa'], 'panel.koordynacji'))->toBeFalse();
 });
 
 it('odsiewa role spoza białej listy, także te wymyślone', function (): void {

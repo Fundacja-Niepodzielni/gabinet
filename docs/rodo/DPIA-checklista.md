@@ -267,3 +267,35 @@ zablokowany — P-1 i P-7 dotyczą tabel, które powstają dopiero cztery fazy d
 | Data | Zmiana |
 |---|---|
 | 2026-08-07 | wersja pierwsza — sesja 1, przed pierwszą migracją modelu domenowego |
+
+
+## W-13 — awaria retencji działa w OBIE strony
+
+Lekcja zespołu helpdesku (07.08.2026). Retencja bywa pilnowana wyłącznie od
+strony „nie trzymaj za długo". Tymczasem rekord, którego **żadne zadanie
+czyszczące nie wybierze** — bo brakuje mu kolumny, po której retencja filtruje —
+zostaje **na zawsze**. To także naruszenie art. 5 ust. 1 lit. e RODO, tylko
+ciche: nic nie pada, nic nie alarmuje, dane po prostu leżą po terminie.
+
+**Wymóg.** Dla każdej kategorii danych z retencją musi istnieć test, że rekord
+**PO TERMINIE JEST WYBIERANY** przez swoje zadanie retencyjne — nie tylko że
+świeży nie jest. Test tylko na „świeży nie znika" przechodzi również wtedy, gdy
+zadanie nie wybiera **niczego**.
+
+**Stan wdrożenia.** Kontrola strukturalna działa od F1: `RetencjaTest` trzyma
+rejestr (tabela → kolumna pochodzenia → podstawa → sposób usunięcia) i pilnuje,
+że każda tabela w bazie ma decyzję o retencji, że kolumna pochodzenia istnieje
+i że każdy wpis mówi, **jak** rekord znika. Testy „rekord po terminie jest
+wybierany" powstają razem z samymi zadaniami czyszczącymi w F2.
+
+## W-14 — retencja idzie za POCHODZENIEM rekordu, nie za jego stanem
+
+Ta sama lekcja, druga część. Jeżeli termin usunięcia liczy się od kolumny
+zmiennej w czasie życia rekordu (`status`, `updated_at`, przypisana kolejka),
+to **przeniesienie albo eskalacja po cichu przesuwa okres przechowywania** —
+bez decyzji, bez śladu i bez możliwości wykrycia po fakcie.
+
+**Wymóg.** Podstawą liczenia terminu może być wyłącznie pole niezmienne po
+utworzeniu rekordu (w praktyce: `created_at` albo data zdarzenia źródłowego).
+Egzekwowane testem: `RetencjaTest` odrzuca rejestr, w którym kolumną
+pochodzenia jest kolumna stanu.

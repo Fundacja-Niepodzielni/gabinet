@@ -58,6 +58,17 @@ return [
 
     /*
     |-----------------------------------------------------------------------
+    | Odstęp między odświeżeniami JWKS wywołanymi NIEZNANYM `kid`
+    |-----------------------------------------------------------------------
+    | `kid` przychodzi w nagłówku tokenu, czyli od nadawcy żądania i PRZED
+    | weryfikacją podpisu. Bez tego odstępu strumień tokenów z losowym `kid`
+    | zamieniłby Gabinet we wzmacniacz żądań do Kont Niepodzielni — patrz
+    | `KontaOidc::jwksDlaKid()` i `WzmacniaczZadanTest`.
+    */
+    'jwks_odstep_odswiezania_s' => (int) env('KEYCLOAK_JWKS_ODSTEP_S', 60),
+
+    /*
+    |-----------------------------------------------------------------------
     | BIAŁA LISTA ról autoryzujących
     |-----------------------------------------------------------------------
     | Siedem ról merytorycznych realmu (kontrakt §2). WYŁĄCZNIE one mogą
