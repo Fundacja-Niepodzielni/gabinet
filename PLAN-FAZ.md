@@ -7,8 +7,8 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
 - **Faza: F0 — wykonana, z jednym jawnym blokerem** (sesja 1, 2026-08-07)
-- Commity: `0af30ae` (szkielet), `5045066` (naprawa po weryfikacji), `f4304c6` (izolacja sieci)
-- **Nie wypchnięte na `origin`** — czeka na zgodę właściciela (patrz „Pytania").
+- **Bramka: `BRAMKA OK — 18 kroków, 0 nieudanych` na CZYSTYM KLONIE** (kod wyjścia 0)
+- 9 commitów, `0af30ae` … `a3e7166`. **Nie wypchnięte na `origin`** — czeka na zgodę właściciela.
 
 ### Rozpiska zadań F0 — stan końcowy sesji
 
@@ -17,12 +17,12 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 | F0.1 | Szkielet Laravel 13.24 (PHP 8.4.24) w `backend/`, wersje przypięte digestem + `config.platform` | ✅ | `composer install` z lockfile'a; bramka krok 4 |
 | F0.2 | Docker Compose: postgres 18.4, redis 8, php-fpm, nginx, Horizon, scheduler | ✅ | `up -d --wait` → 6 kontenerów `healthy`; sondy pytają o STAN (`gabinet:zdrowie`, `gabinet:puls`) |
 | F0.3 | Pest 5 + Larastan `max` + Pint | ✅ | 66 testów / 192 asercje; `[OK] No errors`; 47 plików PASS |
-| F0.4 | `skrypty/bramka.sh` + CI wołające ten sam skrypt + gitleaks | ✅ lokalnie / ⚠️ CI nieuruchomione | `BRAMKA OK`; gitleaks: tryb git czysty, przynęta zapala skan |
+| F0.4 | `skrypty/bramka.sh` + CI wołające ten sam skrypt + gitleaks | ✅ lokalnie / ⚠️ CI nieuruchomione | `BRAMKA OK — 18 kroków` na czystym klonie; gitleaks: tryb git czysty, przynęta zapala skan |
 | F0.5 | `.env.example` bez wartości (Keycloak, 2× Stripe, SMSAPI, poczta, wideo) | ✅ | `SekretyTest`; gitleaks |
 | F0.6 | `docs/DECYZJE.md` | ✅ | 8 wpisów + rejestr zadań dla człowieka |
 | F0.7 | Porównanie Jitsi vs Whereby + rekomendacja | ✅ | `docs/analizy/wideo-jitsi-vs-whereby.md` |
 | F0.8 | Warstwa OIDC wg wzorca `ref-laravel` + sonda na żywym IdP | 🟡 częściowo | sonda OK na żywym Keycloaku; **pełne logowanie zablokowane: BLK-01** |
-| F0.9 | Niezależna weryfikacja | ✅ wykonana | obaliła 5 twierdzeń; wszystkie usterki naprawione, patrz commit `5045066` |
+| F0.9 | Niezależna weryfikacja | ✅ wykonana, usterki naprawione | obaliła 5 twierdzeń (T1, T2, T3, T9, T12); naprawy w commitach `5045066`…`a3e7166`. **Powtórna weryfikacja niezależna: DO ZROBIENIA** w kolejnej sesji |
 | F0.10 | Przypomnienie o nadawcy SMS | ✅ | `docs/DECYZJE.md`, Z-01 |
 
 ### Blokery i oczekiwania
