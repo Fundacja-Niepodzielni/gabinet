@@ -129,10 +129,10 @@ Kolejność wynika z jednej zasady: **najpierw przywróć zdolność przyrządu 
 
 ---
 
-## Trzy rzeczy, które tej nocy pomyliłem — i jak wyszły na jaw
+## Cztery rzeczy, które tej nocy pomyliłem — i jak wyszły na jaw
 
-Zapisuję je, bo raport bez nich byłby nieprawdziwy, a wszystkie trzy są tą samą
-wadą, którą ta noc badała u kodu: **wnioskiem zgodnym z więcej niż jednym światem.**
+Zapisuję je, bo raport bez nich byłby nieprawdziwy, a wszystkie są tą samą wadą,
+którą ta noc badała u kodu: **wnioskiem zgodnym z więcej niż jednym światem.**
 
 1. **„Exit code 0" dwa razy z rzędu znaczyło „pomiar się nie wykonał"** — raz
    przez nieistniejącą flagę `docker exec -T`, raz przez `| tail`, które
@@ -140,7 +140,12 @@ wadą, którą ta noc badała u kodu: **wnioskiem zgodnym z więcej niż jednym 
 2. **Zbieżność TTL 86400 s uznałem za trop** — a 86400 to po prostu doba,
    najczęstsza wartość TTL w oprogramowaniu. Błąd częstości bazowej. Rozstrzygała
    NAZWA klucza, nie jego TTL; po odczytaniu nazw wątek zniknął w minutę.
-3. **Restart Horizona uznałem za test rozstrzygający** — a rozpad TTL w tempie
+3. **Czwarty raz: własny harness testowy powiedział „bez wycieków" przy PIĘCIU
+   wykrytych wyciekach** — bo uruchomiłem go bez `set -o pipefail`, a krok kończy
+   się `| tail`. Dwie godziny wcześniej dopisałem tę dokładnie lekcję do
+   `WYTYCZNE-PRACY.md`. Najlepszy dowód, że reguła nie zaczyna działać przez samo
+   zapisanie jej w dokumencie.
+4. **Restart Horizona uznałem za test rozstrzygający** — a rozpad TTL w tempie
    zegara zachodzi zarówno gdy zapisy ustały, jak i gdy klucze po prostu
    wygasały. Zmierzyłem zgodność z hipotezą, nie jej wyłączność. Waga N-7
    obniżona, sposób rozstrzygnięcia opisany.
