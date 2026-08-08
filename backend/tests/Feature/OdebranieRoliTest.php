@@ -575,44 +575,36 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
         ->assertJsonPath('zalogowany', false);
 });
 
-it('NOGA 1: tożsamość usunięta z magazynu + ŻYWY refresh token → 401, nigdy 200', function (): void {
+it('NOGA 1 [NIEROZSTRZYGNIĘTE: światy 1 i 2]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
     // Para negatywna do BLK-22, noga pierwsza. Wymóg standardu B8:
-    // odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI, nie procedurą,
-    // która potrafi zapisać `konta` od zera. Refresh token, który przetrwał
-    // usunięcie tożsamości, nie może jej WSKRZESIĆ.
+    // odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Refresh token,
+    // który przetrwał usunięcie tożsamości, nie może jej WSKRZESIĆ.
     //
-    // Rozróżnienie wobec nogi drugiej (`uniewaznienie_sid`): tam sesja ŻYJE,
-    // a znika znacznik unieważnienia. Tutaj odwrotnie — znacznika nie ma,
-    // a znika sama tożsamość. Dwie różne ścieżki do tego samego 401.
+    // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół.
+    // Pierwsza wersja używała 600 s i dawała 200. Dyskryminator z ODCZYTEM
+    // BAZOWYM pokazał, dlaczego: w przebiegu kontrolnym (bez usuwania
+    // tożsamości) licznik żądań do punktu tokenów wynosił ZERO — ścieżka
+    // odświeżania w ogóle się nie uruchamiała, więc 200 pochodziło ze zwykłej,
+    // nietkniętej sesji, a test nie mierzył tego, co deklarował.
+    //
+    // Bez odczytu bazowego odczytałbym to jako „kasuję niewłaściwy wpis"
+    // i zmienił kod, który działa. Wartość dyskryminatora zgodna z więcej niż
+    // jednym światem znaczy, że brakuje pomiaru bazowego.
     config(['session.driver' => 'redis']);
-    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+    $sid = zalogujKoordynatora(waznoscTokenuS: 1);
 
     expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
 
-    // OTWARTE — TEST CZERWONY, PRZYCZYNA NIEUSTALONA (08.08).
-    //
-    // Ten test daje 200 zamiast 401. Dwie hipotezy, ŻADNA nie zmierzona:
-    //  (1) usuwam nie tę tożsamość — `RejestrSesji::odczytaj()` zwraca
-    //      identyfikator z chwili logowania, a ten ROTUJE (to samo zjawisko,
-    //      które stało za BLK-22), więc kasuję wpis nieużywany;
-    //  (2) odświeżanie JEDNAK potrafi odtworzyć tożsamość z refresh tokenu —
-    //      czyli wymóg „operacja na istniejącej tożsamości" nie jest spełniony
-    //      strukturalnie, tylko strażnikiem, który da się ominąć.
-    //
-    // Hipoteza (2) byłaby realnym defektem i dlatego NIE zakładam (1).
-    // Rozstrzygnie to licznik żądań do punktu tokenów po usunięciu tożsamości:
-    // > 0 znaczy odtwarzanie, 0 znaczy że kasuję niewłaściwy wpis.
-    // Test zostaje CZERWONY jako otwarty dowód — tak jak BLK-22, który
-    // zaczynał identycznie i okazał się realnym defektem wzorca.
-
-    // Usuwamy TOŻSAMOŚĆ z magazynu, zostawiając refresh token żywy po stronie
-    // IdP (atrapa punktu tokenów nadal zwraca poprawny token).
+    // Usuwamy TOŻSAMOŚĆ, zostawiając refresh token żywy po stronie IdP —
+    // atrapa punktu tokenów nadal zwraca poprawny token.
     foreach (RejestrSesji::odczytaj($sid) as $idSesji) {
         Session::getHandler()->destroy($idSesji);
     }
 
     app()->forgetInstance('session');
     app()->forgetInstance('session.store');
+
+    sleep(2);
 
     // Odświeżenie NIE MA prawa odtworzyć tożsamości, której nie ma.
     test()->get('/auth/ja')

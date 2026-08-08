@@ -344,6 +344,33 @@ Zmierzone u nas: ze znacznikiem w cache'u `Cache::flush()` po wylogowaniu
 dawał **200 zamiast 401** — zablokowany użytkownik wracał. Wyzwalacze
 całkowicie prozaiczne: deploy, `cache:clear`, restart, eksmisja LRU.
 
+**PRE-FLIGHT DYSKRYMINATORA — przed uruchomieniem, nie po.** Zanim uruchomisz
+pomiar mający rozstrzygnąć między hipotezami, wypisz dla **każdej możliwej
+wartości** pełną listę światów z nią zgodnych. Jeśli którakolwiek wartość ma
+więcej niż jeden świat — **dyskryminator nie jest gotowy i go nie uruchamiasz**.
+
+Przegląd po fakcie łapie to o rundę za późno. Trzy dowody z jednego dnia:
+
+1. Licznik żądań do punktu tokenów: `0` było zgodne z „kasuję niewłaściwy wpis"
+   ORAZ z „ścieżka odświeżania w ogóle się nie uruchamia". Odczyt bazowy
+   (przebieg kontrolny bez mutacji) rozstrzygnął — i uratował mnie przed
+   zmianą kodu, który działa.
+2. Ten sam licznik po naprawie testu: `1` było zgodne z „wskrzeszenie" ORAZ
+   z „tożsamość nieusunięta, odświeżenie normalne". Zastosowałem regułę do
+   wartości `0` i **nie zastosowałem jej do `1`**.
+3. `sid` jako kandydat na odczyt rozstrzygający: bezużyteczny, bo wymiana
+   refresh tokenu NIE tworzy nowej sesji w IdP — `sid` jest identyczny w obu
+   światach. Złapane **przed** uruchomieniem, po weryfikacji we własnym kodzie
+   (`przelicz()` w ogóle go nie dotyka).
+
+To rozszerzenie prerejestracji interpretacji: dochodzi warunek, że **każda
+gałąź musi być jednoelementowa**.
+
+**Etykieta w kodzie nie może twierdzić więcej, niż pomiar wykazał.** Moja
+etykieta mówiła „świat 2 — wskrzeszenie", czego nie udowodniłem. To
+dokumentacja kłamiąca o kodzie: następny czytelnik odziedziczyłby wniosek bez
+pomiaru. Poprawna postać nazywa stan wiedzy — „NIEROZSTRZYGNIĘTE: światy 1 i 2".
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
