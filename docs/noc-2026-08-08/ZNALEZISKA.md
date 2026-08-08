@@ -824,3 +824,165 @@ dokładnie tak, jak wyciszył `p_statyka`.
 tylko że TRAFIA. „Trafia" znaczy „plik się zmienił", nie „zmiana łamie regułę,
 o którą chodzi". Odpowiedź na to drugie pytanie daje wyłącznie pełny przebieg
 `perturbacje.sh`, którego tej nocy nie wykonałem.
+
+---
+
+## N-10 — WCISNĄŁEM DO REPOZYTORIUM ŻYWĄ PERTURBACJĘ REGUŁY 24 H
+
+**Najpoważniejsza rzecz, jaką zrobiłem tej nocy. Moja wina, w całości.**
+
+**Skutek po ludzku:** przez kilkanaście minut w repozytorium **lokalnym** leżała
+zepsuta reguła decydująca o tym, czy pacjent dostaje bezpłatne odwołanie wizyty.
+
+> **SPROSTOWANIE, zanim ten wpis zdążył się zestarzeć.** Pisząc go po raz
+> pierwszy napisałem „i na wypchniętej gałęzi". **To nieprawda i sprawdziłem to
+> dopiero po napisaniu.** Zmierzone:
+> `git show origin/faza-1-retencja:…/OcenaAnulacji.php` → `>=` (poprawnie);
+> `origin/faza-1-retencja` stoi na `d81c00b`, a złamany commit `041e528`
+> i jego cofnięcie `534360e` są **wyłącznie lokalne**. Nikt nie mógł tego
+> pobrać. Zdarzenie zostaje poważne, ale nie było publiczne — a różnica
+> między „w repozytorium" a „na zdalnej" jest dokładnie tą, której nie wolno
+> zmyślać w raporcie o własnym błędzie. Pacjent odwołujący **dokładnie 24:00:00 przed wizytą** tracił
+to prawo. To jest ta granica, którą ten projekt sprawdza co do sekundy i której
+poświęcona jest osobna bramka fazy.
+
+**Dowód — wartość tej linii w kolejnych commitach:**
+
+```
+$ for C in …; do git show "$C:backend/app/Reguly/OcenaAnulacji.php" | grep -o 'sekundDoWizyty >=\? \$sekundOkna'; done
+49131d8   sekundDoWizyty >= $sekundOkna     ← poprawnie
+0304245   sekundDoWizyty >= $sekundOkna
+12724ef   sekundDoWizyty >= $sekundOkna
+d81c00b   sekundDoWizyty >= $sekundOkna
+041e528   sekundDoWizyty >  $sekundOkna     ← ZŁAMANE (mój commit)
+drzewo    sekundDoWizyty >= $sekundOkna     ← trap perturbacji przywrócił plik
+```
+
+Komentarz tuż nad tą linią mówi wprost, dlaczego `>=` jest jedyną poprawną
+postacią: *„Dokładnie 24:00:00 to jeszcze bezpłatne odwołanie — pacjent widzi
+datę graniczną co do minuty i musi móc trafić w nią bez ryzyka."*
+
+**Przyczyna: zrobiłem `git add -A` W TRAKCIE biegnącego zestawu perturbacji.**
+Perturbacja `p_testy` mutuje właśnie ten plik, a ja w tym samym czasie
+commitowałem poprawkę do `PODSUMOWANIE.md`. `git add -A` zgarnął jedno i drugie.
+
+**Reguła, którą złamałem, jest zapisana w tym repozytorium** (`WYTYCZNE-PRACY.md`,
+sekcja o przyrządach): *„commit robimy dopiero po zakończeniu perturbacji i po
+sprawdzeniu, że drzewo wróciło do stanu sprzed przebiegu"*. Przeczytałem ją tej
+nocy, cytowałem ją w dzienniku — i złamałem cztery godziny później.
+
+**Dlaczego nie wyszło od razu:** bramka nie biegła po tym commicie, a suita
+testów, którą uruchamiałem wcześniej, mierzyła DRZEWO ROBOCZE (poprawne), nie
+HEAD. Wyszło dopiero przy sprzątaniu po awarii zestawu perturbacji — czyli
+przypadkiem, przy zupełnie innej czynności.
+
+**Co byłoby, gdyby nie wyszło:** granicę 24 h pilnują testy tabelaryczne
+(23:59 / 24:00 / 24:01), więc **następny przebieg bramki zapaliłby się na
+czerwono** — kontrola zadziałałaby. Ale zapaliłby się dzień później i wyglądałby
+jak nowa regresja bez przyczyny, a nie jak commit z konkretnej minuty.
+
+**Zrobione:**
+- Przywrócone i **zmierzone**: `pest tests/Unit/OcenaAnulacjiTest.php` →
+  `36 passed (89 assertions)`.
+- Cofnięcie osobnym commitem z pełnym opisem — **nie przepisuję historii**;
+  `041e528` zostaje w niej wraz z tym, co znaczył.
+
+**Waga:** wysoka. **Czy blokuje:** nie — zamknięte tej samej nocy z pomiarem.
+
+**Wniosek, który jest ważniejszy niż samo zdarzenie.** Rzeczy, które
+zapisywaliśmy przez cały dzień o przyrządach, dotyczą też przyrządu, którym jest
+`git add -A`. Reguła „nie commituj w trakcie perturbacji" jest zapisana w dwóch
+miejscach i nie uchroniła mnie, bo egzekwuje ją WYŁĄCZNIE pamięć. To jest ta
+sama klasa co „kontrola, którą można wyłączyć niewidocznie": **zabezpieczenie
+istniejące tylko jako zdanie w dokumencie nie jest zabezpieczeniem.**
+
+Do rozważenia rano (nie robię tego w nocy — to zmiana w przyrządzie po
+zdarzeniu, bez rundy): `perturbacje.sh` mógłby zakładać **plik-znacznik**
+na czas przebiegu, a `pre-commit` odmawiać commita, dopóki znacznik istnieje.
+Wtedy reguła przestaje zależeć od pamięci wykonawcy — dokładnie tak, jak
+`TozsamoscSesji` zamieniło strażnika na strukturę.
+
+---
+
+## N-11 — moja naprawa przyrządu wywaliła zestaw perturbacji na scenariuszu 26 z 30
+
+**Skutek po ludzku:** naprawa, którą zrobiłem w nocy, żeby perturbacje znów
+działały, sama je zatrzymała w połowie — i wyszło to dopiero, gdy uruchomiłem
+cały zestaw.
+
+**Dowód:**
+
+```
+=== PERTURBACJA: role zamrożone na całą sesję — odebranie roli nie działa
+skrypty/perturbacje.sh: line 880: this: unbound variable
+KOD=1
+(scenariuszy wykonanych: 25 z 30 · kontroli ✓ 38 · kontroli ✗ 0)
+```
+
+**Przyczyna:** wzorce, które wstawiłem do `dowod_zniknieciem`, są fragmentami
+kodu PHP i zawierają `$this`, `$blad`, `$idToken`. Umieściłem je w **cudzysłowie**,
+a bash rozwija w nim zmienne; przy `set -u` nieznana zmienna kończy skrypt.
+Trzy z pięciu wzorców miały ten problem. Poprawione na apostrofy;
+`bash -n` czysty.
+
+**Co to mówi o poprzedniej weryfikacji:** sprawdziłem wtedy `bash -n` (składnia)
+i zachowanie funkcji na spreparowanych danych (trzy światy) — obie kontrole
+przeszły i **obie były prawdziwe**. Żadna nie mogła złapać tego błędu, bo
+rozwinięcie zmiennej w argumencie zachodzi u WOŁAJĄCEGO, a ja testowałem
+WOŁANEGO. Test funkcji nie zastępuje uruchomienia jej w miejscu wywołania.
+
+**Waga:** wysoka dla przyrządu (zestaw przerywał w połowie).
+**Czy blokuje:** nie — naprawione i ponownie uruchomione tej samej nocy.
+
+**Dlaczego to jest argument za uruchamianiem pełnego zestawu, a nie za odkładaniem
+go do rana:** rozważałem odłożenie („maszyna zajęta, późno, wynik trzeba
+interpretować"). Gdybym odłożył, rano zastałbym zestaw, który wywala się
+w połowie, i naprawę przyrządu opisaną w dzienniku jako zrobioną i sprawdzoną.
+
+---
+
+## N-12 — pełny zestaw perturbacji przebiegł: 45 kontroli OK, 1 czerwona — PRZEWIDZIANA
+
+Po naprawie cytowania (N-11) zestaw przeszedł **wszystkie 30 scenariuszy**,
+bez awarii, i zostawił drzewo czyste.
+
+```
+PERTURBACJE CZERWONE — 1 kontroli NIE zareagowało na złamaną regułę (udanych: 45)
+KOD_ZESTAWU=1
+scenariuszy: 30 · kontroli ✓ 45 · kontroli ✗ 1
+drzewo po zestawie: czyste (poza moimi plikami dokumentacji)
+```
+
+**Jedyna czerwona kontrola to KIERUNEK ODWROTNY scenariusza BLK-22:**
+
+```
+=== PERTURBACJA: BLK-22 — unieważnienie sesji po sid, odporne na rotację identyfikatora
+    · dowód mutacji (był → zniknął): sprawdzanie unieważnienia po sid zniknęło z kodu
+    ✓ test pozytywny wykrywa konsumenta serwującego po wylogowaniu (kod 1)
+    ✗ kontrola pozostaje czerwona mimo przywróconego mechanizmu
+```
+
+**To nie jest nowa wada — to DOKŁADNIE to, co weryfikator B przewidział z lektury
+kodu (R6B-13), zanim ktokolwiek uruchomił zestaw:** *„Symetrycznie: »kierunek
+odwrotny« w `p_uniewaznienie_sid` nie może dziś przejść, bo plik jest trwale
+czerwony — będzie meldował wadę tam, gdzie jej nie ma."*
+
+Mechanizm: kierunek odwrotny przywraca zepsuty kod i oczekuje, że
+`OdebranieRoliTest.php` wróci na zielono. Nie wróci, bo w tym pliku siedzi
+**NOGA 1**, czerwona z zupełnie innego powodu. Kontrola mierzy więc plik,
+a nie mechanizm, który przywróciła.
+
+**Wartość tego wyniku jest podwójna:**
+1. **Predykcja weryfikatora potwierdzona pomiarem.** B wyprowadził to
+   z czytania kodu i nazwał jako R6B-13; zestaw uruchomiony niezależnie
+   zaświecił dokładnie tam. Analiza i pomiar zgodne co do jednej pozycji.
+2. **`PERTURBACJE CZERWONE — 1` jest dziś stanem OCZEKIWANYM**, nie regresją.
+   Zniknie sam, gdy noga 1 zostanie naprawiona — bo wtedy plik wróci na zielono.
+   **Nie ścigaj tego rano jako osobnego defektu.**
+
+**Waga:** informacyjna. **Czy blokuje:** nie.
+
+**Czego ten przebieg dowodzi o moich naprawach z tej nocy:** `dowod_zniknieciem`
+działa w prawdziwym przebiegu — w wydruku widać „dowód mutacji (był → zniknął)",
+czyli obie strony pomiaru (baseline i stan po) zostały sprawdzone. Podłogi
+bramki, nowy dowód i poprawione wzorce przeszły pełny zestaw.

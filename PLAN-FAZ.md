@@ -30,6 +30,12 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   nogę 1 i `oczekuj_czerwone` bez `--przyczyna` przyjmuje tę czerwień (R6A-5, R6B-13).
   Ponadto 6 z 8 allowlist `--przyczyna` nic nie zawęża (R6B-15).
   **Nie cytuj „30 scenariuszy" jako miary pokrycia.**
+- **Pełny przebieg zestawu (09.08, noc): `PERTURBACJE CZERWONE — 1 kontroli NIE
+  zareagowało (udanych: 45)`, 30 scenariuszy, drzewo czyste.** Ta jedna czerwona
+  jest **OCZEKIWANA i przewidziana** (R6B-13, potwierdzone pomiarem N-12): to
+  kierunek odwrotny scenariusza BLK-22, który przywraca mechanizm i oczekuje
+  zielonego `OdebranieRoliTest.php` — a tam siedzi noga 1. **Zniknie sama po
+  naprawie nogi 1; nie ścigaj jej jako osobnego defektu.**
 
 ### Do rozstrzygnięcia w następnej sesji
 

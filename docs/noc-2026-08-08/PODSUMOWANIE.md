@@ -47,7 +47,7 @@ Naprawiłem je i sprawdziłem pomiarem, że wykrywa tę awarię.
 | 11 | **Bramka przebiegnięta od nowa po moich zmianach w niej** — 1 czerwony z 22, ten zamierzony | `DZIENNIK.md` 01:10 |
 | 12 | **Osiem lekcji nocy** dopisanych do `WYTYCZNE-PRACY.md`, każda z instancją zmierzoną | `WYTYCZNE-PRACY.md` |
 
-**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 9 własnych** (N-1…N-9).
+**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 12 własnych** (N-1…N-12).
 
 **Przebieg końcowy bramki — stan, w jakim zostawiam drzewo:**
 
@@ -93,8 +93,10 @@ Kolejność wynika z jednej zasady: **najpierw przywróć zdolność przyrządu 
    mutacji trafia, zero martwych** (N-9). W zamian nowa pozycja: **osiem podmian
    robionych surowym `sed`-em** nie ma zabezpieczenia „krzyknij, gdy nie trafisz",
    a jedna z nich jest już cichym no-opem (potwierdzone pomiarem).
-2. **Uruchom pełny `skrypty/perturbacje.sh`** — nie zdążyłem tego zrobić w nocy
-   (maszyna obsługiwała weryfikatora), a zmieniałem ten skrypt.
+2. ~~Uruchom pełny `perturbacje.sh`~~ — **zrobione w nocy: 30 scenariuszy,
+   45 kontroli OK, 1 czerwona i PRZEWIDZIANA** (kierunek odwrotny BLK-22,
+   znika po naprawie nogi 1 — nie ścigaj jej). Uruchomienie tego zestawu
+   wykryło przy okazji dwa moje błędy z tej nocy: N-11 i N-10.
 3. **Napraw test nogi 1** (nie system) i **zmierz ponownie** — ma zzielenieć,
    a test „POZYTYWNY" ma zostać zielony.
 4. Znaleziska R6A-3, R6A-4, R6B-9 wg wag.

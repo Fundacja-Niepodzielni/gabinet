@@ -477,3 +477,91 @@ dzięki drugiej mutacji obok. Mutacja-widmo od nieznanego czasu.
 
 Pozycja 1 listy porannej zaktualizowana: zamiast „sprawdź 28 wzorców" jest teraz
 „przenieś 8 podmian `sed`-owych pod `podmien()` albo obłóż `dowod_zniknieciem`".
+
+## 02:05 — pełny zestaw perturbacji: PADŁ, i dobrze, że go uruchomiłem
+
+Rozważałem odłożenie tego do rana („maszyna zajęta, późno, wynik trzeba
+interpretować"). Uruchomiłem. Zestaw **wywalił się na scenariuszu 26 z 30**:
+
+```
+=== PERTURBACJA: role zamrożone na całą sesję — odebranie roli nie działa
+skrypty/perturbacje.sh: line 880: this: unbound variable      KOD=1
+(wykonanych 25 scenariuszy · kontroli ✓ 38 · ✗ 0)
+```
+
+**To moja regresja z tej nocy** — z naprawy przyrządu (N-11). Wzorce, które
+wstawiłem do `dowod_zniknieciem`, są fragmentami PHP i zawierają `$this`,
+`$blad`, `$idToken`; dałem je w CUDZYSŁOWIE, a bash tam rozwija zmienne —
+przy `set -u` nieznana zmienna kończy skrypt. Poprawione na apostrofy.
+
+Rzecz, którą warto zapamiętać o mojej poprzedniej weryfikacji: sprawdziłem
+wtedy `bash -n` i zachowanie funkcji na trzech spreparowanych światach. **Obie
+kontrole były prawdziwe i żadna nie mogła tego złapać** — rozwinięcie zmiennej
+zachodzi u WOŁAJĄCEGO, a ja testowałem WOŁANEGO. Test funkcji nie zastępuje
+uruchomienia jej w miejscu wywołania.
+
+## 02:10 — SPRZĄTANIE PO AWARII ODSŁONIŁO COŚ GORSZEGO (N-10)
+
+Po awarii sprawdziłem drzewo. Nie było czyste:
+
+```
+$ git status --short
+ M backend/app/Reguly/OcenaAnulacji.php
+```
+
+Sprawdziłem, co to za zmiana — i okazało się, że **to nie perturbacja została
+w drzewie, tylko perturbacja weszła do REPOZYTORIUM**:
+
+```
+49131d8 … d81c00b   sekundDoWizyty >= $sekundOkna     ← poprawnie
+041e528             sekundDoWizyty >  $sekundOkna     ← ZŁAMANE (mój commit)
+drzewo robocze      sekundDoWizyty >= $sekundOkna     ← trap przywrócił plik
+```
+
+**Wcisnąłem do repozytorium żywą perturbację reguły 24 h**, bo zrobiłem
+`git add -A` w trakcie biegnącego zestawu. Reguła, którą przy tym złamałem, jest
+zapisana w tym repozytorium, cytowałem ją tej nocy w dzienniku, i złamałem
+cztery godziny później. Skutek zepsutej linii: pacjent odwołujący DOKŁADNIE
+24:00:00 przed wizytą traci prawo do bezpłatnego odwołania.
+
+Przywrócone, **zmierzone** (`pest tests/Unit/OcenaAnulacjiTest.php` →
+`36 passed (89 assertions)`), cofnięte osobnym commitem z pełnym opisem —
+historii nie przepisuję. Pełny zapis: `ZNALEZISKA.md`, N-10.
+
+**Sprostowanie do powyższego, zrobione zanim zdążyłem zamknąć wpis:** sprawdziłem,
+czy złamana reguła trafiła na zdalną gałąź. **NIE trafiła.** `origin/faza-1-retencja`
+stoi na `d81c00b` i ma poprawne `>=`; commit `041e528` i jego cofnięcie są wyłącznie
+lokalne. W pierwszej wersji tego wpisu i w komunikacie commita napisałem „na
+wypchniętej gałęzi" — bez sprawdzenia. Zdarzenie zostaje poważne, ale nie było
+publiczne, i tej różnicy nie wolno zamazać w raporcie o własnym błędzie.
+
+**Nie commituję już niczego do końca przebiegu perturbacji.** Zapis w dokumencie
+robię na bieżąco, `git add` dopiero po zakończeniu i po sprawdzeniu drzewa.
+
+## 02:30 — PEŁNY ZESTAW PERTURBACJI PRZESZEDŁ (po naprawie cytowania)
+
+```
+PERTURBACJE CZERWONE — 1 kontroli NIE zareagowało na złamaną regułę (udanych: 45)
+scenariuszy: 30 · ✓ 45 · ✗ 1 · drzewo po zestawie: CZYSTE
+```
+
+Jedyna czerwona to **kierunek odwrotny scenariusza BLK-22** — i jest to
+**dokładnie ta pozycja, którą weryfikator B przewidział z lektury kodu (R6B-13),
+zanim ktokolwiek uruchomił zestaw.** Kierunek odwrotny przywraca mechanizm
+i oczekuje, że `OdebranieRoliTest.php` wróci na zielono; nie wróci, bo siedzi
+tam noga 1, czerwona z innego powodu. Zniknie sama po naprawie nogi 1.
+
+**Predykcja z analizy i wynik z pomiaru zgodne co do jednej pozycji.** To jest
+najlepszy wynik, jaki mogła dać ta noc dla wiarygodności rundy 6.
+
+W wydruku widać też, że nowy dowód działa w prawdziwym przebiegu:
+`· dowód mutacji (był → zniknął): …` — czyli sprawdzane są OBIE strony pomiaru.
+
+## 02:35 — zamknięcie: co zostaje czerwone i dlaczego tak ma być
+
+- **Bramka: 1 nieudany krok z 22** — noga 1, zamierzony.
+- **Perturbacje: 1 kontrola czerwona z 46** — kierunek odwrotny BLK-22,
+  przewidziany, znika po naprawie nogi 1.
+
+Oba czerwone są **nazwane, wyjaśnione i przypisane do konkretnej przyczyny**.
+Żadnego z nich nie zamieniłem na zielony w nocy, bo oba są uczciwe.
