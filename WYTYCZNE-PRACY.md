@@ -235,7 +235,51 @@ pomiarowe; stąd wzięło się V-2 („42 kontrole" zmierzone w jedynym środowi
 w którym wychodzą). Bramka buduje teraz własny plik od zera przy każdym
 przebiegu, wyłącznie z definicji w repozytorium.
 
+**Perturbacja zaliczona z INNEJ przyczyny niż badana to fałszywe zielone.**
+Odmiana C1 od zespołu helpdesku (P25): u nich nadpisanie tematu wywaliło frazę
+próbkującą, kontrola zgłosiła „brak materiału do zbadania", a harness zaliczył
+to jako wykrycie, bo identyfikator się zgadzał.
+
+**Dowód mutacji i przyczyna czerwieni to DWIE RÓŻNE RZECZY.** Dowód mutacji
+mówi, że naruszenie weszło w życie. Nie mówi nic o tym, skąd wzięła się
+czerwień. Traktowanie ich jak jednego kosztowało nas pół sesji.
+
+Dwa mechanizmy, o różnej jakości dowodu:
+
+- **Denylista** (podłoga, działa wszędzie): czerwień pasująca do znanych klas
+  awarii pobocznych — brak materiału, niedziałające środowisko, błąd składni
+  wprowadzony przez samą mutację — jest **porażką perturbacji**. Mówi „ta
+  czerwień nie jest jedną ze **znanych** awarii pobocznych"; nowa klasa awarii
+  ją obejdzie.
+- **Allowlista** (`--przyczyna`, dowód): czerwień musi zawierać wskazany
+  fragment. Mówi „ta czerwień pochodzi **stąd**".
+
+Tam, gdzie fałszywe zielone kosztuje **pieniądze pacjenta albo dostęp do
+kartotek**, podłoga nie wystarcza — używamy allowlisty. U nas: granice kwot,
+zamrażanie reguł, retencja, tożsamość (§2, białe listy ról, wylogowanie).
+Reszta zostaje na podłodze — i mówimy to wprost, zamiast udawać kompletność.
+
+**Wzorca przyczyny NIE PRZEPISUJEMY Z PAMIĘCI.** Kopiujemy fragment dosłownie
+z komunikatu kontroli albo dopasowujemy bez wrażliwości na wielkość liter.
+Pierwszy wzorzec, jaki tu powstał, brzmiał „zamrożon", a komunikat mówi
+„ZAMROŻONĄ" — perturbacja reguły §4 zapaliła się z niezgodną przyczyną
+w pierwszym przebiegu. To ta sama klasa co „allowlista wpisana z pamięci
+zamiast zmierzona".
+
 **Nasze instancje** (rosną — dopisuj):
+
+- **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
+  deklarował `HEAD: 1204daa` na `main`, 151 testów i 21 kroków bramki; faktycznie
+  `main` był na `a5a4d8b`, gałąź robocza na `1106b34`, testów 178, kroków 22.
+  Dokument stanu jest przyrządem: następna sesja startuje z jego treści, więc
+  jego nieaktualność propaguje się na wszystkie decyzje tej sesji. Aktualizacja
+  należy do zamknięcia partii, nie do „kiedyś".
+- **CI nie podążyło za dyscypliną gałęzi.** Wyzwalacz miał `branches: ["main"]`,
+  a cała praca żyła na gałęziach roboczych — więc naprawy rundy 5 i BLK-22 nie
+  miały ANI JEDNEGO przebiegu CI. Znalazł to architekt własnym pomiarem.
+  CI jest **jedynym** miejscem, w którym „czysty klon" jest wymuszony
+  MASZYNOWO, a nie deklaratywnie — a właśnie na maszynie wykonawcy powstało
+  V-2. Wyzwalacz rozszerzony na `**`.
 
 1. `skrypty/perturbacje-powtarzalne.sh` dawał **fałszywe zielone**: podsumowanie
    wyławiał grepem, więc padnięty zestaw dawał pustkę, a trzy pustki są

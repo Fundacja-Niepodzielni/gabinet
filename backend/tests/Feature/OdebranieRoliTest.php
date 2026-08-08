@@ -526,3 +526,51 @@ it('zapisuje ID token do sesji ZASZYFROWANY — e-mail pacjenta nie do odzyskani
     // straci `id_token_hint` i „bezpieczeństwo" wyszłoby z zepsucia funkcji.
     expect(Crypt::decryptString($zapisany))->toBe($idToken);
 });
+
+it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija sesję', function (): void {
+    // BLK-22, potwierdzony jako realny defekt WZORCA: back-channel logout
+    // zamyka sesję po stronie IdP, a KONSUMENT DALEJ SERWUJE. Zmierzone
+    // w ekosystemie. Nasza praca B8 jest naprawą tego defektu u konsumenta,
+    // więc musi mieć dowód POZYTYWNY: nie „stan magazynu się zmienił", tylko
+    // „kolejne żądanie tej samej przeglądarki dostaje 401".
+    //
+    // Poprzedni test mierzył zawartość magazynu, bo suita biegnie na
+    // sterowniku `array`, a menedżer sesji jest singletonem w kontenerze —
+    // Store raz wczytany trzyma atrybuty w pamięci procesu i kolejne `get()`
+    // nie sięga po nie do magazynu. To był uczciwy obchód przyrządu, ale
+    // mierzył WĘŻSZE zjawisko niż deklarowane.
+    //
+    // Tutaj przełączamy się na sterownik PRODUKCYJNY, żeby każde żądanie
+    // czytało sesję z prawdziwego magazynu — dokładnie jak w produkcji.
+    config(['session.driver' => 'redis']);
+
+    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+
+    // Stan wyjściowy: sesja ŻYJE i otwiera bramkę koordynatora.
+    expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
+
+    $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)])
+        ->assertOk();
+
+    expect($odp->json('skasowane_sesje'))->toBe(1, 'Logout nie trafił w sesję tego użytkownika.');
+
+    // GRANICA PROCESU. Produkcja obsługuje każde żądanie w osobnym procesie
+    // PHP, więc sesja jest za każdym razem czytana z magazynu od nowa.
+    // W suicie menedżer sesji jest singletonem w kontenerze i raz wczytany
+    // `Store` trzyma atrybuty w PAMIĘCI — kolejne żądanie widziałoby dane,
+    // których w magazynie już nie ma, i test meldowałby sukces konsumenta,
+    // który w rzeczywistości serwuje po wylogowaniu (czyli DEFEKT BLK-22).
+    //
+    // Zmierzone, zanim to napisałem: sterownik sesji w żądaniu to naprawdę
+    // `CacheBasedSessionHandler` (redis), a `skasowane_sesje` = 1 — magazyn
+    // był pusty, a mimo to żądanie dostawało 200. Nie sterownik, tylko
+    // singleton. Odtwarzamy więc granicę procesu jawnie.
+    app()->forgetInstance('session');
+    app()->forgetInstance('session.store');
+
+    // SEDNO BLK-22: kolejne żądanie MUSI dostać 401. Konsument, który dalej
+    // serwuje po zamknięciu sesji w IdP, jest dokładnie tym defektem.
+    test()->get('/auth/ja')
+        ->assertStatus(401)
+        ->assertJsonPath('zalogowany', false);
+});

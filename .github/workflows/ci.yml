@@ -19,9 +19,20 @@
 # ===========================================================================
 name: ci
 
+# WYZWALACZ NA WSZYSTKICH GAŁĘZIACH — znalezisko architekta z 08.08.
+#
+# Było `branches: ["main"]`, a od decyzji D-2026-08-08-23 cała praca żyje na
+# gałęziach roboczych i scala się do `main` dopiero po zielonej rundzie.
+# Skutek: naprawy rundy 5, BLK-22 i realmu nie miały ANI JEDNEGO przebiegu CI.
+# Dyscyplina gałęzi została nakazana, a CI za nią nie podążyło.
+#
+# To ma znaczenie nie tylko porządkowe: CI jest JEDYNYM miejscem, w którym
+# „czysty klon" jest wymuszony MASZYNOWO, a nie deklaratywnie. Na maszynie
+# wykonawcy bramka biegnie w środowisku, które ten wykonawca zbudował — i to
+# właśnie tam powstało V-2 („42 kontrole" zmierzone tam, gdzie akurat wychodzą).
 on:
   push:
-    branches: ["main"]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
 

@@ -6,11 +6,14 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
-- **Faza: F1 w toku** (sesja 2, 2026-08-07). F0 i F1 formalnie OTWARTE do rundy weryfikacji z zerem znalezisk — patrz niżej.
-- **Bramka: `BRAMKA OK — 21 kroków, 0 nieudanych`**, 151 testów / 479 asercji.
-- **Perturbacje: `PERTURBACJE OK` — 28 kontroli w 20 scenariuszach**; powtarzalność 3/3.
-- HEAD: `1204daa`, wypchnięty na `origin/main` (zgoda właściciela z 07.08).
-- **Bramka na koniec F0: `BRAMKA OK — 18 kroków, 0 nieudanych`** na czystym klonie (stan z sesji 1; liczba kroków rosła później).
+- **Faza: F1 w toku** (sesja 2, 2026-08-08). F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
+- **Gałąź robocza: `faza-1-retencja` @ `1106b34`** (D-2026-08-08-23: praca na gałęzi, merge po zielonej rundzie).
+- **`main` @ `a5a4d8b`** — zweryfikowany rundą 5 do `b2084fc`, z 12 znaleziskami (8 zamkniętych).
+- **Bramka na gałęzi: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: otwarty
+  test pozytywny BLK-22 („żądanie po wylogowaniu dostaje 401"). Pozostałe 21 kroków zielone.
+- **Testy: 178 / 621 asercji** (177 zielonych + 1 czerwony BLK-22).
+- **Perturbacje: `PERTURBACJE OK` — 44 kontrole**, ze strażnikiem przyczyny czerwieni
+  (denylista awarii pobocznych + allowlista `--przyczyna` w 7 miejscach o najwyższym koszcie).
 
 ### Do rozstrzygnięcia w następnej sesji
 

@@ -182,19 +182,36 @@ trap przerwano_perturbacje INT TERM
 # --- raportowanie ----------------------------------------------------------
 naglowek() { printf '\n=== PERTURBACJA: %s\n' "$*"; }
 
-# Kontrola MUSI paść. Zielony wynik po złamaniu reguły = kontrola nic nie znaczy.
+# Wzorce awarii POBOCZNYCH — czerwień, która NIE pochodzi z badanego zjawiska.
 #
-# Wyjście trafia do PLIKU, nie do `/dev/null` (lekcja helpdesku P11: filtr jest
-# częścią pomiaru). Pierwsza wersja sądziła wyłącznie po kodzie wyjścia, więc
-# „czerwono" z zupełnie innego powodu — brak kontenera, błąd składni, pusty
-# przebieg — wyglądało dokładnie tak samo jak wykryte naruszenie. Dwa razy nas
-# to kosztowało rundę weryfikacji (U-2, U-6).
+# P25 (zespół helpdesku): PERTURBACJA ZALICZONA Z INNEJ PRZYCZYNY NIŻ BADANA
+# TO FAŁSZYWE ZIELONE. U nich nadpisanie tematu wywaliło frazę próbkującą,
+# kontrola zgłosiła „brak materiału do zbadania", a harness zaliczył to jako
+# wykrycie, bo identyfikator się zgadzał.
 #
-# Dlatego czerwień musi być UZASADNIONA: narzędzie ma coś powiedzieć. Milcząca
-# czerwień (zero wierszy na wyjściu) to sygnał, że kontrola się nie wykonała,
-# a nie że zadziałała.
+# Dowód mutacji potwierdza, że mutacja WESZŁA — ale NIE, że czerwień pochodzi
+# z naruszenia. To dwie różne rzeczy i przez pół sesji traktowałem je jak jedną.
+#
+# Poniższa lista to KLASY awarii, przy których perturbacja nie ma prawa
+# zaliczyć się bez jawnej zgody: brak materiału do zbadania, niedziałające
+# środowisko, błąd składni wprowadzony przez samą mutację.
+AWARIE_POBOCZNE='No tests found|No tests executed|PHP Parse error|syntax error, unexpected|Class .* not found|Call to undefined (function|method)|is not running|Cannot connect to the Docker daemon|no configuration file provided|Could not open input file'
+
+# Kontrola MUSI paść — I MUSI PAŚĆ Z BADANEGO POWODU.
+#
+# Trzeci argument (opcjonalny) to WZORZEC PRZYCZYNY: fragment, który musi
+# wystąpić w wyjściu, żeby czerwień dała się przypisać badanemu zjawisku.
+# Bez niego przyjmujemy tylko, że czerwień nie jest awarią poboczną.
 oczekuj_czerwone() {
 	local opis="$1"; shift
+	local wzorzec=''
+
+	# Wywołanie z wzorcem przyczyny: oczekuj_czerwone "opis" --przyczyna "wzór" polecenie…
+	if [ "${1:-}" = "--przyczyna" ]; then
+		wzorzec="$2"
+		shift 2
+	fi
+
 	local wyjscie kod=0
 	wyjscie="$(mktemp)"
 
@@ -210,6 +227,30 @@ oczekuj_czerwone() {
 
 	if [ ! -s "$wyjscie" ]; then
 		printf '    ✗ %s — kontrola padła MILCZĄCO (kod %s, zero wierszy) — prawdopodobnie w ogóle się nie wykonała\n' "$opis" "$kod"
+		NIEUDANE=$((NIEUDANE + 1))
+		rm -f "$wyjscie"
+
+		return
+	fi
+
+	# P25: czerwień z awarii pobocznej to fałszywe zielone perturbacji.
+	if grep -qE "$AWARIE_POBOCZNE" "$wyjscie"; then
+		printf '    ✗ %s — czerwień z AWARII POBOCZNEJ, nie z naruszenia:\n' "$opis"
+		grep -oE "$AWARIE_POBOCZNE" "$wyjscie" | head -2 | sed 's/^/        /'
+		NIEUDANE=$((NIEUDANE + 1))
+		rm -f "$wyjscie"
+
+		return
+	fi
+
+	# Dopasowanie BEZ WRAŻLIWOŚCI NA WIELKOŚĆ LITER (`-i`). Powód: pierwszy
+	# wzorzec, jaki tu wpisałem, brzmiał „zamrożon", a komunikat kontroli mówi
+	# „ZAMROŻONĄ" — perturbacja §4 zapaliła się na czerwono z niezgodną
+	# przyczyną w PIERWSZYM przebiegu. Wzorzec przepisany Z PAMIĘCI zamiast
+	# skopiowany z komunikatu to ta sama klasa co „allowlista wpisana
+	# z pamięci zamiast zmierzona".
+	if [ -n "$wzorzec" ] && ! grep -qiE "$wzorzec" "$wyjscie"; then
+		printf '    ✗ %s — czerwień NIE zawiera oczekiwanej przyczyny (%s)\n' "$opis" "$wzorzec"
 		NIEUDANE=$((NIEUDANE + 1))
 		rm -f "$wyjscie"
 
@@ -265,6 +306,7 @@ p_testy() {
 	# 23:59/24:00/24:01 są dekoracją.
 	sed -i 's/\$sekundDoWizyty >= \$sekundOkna/\$sekundDoWizyty > \$sekundOkna/' "$plik"
 	oczekuj_czerwone "Pest wykrywa przesunięcie granicy o 1 sekundę" \
+		--przyczyna "granicę okna" \
 		dc exec -T app ./vendor/bin/pest --filter="granicę okna"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -375,7 +417,7 @@ p_hasla() {
 	perturbuj hasla-podloz || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
 	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 
-	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa PEŁNY mechanizm haseł pod polskimi nazwami" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa PEŁNY mechanizm haseł pod polskimi nazwami" --przyczyna "BrakWlasnychHasel" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
 
 	perturbuj hasla-sprzataj
 	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
@@ -396,7 +438,7 @@ p_hasla_v2() {
 	perturbuj hasla-podloz-v2 || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
 	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 
-	oczekuj_czerwone "test §2 wykrywa mechanizm ukryty pod obcymi nazwami" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+	oczekuj_czerwone "test §2 wykrywa mechanizm ukryty pod obcymi nazwami" --przyczyna "BrakWlasnychHasel" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
 
 	perturbuj hasla-sprzataj
 	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
@@ -823,6 +865,7 @@ p_wymuszone_wylogowanie() {
 		grep -q "RejestrSesji::zakoncz(WalidatorTokenu::sidNiezweryfikowany" "$plik"
 
 	oczekuj_czerwone "test adwersarialny wykrywa wymuszone wylogowanie ofiary" \
+		--przyczyna "WYMUSZONE WYLOGOWANIE" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -884,6 +927,7 @@ p_retencja_wykonanie() {
 		bash -c "grep -q 'kasowanie usuniete, selekcja zostaje' '$plik' && grep -q 'pluck(' '$plik'"
 
 	oczekuj_czerwone "kontrola wykrywa rekord, który PRZEŻYŁ zadanie retencyjne" \
+		--przyczyna "PRZEŻYŁ zadanie retencyjne" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/RetencjaWykonanieTest.php
 
 	# Kontrola strukturalna NIE MOŻE tego złapać — i to też trzeba pokazać,
@@ -1091,7 +1135,7 @@ p_biala_lista() {
 	# marker `wymaga-2fa` i role wbudowane Keycloaka do uprawnień.
 	sed -i 's/return array_values(array_intersect(\$roleZTokenu, \$biala));/return $roleZTokenu;/' "$plik"
 
-	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" 		dc exec -T app ./vendor/bin/pest --filter="marker"
+	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" --przyczyna "Bramki|marker" 		dc exec -T app ./vendor/bin/pest --filter="marker"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
@@ -1105,6 +1149,7 @@ p_zamrozenie() {
 	sed -i 's/\$sekundOkna = \$reguly->oknoBezplatnegoOdwolaniaGodzin \* 3600;/\$sekundOkna = 48 * 3600;/' "$plik"
 
 	oczekuj_czerwone "test zamrażania wykrywa użycie innej reguły niż zamrożona" \
+		--przyczyna "ZAMROŻONĄ" \
 		dc exec -T app ./vendor/bin/pest --filter="ZAMROŻONĄ"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
