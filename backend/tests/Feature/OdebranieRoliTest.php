@@ -619,3 +619,29 @@ it('NOGA 1: tożsamość usunięta z magazynu + ŻYWY refresh token → 401, nig
         ->assertStatus(401)
         ->assertJsonPath('zalogowany', false);
 });
+
+it('znacznik unieważnienia PRZEŻYWA wyczyszczenie cache — brak trybu cichego otwarcia', function (): void {
+    // Znacznik unieważnienia to NEGATYWNA ASERCJA BEZPIECZEŃSTWA („ten sid
+    // jest martwy"), więc KAŻDY sposób, w jaki może zniknąć, jest po cichu
+    // FAIL-OPEN: zablokowany wraca, a objawem jest BRAK OBJAWU.
+    //
+    // Pierwsza wersja trzymała znacznik w cache'u. Wyzwalacze zniknięcia są
+    // całkowicie prozaiczne: `cache:clear`, deploy, restart Redisa, eksmisja
+    // LRU. Ten test mierzy dokładnie ten scenariusz.
+    config(['session.driver' => 'redis']);
+    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+
+    expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
+
+    test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)])->assertOk();
+
+    // NAJPROZAICZNIEJSZE ZDARZENIE OPERACYJNE, jakie można sobie wyobrazić.
+    Cache::flush();
+
+    app()->forgetInstance('session');
+    app()->forgetInstance('session.store');
+
+    test()->get('/auth/ja')
+        ->assertStatus(401)
+        ->assertJsonPath('zalogowany', false);
+});

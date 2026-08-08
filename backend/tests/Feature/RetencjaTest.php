@@ -39,6 +39,11 @@ const REJESTR_RETENCJI = [
         'podstawa' => 'RODO art. 9 — dane o zdrowiu; okres do ustalenia z IOD (P-3 w DPIA).',
         'sposob_usuniecia' => 'anonimizacja (zanonimizowany_at), nie DELETE — rezerwacje muszą zostać do rozliczeń.',
     ],
+    'uniewaznione_sesje' => [
+        'kolumna_pochodzenia' => 'uniewazniona_at',
+        'podstawa' => 'Znacznik unieważnienia sesji SSO — negatywna asercja bezpieczeństwa. Skrót sid, bez danych osobowych.',
+        'sposob_usuniecia' => 'DELETE po `wygasa_at` — próg zapisany W WIERSZU, żeby sprzątaczka nie odblokowała wcześniej niż SSO Session Max.',
+    ],
     'zgody' => [
         'kolumna_pochodzenia' => 'created_at',
         'podstawa' => 'Dowód zgody przechowywany tak długo, jak długo może być potrzebny do obrony roszczeń.',

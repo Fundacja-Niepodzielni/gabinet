@@ -68,6 +68,9 @@ const OCZEKIWANY_SCHEMAT = [
         'limit_niskoplatnych_indywidualny', 'nazwisko', 'prowadzacy_specjalista_id',
         'strefa_czasowa', 'telefon', 'updated_at', 'zanonimizowany_at',
     ],
+    // Znaczniki unieważnionych sesji SSO (BLK-22). Trzyma WYŁĄCZNIE skrót
+    // `sid` — żadnych poświadczeń, żadnych danych osobowych.
+    'uniewaznione_sesje' => ['powod', 'sid_skrot', 'uniewazniona_at', 'wygasa_at'],
     'zgody' => [
         'created_at', 'id', 'ip', 'pacjent_id', 'rodzaj', 'rozstrzygnieta_at',
         'udzielona', 'wersja_dokumentu',

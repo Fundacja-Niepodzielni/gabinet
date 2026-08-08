@@ -7,6 +7,7 @@ namespace App\Tozsamosc;
 use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 
 /**
@@ -65,7 +66,7 @@ final class RejestrSesji
         // Znacznik unieważnienia wiąże się z `sid` — tożsamością, którą IdP
         // faktycznie zna i która NIE rotuje. Sprawdza go `OdswiezanieSesji`
         // przy każdym żądaniu.
-        Cache::put(self::kluczUniewaznienia($sid), CarbonImmutable::now()->getTimestamp(), self::CZAS_ZYCIA_SEKUND);
+        self::zapiszUniewaznienie($sid);
 
         Cache::forget(self::klucz($sid));
 
@@ -88,16 +89,49 @@ final class RejestrSesji
      */
     public static function uniewazniona(string $sid): bool
     {
-        return $sid !== '' && Cache::has(self::kluczUniewaznienia($sid));
+        if ($sid === '') {
+            return false;
+        }
+
+        return DB::table('uniewaznione_sesje')
+            ->where('sid_skrot', hash('sha256', $sid))
+            ->where('wygasa_at', '>', CarbonImmutable::now())
+            ->exists();
+    }
+
+    /**
+     * Zapis znacznika — TRWALE, z progiem liczonym od SSO Session Max.
+     *
+     * Próg to NIE czas życia access tokenu (600 s). Refresh token żyje dłużej,
+     * więc znacznik wygasający przed nim wpuszczałby zablokowanego z powrotem.
+     * Wartość zapisujemy W WIERSZU, żeby sprzątanie używało tego samego progu,
+     * co zapis — inaczej sprzątaczka sama odblokowuje.
+     */
+    private static function zapiszUniewaznienie(string $sid): void
+    {
+        $teraz = CarbonImmutable::now();
+
+        DB::table('uniewaznione_sesje')->upsert([[
+            'sid_skrot' => hash('sha256', $sid),
+            'uniewazniona_at' => $teraz,
+            'wygasa_at' => $teraz->addSeconds(self::oknoUniewaznieniaSekund()),
+            'powod' => 'backchannel-logout',
+        ]], ['sid_skrot'], ['uniewazniona_at', 'wygasa_at', 'powod']);
+    }
+
+    /**
+     * SSO Session Max realmu — najdłuższy byt, który znacznik unieważnia.
+     *
+     * Domyślne 24 h odpowiada `CZAS_ZYCIA_SEKUND` rejestru; wartość realmu
+     * wchodzi konfiguracją, gdy `konta` ją potwierdzi (kontrakt §6).
+     */
+    private static function oknoUniewaznieniaSekund(): int
+    {
+        return max(self::CZAS_ZYCIA_SEKUND, Typy::liczba(config('konta.sso_session_max_s'), self::CZAS_ZYCIA_SEKUND));
     }
 
     private static function klucz(string $sid): string
     {
         return 'konta:sid:'.hash('sha256', $sid);
-    }
-
-    private static function kluczUniewaznienia(string $sid): string
-    {
-        return 'konta:uniewazniony:'.hash('sha256', $sid);
     }
 }

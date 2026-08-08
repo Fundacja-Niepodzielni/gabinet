@@ -311,6 +311,39 @@ kierowała do **rundy 4**, wykonanej razem z piątą. Obalona hipoteza BLK-22
 ją tam TERAZ, jawnie jako obaloną, żeby następna sesja jej nie odkrywała
 od nowa.
 
+**Przed użyciem dyskryminatora wypisz WSZYSTKIE światy zgodne z każdą jego
+wartością.** Wartość, z którą zgodny jest więcej niż jeden świat, znaczy że
+brakuje **odczytu bazowego** — to ten sam wymóg co dowód mutacji przed/po,
+tylko zastosowany do wnioskowania.
+
+Zmierzony przypadek u nas: licznik żądań do punktu tokenów miał rozstrzygnąć
+między „odświeżanie wskrzesza tożsamość" (>0) a „kasuję niewłaściwy wpis" (=0).
+Zero było jednak zgodne także z **trzecim światem**: ścieżka odświeżania w ogóle
+się nie uruchamia (access token wciąż ważny), więc 200 pochodzi ze zwykłej,
+nietkniętej sesji, a test nie mierzy tego, co deklaruje. Domknięcie: ten sam
+licznik w przebiegu **kontrolnym**, bez mutacji.
+
+**Negatywna asercja bezpieczeństwa musi być TRWAŁA.** Znacznik mówiący „ten
+byt jest martwy" (unieważniona sesja, zablokowane konto, cofnięty token) ma tę
+własność, że **każdy sposób, w jaki może zniknąć, jest po cichu FAIL-OPEN** —
+zablokowany wraca, a objawem jest BRAK OBJAWU.
+
+Cztery wymagania magazynu takiego znacznika:
+
+1. **Trwałość** — przeżywa restart, deploy i `cache:clear`. Baza, nie cache.
+2. **Współdzielenie** — wszystkie instancje widzą ten sam znacznik.
+3. **Czas życia ≥ najdłuższemu bytowi, który unieważnia.** Dla sesji SSO to
+   **SSO Session Max** realmu, nie czas życia access tokenu: refresh token żyje
+   dłużej, więc znacznik wygasający przed nim wpuszcza z powrotem. Sprzątanie
+   musi używać **tego samego progu** — inaczej sprzątaczka sama odblokowuje.
+   Próg zapisujemy W WIERSZU, nie domyślamy z konfiguracji w chwili sprzątania.
+4. **Eksmisja nie może być cicha** — w magazynie z LRU „brak znacznika" jest
+   nieodróżnialny od „nigdy nie blokowany".
+
+Zmierzone u nas: ze znacznikiem w cache'u `Cache::flush()` po wylogowaniu
+dawał **200 zamiast 401** — zablokowany użytkownik wracał. Wyzwalacze
+całkowicie prozaiczne: deploy, `cache:clear`, restart, eksmisja LRU.
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
