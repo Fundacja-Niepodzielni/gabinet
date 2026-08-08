@@ -645,3 +645,38 @@ it('znacznik unieważnienia PRZEŻYWA wyczyszczenie cache — brak trybu cichego
         ->assertStatus(401)
         ->assertJsonPath('zalogowany', false);
 });
+
+it('brak rozstrzygnięcia o unieważnieniu = ODMOWA, nigdy 200 (fail-closed)', function (): void {
+    // Przeniesienie znacznika do bazy dało kontroli bezpieczeństwa zależność,
+    // której wcześniej nie miała. Gdyby zapytanie o znacznik było gdziekolwiek
+    // opakowane w przechwycenie „zaloguj i przepuść", odtworzyłbym klasę,
+    // którą właśnie zamknąłem — tylko wyzwalaczem byłaby niedostępna baza
+    // zamiast `cache:clear`.
+    //
+    // Wymóg: BRAK ROZSTRZYGNIĘCIA = ODMOWA, głośna. Nigdy 200.
+    config(['session.driver' => 'redis']);
+    zalogujKoordynatora(waznoscTokenuS: 600);
+
+    expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
+
+    // PUNKT ZAPISU: PostgreSQL unieważnia CAŁĄ transakcję po błędnym
+    // zapytaniu, a suita biegnie w transakcji (`RefreshDatabase`). Bez tego
+    // test truje sam siebie i pada na sprzątaniu zamiast na asercji —
+    // mierzyłby własne zanieczyszczenie, nie zachowanie systemu.
+    DB::statement('SAVEPOINT przed_zerwaniem');
+
+    // Zrywamy MOŻLIWOŚĆ ROZSTRZYGNIĘCIA: tabela znaczników znika.
+    Schema::drop('uniewaznione_sesje');
+
+    app()->forgetInstance('session');
+    app()->forgetInstance('session.store');
+
+    $status = test()->get('/auth/ja')->status();
+
+    DB::statement('ROLLBACK TO SAVEPOINT przed_zerwaniem');
+
+    expect($status)->not->toBe(200, 'FAIL-OPEN: brak rozstrzygnięcia o unieważnieniu przepuścił żądanie.')
+        ->and(in_array($status, [401, 500, 503], true))->toBeTrue(
+            'Nieoczekiwany status przy braku rozstrzygnięcia: '.$status
+        );
+});

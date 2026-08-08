@@ -811,3 +811,38 @@ drogą** niż badany mechanizm, **czy pytam o inny klucz** niż ten, którym
 operuje naprawiana czynność, i **czy sam nie wyprodukowałem stanu**, o który
 pytam. Kształt (b) jest najtrudniejszy do zauważenia, bo drogi bywają
 poprawnie rozdzielone — a mimo to odpowiedź jest z góry ustalona.
+
+---
+
+## D-2026-08-08-26 — po co istnieje rejestr zadeklarowanego schematu i retencji
+
+**Zapisane, bo przy następnym „to tylko techniczna tabelka, po co ją
+deklarować" ktoś będzie chciał ten rejestr obejść.**
+
+Przy dodawaniu tabeli `uniewaznione_sesje` (znaczniki unieważnionych sesji SSO)
+**trzy kontrole zapaliły się na czerwono**: zadeklarowany schemat z kontroli
+CLAUDE.md §2 oraz rejestr retencji. Nie planowałem tego — dodawałem tabelę
+czysto techniczną, bez danych osobowych.
+
+I to jest dokładnie powód, dla którego oba rejestry istnieją.
+
+**Różnica między regułą a mechanizmem.** Reguła „zastanów się nad retencją
+nowej tabeli" działa wtedy, gdy autor o niej pamięta — czyli wtedy, gdy i tak
+by o tym pomyślał. Rejestr wymusza odpowiedź na dwa pytania — **co tu jest**
+i **jak to znika** — **na AUTORZE, w chwili dodawania**, a nie na recenzencie
+miesiąc później albo na audytorze RODO za rok.
+
+W tym konkretnym przypadku musiałem świadomie zapisać, że tabela trzyma
+wyłącznie skrót `sid` (żadnych poświadczeń, żadnych danych osobowych), że
+retencja liczy się od `uniewazniona_at`, i że usuwanie idzie po `wygasa_at`
+z progiem zapisanym w wierszu. Bez rejestru żadne z tych zdań by nie powstało,
+bo tabela „wyglądała na techniczną".
+
+**Koszt jest tu istotny i celowo asymetryczny.** Deklaracja to trzy linijki
+przy dodawaniu tabeli. Jej brak to dane bez terminu usunięcia, odkryte przy
+kontroli — albo nigdy.
+
+**Wniosek do zapamiętania:** kontrola, która zapala się na czymś, czego autor
+nie planował, nie jest uciążliwa — jest jedynym momentem, w którym pytanie
+w ogóle pada. „To tylko techniczna tabelka" jest właśnie tym zdaniem, przed
+którym rejestr ma bronić.
