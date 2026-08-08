@@ -170,3 +170,87 @@ zestawu 30 perturbacji na żywym stosie (wymaga własnego projektu compose i
 kilkudziesięciu minut, a maszyna obsługuje teraz weryfikatora rundy 6).
 Pełny przebieg zostaje jako pierwsza rzecz do zrobienia rano — wpisane
 do `PODSUMOWANIE.md`.
+
+## 00:10 — RUNDA 6 część B ODEBRANA (17 znalezisk)
+
+Raport w całości zapisany do repozytorium: `RUNDA-6-B-RAPORT.md` (719 wierszy).
+Weryfikator posprzątał po sobie (klon `/d/tmp/gabinet-r6b` usunięty), drzewo
+robocze nietknięte — sprawdzone `git status`.
+
+**Runda NIE jest zerowa, więc F1 zostaje otwarte** (reguła zbieżności rund,
+D-2026-08-07-16). Streszczenie i rozliczenie wobec moich napraw: `ZNALEZISKA.md`.
+
+Rzecz, którą warto zapisać osobno, bo dotyczy metody: weryfikator zauważył, że
+mój `HEAD` przesunął się w trakcie jego pracy (`49131d8` → `c3a11c0`) i **sam
+z siebie przypiął cały raport do `49131d8`**, zamiast po cichu mieszać dwa stany.
+Dokładnie tak ma działać identyfikator nazywający zdarzenie, a nie stan bieżący.
+
+**Zbieżność dwóch niezależnych torów:** jego R6B-3 to moje N-3 (martwe
+perturbacje). Doszliśmy do tego zupełnie różnymi drogami — ja przez przegląd form
+dowodu mutacji, on przez porównanie wzorców `perturbuj.py` z kodem. To mocniejszy
+dowód niż każdy z osobna.
+
+**Zapisuję też przeciw sobie:** moja naprawa podłóg (N-2, 170→180) POWIĘKSZYŁA
+rozjazd, który weryfikator nazwał R6B-12 — perturbacje dowodzą podłóg 100/300,
+a bramka egzekwuje teraz 180/635. Naprawa była słuszna i jednocześnie otworzyła
+lukę w innej kontroli. Raport, który to przemilcza, byłby nieprawdziwy.
+
+## 00:17 — Z3: przegląd ustawień domyślnych (PostgreSQL, Redis) + eksperyment
+
+Trzy znaleziska własne, wszystkie zmierzone na żywych kontenerach, żadnej zmiany
+konfiguracji (Z3 jest przeglądem): **N-5** (PostgreSQL — pięć wartości domyślnych
+o realnych skutkach, w tym `idle_in_transaction_session_timeout = 0`, które przy
+CLAUDE.md §6 potrafi zablokować termin na zawsze), **N-6** (Redis — przy
+`maxmemory = 0` i `noeviction` eksmisja LRU **nie może zajść**, więc wyzwalacz
+nazwany w D-2026-08-08-28 nie zachodzi w tej konfiguracji; zachodzi inny —
+odrzucanie ZAPISÓW), **N-7** (patrz niżej).
+
+**N-7 — eksperyment, który wyszedł inaczej, niż zakładałem.** Zobaczyłem klucze
+cache'u w bazie 0 i założyłem „pozostałości sprzed rozdzielenia". TTL to obaliły:
+były ŻYWE (35–809 s), czyli ktoś je pisał w tej chwili. Sonda świeżym procesem
+(`artisan tinker` w obu kontenerach) pokazała zapis do db1 — więc winowajcą mogły
+być tylko procesy starsze od zmiany konfiguracji, czyli workery Horizona.
+
+Test rozstrzygający: restart Horizona i obserwacja, czy db0 przestaje rosnąć.
+
+```
+00:14:50  przed: 34 klucze cache w db0, najwyższy TTL 706 s
+00:17:12  po:    20 kluczy,             najwyższy TTL 559 s
+          706 − 559 = 147 s przy 142 s zegara → czysty rozpad, zero nowych zapisów
+```
+
+Zamiast „pozostałości" wyszło coś poważniejszego: **przez półtorej godziny połowa
+systemu pisała do starej przestrzeni kluczy**, bo długo żyjące procesy czytają
+konfigurację wyłącznie przy starcie. To musi trafić do procedury wdrożeniowej F9.
+
+Gdybym poprzestał na pierwszej hipotezie („to pozostałości, wygasną"), zamknąłbym
+sprawę wnioskiem wygodnym i nieprawdziwym.
+
+## 00:20 — SPROSTOWANIE WŁASNEGO WNIOSKU sprzed dziesięciu minut
+
+Napisałem wyżej „po restarcie NIE POWSTAJE ani jeden nowy klucz — db0 już tylko
+wygasa". **Cofam tę część.** Kolejny odczyt ją podważył:
+
+```
+00:17:12  najwyższy TTL w db0 = 559 s
+00:18:59  najwyższy TTL w db0 = 86400 s   ← klucz zapisany przed chwilą
+00:19:46  najwyższy TTL w db0 = 406 s     ← tamtego klucza już nie ma
+```
+
+86400 s to DOKŁADNIE `RejestrSesji::CZAS_ZYCIA_SEKUND`
+(`backend/app/Tozsamosc/RejestrSesji.php:23`). Sprawdziłem, czym pisze:
+`Cache::put(...)` (`:33`), czyli magazynem cache'u — a ten idzie do db1. Więc
+klucz o tym TTL **nie ma prawa** znaleźć się w db0, a jednak się tam znalazł
+i po chwili zniknął.
+
+**Co pozostaje zmierzone i prawdziwe:** masa kluczy w db0 opada dokładnie
+w tempie zegara (706→559→406 przy 142 s i 154 s przerwy), czyli GŁÓWNY zapis
+ustał po restarcie Horizona. To trzyma się dowodowo.
+
+**Czego NIE wolno mi już twierdzić:** że zapisy do db0 ustały CAŁKOWICIE. Jeden
+odczyt mówi, że nie. Nie znam mechanizmu, nie zgaduję go o tej porze — idzie do
+`ODLOZONE.md` z pełnym stanem i objawem.
+
+To druga tej nocy sytuacja, w której mój własny wniosek nie przeżył kolejnego
+pomiaru. Zapisuję ją tak samo jak pierwszą: wniosek postawiony za wcześnie kosztuje
+tyle, ile go się zostawi w dokumencie.

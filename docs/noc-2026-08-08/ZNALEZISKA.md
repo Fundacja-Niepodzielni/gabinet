@@ -321,3 +321,138 @@ przypadek doboru nazw, nie konstrukcja dowodu. Dokładnie to zamyka
 Wpis o R6B-12 jest tu celowo, choć mnie obciąża: naprawa jednej kontroli
 powiększyła lukę w drugiej, a raport, który to przemilcza, jest raportem
 nieprawdziwym.
+
+---
+
+# Z3 — DOMYŚLNE ustawienia produktów, których nikt świadomie nie wybrał
+
+Zadanie zapasowe Z3: przegląd, **bez zmieniania konfiguracji**. Wszystko poniżej
+zmierzone na żywych kontenerach stosu deweloperskiego, nie odczytane z plików.
+Kolumna „źródło" pochodzi wprost z `pg_settings.source` — czyli baza sama mówi,
+czy wartość ktoś wybrał, czy przyszła z pudełka.
+
+## N-5 — PostgreSQL: pięć wartości domyślnych o realnych skutkach
+
+```
+$ docker exec gabinet-postgres psql -U gabinet -d gabinet -At -c "select name…from pg_settings…"
+TimeZone                            = UTC              [konfiguracja]   ← WYBRANE świadomie (CLAUDE.md §5)
+max_connections                     = 100              [konfiguracja]
+shared_buffers                      = 16384 8kB        [konfiguracja]   (=128 MB)
+statement_timeout                   = 0 ms             [DOMYŚLNE]
+idle_in_transaction_session_timeout = 0 ms             [DOMYŚLNE]
+lock_timeout                        = 0 ms             [DOMYŚLNE]
+deadlock_timeout                    = 1000 ms          [DOMYŚLNE]
+log_min_duration_statement          = -1 ms            [DOMYŚLNE]
+log_statement                       = none             [DOMYŚLNE]
+work_mem                            = 4096 kB          [DOMYŚLNE]
+ssl                                 = off              [DOMYŚLNE]
+row_security                        = on               [DOMYŚLNE]
+password_encryption                 = scram-sha-256    [DOMYŚLNE]  ← domyślne i DOBRE
+synchronous_commit / fsync          = on / on          [DOMYŚLNE]  ← domyślne i DOBRE
+```
+
+Które z nich naprawdę coś znaczą dla TEGO systemu:
+
+1. **`idle_in_transaction_session_timeout = 0` — najgroźniejsze.** Transakcja
+   porzucona w połowie trzyma blokady wiersza **bez końca**. CLAUDE.md §6 opiera
+   rezerwację terminu na transakcji z blokadą wiersza — jedno zawieszone żądanie
+   blokuje termin na zawsze, a objawem jest „nie da się zarezerwować", bez błędu.
+2. **`lock_timeout = 0`** — żądanie czekające na zajęty wiersz czeka bez limitu.
+   Przy wymaganym teście „100 równoczesnych żądań o ten sam termin" (§6) to
+   znaczy, że 99 żądań stoi w kolejce zamiast szybko odpaść.
+3. **`statement_timeout = 0`** — pojedyncze zapytanie może trzymać połączenie
+   dowolnie długo. Przy `max_connections = 100` dzielonych między php-fpm,
+   Horizona i harmonogram, garść takich zapytań wyczerpuje pulę.
+4. **`log_min_duration_statement = -1`** — **zero logowania wolnych zapytań**.
+   F2 ma bramkę wydajności „< 300 ms na seedzie 111 osób"; bez tego logu nie ma
+   jak zobaczyć regresji poza laboratorium.
+5. **`ssl = off`** — akceptowalne w sieci dockerowej, ale do świadomego
+   rozstrzygnięcia przed F9 (produkcja), nie do odziedziczenia z pudełka.
+
+**Nie zmieniam żadnej z nich** — Z3 jest przeglądem. Rekomendacja do rozważenia
+w F2 (nie dziś): `idle_in_transaction_session_timeout` i `lock_timeout` to dwie
+linie, które chronią dokładnie tę regułę, którą CLAUDE.md nazywa krytyczną.
+
+## N-6 — Redis: eksmisja, której NIE MA — i to zmienia treść D-2026-08-08-28
+
+```
+$ docker exec gabinet-redis redis-cli config get …
+maxmemory                     0            ← DOMYŚLNE (bez limitu)
+maxmemory-policy              noeviction   ← DOMYŚLNE
+appendonly                    yes          ← WYBRANE (domyślne Redisa to `no`)
+save                          3600 1 300 100 60 10000
+protected-mode                no
+requirepass                   (puste)
+databases                     16
+```
+
+**Rzecz najważniejsza i sprzeczna z naszym własnym dziennikiem.** D-2026-08-08-28
+nazywa wyzwalacz „eksmisja Redisa" i buduje na nim uzasadnienie rozdzielenia baz.
+Zmierzone: przy `maxmemory = 0` i `maxmemory-policy = noeviction` **eksmisja LRU
+nie może zajść w ogóle**. Zachowanie przy wyczerpaniu pamięci jest inne:
+Redis zaczyna **odrzucać ZAPISY błędem OOM**, a odczyty działają dalej.
+
+To nie unieważnia decyzji — rozdzielenie baz jest słuszne z innych powodów
+(`cache:clear` i `FLUSHDB` są per-baza). Unieważnia **nazwany wyzwalacz**:
+scenariusz opisany w decyzji nie zachodzi w tej konfiguracji, a zachodzi inny,
+nieopisany. Wyzwalacz podany błędnie jest gorszy niż brak wyzwalacza, bo wygląda
+na zmierzony.
+
+Do tego, co przypomina zlecenie i co potwierdzam pomiarem: **eksmisja jest
+własnością INSTANCJI, nie bazy** — `maxmemory-policy` nie ma wariantu per-baza,
+więc rozdzielenie `cache=1` / `sesje=2` nie daje sesjom żadnej ochrony przed
+eksmisją, gdyby limit kiedykolwiek ustawiono. Weryfikator B doszedł do tego samego
+z drugiej strony (R6B-10): w tym samym cache'u siedzi **puls harmonogramu**, czyli
+sygnał zdrowia — a D-28 tego nie zauważa.
+
+**`protected-mode no` + pusty `requirepass`**: każdy proces, który dosięgnie portu,
+wydaje dowolne polecenia. Port jest związany wyłącznie z `127.0.0.1` (zmierzone:
+`docker inspect gabinet-redis` → `127.0.0.1:56389`), więc dziś to ryzyko lokalne,
+nie sieciowe. Do świadomego rozstrzygnięcia przed F9.
+
+## N-7 — rozdzielenie przestrzeni kluczy NIE działa dla procesów DŁUGO ŻYJĄCYCH
+
+**Skutek po ludzku:** zmiana konfiguracji Redisa weszła w życie dla stron WWW,
+ale nie dla działających w tle procesów Horizona. Przez kilka godzin połowa
+systemu pisała do starej bazy, druga do nowej — a nikt by tego nie zobaczył.
+
+**Dowód — eksperyment z odczytem bazowym, na moim własnym stosie deweloperskim:**
+
+```
+stan zastany (kontenery wstały 08.08 12:03 UTC, commit rozdzielenia 22:36 CEST):
+  db0: 45 kluczy, w tym ~34 z prefiksem cache i ŻYWYMI TTL (35–809 s)
+  db1: 4    (cache — deklarowana baza cache'u)
+  db2: 104  (sesje)
+
+sonda: gdzie pisze ŚWIEŻO uruchomiony proces?
+  $ docker exec gabinet-app     php artisan tinker --execute='Cache::put("proba-nocna-app",1,120);'
+  $ docker exec gabinet-horizon php artisan tinker --execute='Cache::put("proba-nocna-hz",1,120);'
+  → OBA klucze wylądowały w db1 (exists=1), w db0 i db2 zero.
+
+czyli: świeży proces = db1. A kto pisał do db0? Jedyne procesy PHP starsze
+od commita to workery Horizona. Test rozstrzygający — RESTART Horizona:
+
+  00:14:50  przed restartem: 34 klucze cache w db0, najwyższy TTL = 706 s
+  00:17:12  po restarcie:    20 kluczy cache w db0, najwyższy TTL = 559 s
+
+  706 − 559 = 147 s, a upłynęło 142 s. TTL opada DOKŁADNIE w tempie zegara,
+  liczba kluczy maleje. Czyli po restarcie NIE POWSTAJE ani jeden nowy klucz —
+  db0 już tylko wygasa.
+```
+
+**Wniosek:** to nie były pozostałości. To był **żywy, równoległy zapis** ze starej
+konfiguracji, trwający od 22:36 do 00:14 — bo długo żyjące procesy czytają
+konfigurację przy starcie i nigdy więcej.
+
+**Waga:** wysoka dla wdrożenia. **Czy blokuje:** nie dziś, ale **musi trafić do
+procedury wdrożeniowej F9**: każda zmiana połączeń Redisa wymaga
+`horizon:terminate` (albo restartu), inaczej część systemu pisze do starej
+przestrzeni, a `cache:clear` wydany przez proces WWW nie czyści tego, co
+zapisali workerzy. Spójność cache'u rozjeżdża się cicho.
+
+**Czego ten pomiar NIE dowodzi:** nie wykazałem, KTÓRY konkretnie kod Horizona
+pisał te klucze (nie czytałem wartości — mogłyby zawierać dane osobowe).
+Wykazałem, że pisał je proces starszy niż zmiana konfiguracji i że restart
+to zatrzymał. Do rozstrzygnięcia, czy któreś z nich były kluczami SESJI sprzed
+rozdzielenia — jeśli tak, jest to również pytanie o retencję (RODO), nie tylko
+o spójność cache'u.
