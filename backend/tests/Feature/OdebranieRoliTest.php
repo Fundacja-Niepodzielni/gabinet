@@ -663,17 +663,15 @@ it('brak rozstrzygnięcia o unieważnieniu = ODMOWA, nigdy 200 (fail-closed)', f
     // zapytaniu, a suita biegnie w transakcji (`RefreshDatabase`). Bez tego
     // test truje sam siebie i pada na sprzątaniu zamiast na asercji —
     // mierzyłby własne zanieczyszczenie, nie zachowanie systemu.
-    DB::statement('SAVEPOINT przed_zerwaniem');
+    $status = Typy::liczba(probaZerwania(function (): int {
+        // Zrywamy MOŻLIWOŚĆ ROZSTRZYGNIĘCIA: tabela znaczników znika.
+        Schema::drop('uniewaznione_sesje');
 
-    // Zrywamy MOŻLIWOŚĆ ROZSTRZYGNIĘCIA: tabela znaczników znika.
-    Schema::drop('uniewaznione_sesje');
+        app()->forgetInstance('session');
+        app()->forgetInstance('session.store');
 
-    app()->forgetInstance('session');
-    app()->forgetInstance('session.store');
-
-    $status = test()->get('/auth/ja')->status();
-
-    DB::statement('ROLLBACK TO SAVEPOINT przed_zerwaniem');
+        return test()->get('/auth/ja')->status();
+    }));
 
     expect($status)->not->toBe(200, 'FAIL-OPEN: brak rozstrzygnięcia o unieważnieniu przepuścił żądanie.')
         ->and(in_array($status, [401, 500, 503], true))->toBeTrue(

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 use Tests\Wsparcie\FabrykaTokenow;
@@ -149,4 +150,36 @@ function zdekodowaneLadunki(string $tresc): string
     }
 
     return $zdekodowane;
+}
+
+/*
+|---------------------------------------------------------------------------
+| Pomiar, który NIE TRUJE WŁASNEJ TRANSAKCJI
+|---------------------------------------------------------------------------
+| PostgreSQL unieważnia CAŁĄ transakcję po błędnym zapytaniu, a suita biegnie
+| w transakcji (`RefreshDatabase`). Perturbacja celowo psująca zapytanie
+| powodowała więc, że test padał na SPRZĄTANIU, nie na asercji — mierzył
+| własne zanieczyszczenie zamiast zachowania systemu.
+|
+| Ta sama właściwość wywróciła pomiar DWA RAZY w jednej sesji, więc przestaje
+| być czymś, o czym trzeba pamiętać, a staje się pomocnikiem.
+|
+| Użycie:
+|     $status = probaZerwania(function (): int {
+|         Schema::drop('uniewaznione_sesje');
+|
+|         return test()->get('/auth/ja')->status();
+|     });
+*/
+function probaZerwania(Closure $pomiar): mixed
+{
+    DB::statement('SAVEPOINT proba_zerwania');
+
+    try {
+        return $pomiar();
+    } finally {
+        // ZAWSZE, także gdy pomiar rzucił — inaczej transakcja zostaje
+        // unieważniona i pada dopiero sprzątanie, myląc przyczynę.
+        DB::statement('ROLLBACK TO SAVEPOINT proba_zerwania');
+    }
 }

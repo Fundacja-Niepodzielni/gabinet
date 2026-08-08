@@ -34,7 +34,17 @@ x-aplikacja: &aplikacja
   build:
     context: .
     dockerfile: docker/php/Dockerfile
-  image: gabinet-app:local
+  # TAG ZAWIERA NAZWĘ STOSU — czwarty wektor izolacji (przegląd helpdesku).
+  #
+  # Obrazy są globalne dla DEMONA dockera, nie dla projektu compose. Jawny
+  # `image:` BEZ nazwy stosu sprawiał, że stos dewelopera, bramki i perturbacji
+  # budowały i nadpisywały TEN SAM obraz `gabinet-app:local` — przebieg bramki
+  # podmieniał obraz pod stosem roboczym, a różnice w Dockerfile między
+  # gałęziami przenosiły się między stosami po cichu.
+  #
+  # `GABINET_PREFIX` jest wymagany (patrz wolumeny), więc tag nie może
+  # przypadkiem zdegenerować się do wspólnej nazwy.
+  image: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example}-app:local
   restart: unless-stopped
   # UWAGA: świadomie BEZ `env_file`. Laravel czyta `.env` z zamontowanego
   # repozytorium sam. Wstrzyknięcie tych samych zmiennych do środowiska procesu

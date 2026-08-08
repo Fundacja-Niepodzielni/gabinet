@@ -42,7 +42,16 @@
 #   GABINET_PREFIX=<projekt> docker compose -p <projekt> down -v
 # Od tej rundy `docker-compose.yml` WYMAGA `GABINET_PREFIX` (bez wartości
 # domyślnej), więc pominięcie go kończy się odmową compose, nie kasowaniem.
-# NIGDY nie wołamy globalnych `docker system/volume prune`.
+# ZAKRES SPRZĄTACZKI — decyzja zapisana, nie zwyczaj (przegląd helpdesku):
+#   kontenery + wolumeny + klon. NIC POZA TYM.
+#
+# W szczególności NIGDY `docker image prune`, `docker rmi` ani globalne
+# `docker system/volume prune`. Obrazy są globalne dla DEMONA, nie dla
+# projektu — sprzątaczka projektu efemerycznego, „sprzątając tylko po sobie",
+# zabrałaby obraz spod stosu roboczego. Od tej rundy tag obrazu zawiera nazwę
+# stosu (`${GABINET_PREFIX}-app:local`), więc obrazy się nie nadpisują — ale
+# to nie znosi zakazu, bo `prune` kasuje po WIEKU i po braku referencji,
+# nie po nazwie.
 # ===========================================================================
 set -uo pipefail
 
