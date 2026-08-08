@@ -44,8 +44,19 @@ Naprawiłem je i sprawdziłem pomiarem, że wykrywa tę awarię.
 | 8 | **Trzy komentarze w kodzie przestały nieść obalony wniosek** | N-1 |
 | 9 | **Przegląd ustawień domyślnych** PostgreSQL i Redis (Z3) | N-5, N-6 |
 | 10 | **`CURRENT WORK` zaktualizowane Z ODCZYTU**, z ostrzeżeniem o pokryciu perturbacji | `PLAN-FAZ.md` |
+| 11 | **Bramka przebiegnięta od nowa po moich zmianach w niej** — 1 czerwony z 22, ten zamierzony | `DZIENNIK.md` 01:10 |
+| 12 | **Osiem lekcji nocy** dopisanych do `WYTYCZNE-PRACY.md`, każda z instancją zmierzoną | `WYTYCZNE-PRACY.md` |
 
-**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 7 własnych** (N-1…N-7).
+**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 8 własnych** (N-1…N-8).
+
+**Przebieg końcowy bramki — stan, w jakim zostawiam drzewo:**
+
+```
+=== [19] testy (Pest)   Tests: 1 failed, 180 passed (640 assertions)   ← NOGA 1
+=== [20] WYKONANO 181 testów (podłoga: 180); sprawdzono 640 asercji (podłoga: 635)
+=== [21] sekrety (gitleaks)   56 commits scanned.  no leaks found
+BRAMKA CZERWONA — 1 nieudanych kroków z 22
+```
 
 ---
 
@@ -134,10 +145,19 @@ wadą, którą ta noc badała u kodu: **wnioskiem zgodnym z więcej niż jednym 
    wygasały. Zmierzyłem zgodność z hipotezą, nie jej wyłączność. Waga N-7
    obniżona, sposób rozstrzygnięcia opisany.
 
-Do tego jedna pomyłka manualna: podmieniając sekcję w `PLAN-FAZ.md` skasowałem
-przy okazji trzy tabele zadań (10 831 znaków). Wyszło natychmiast, bo skrypt
-wypisywał liczbę usuwanych znaków, a usuwaną treść zapisywałem do pliku przed
-nadpisaniem. Przywrócone i sprawdzone.
+Do tego dwie pomyłki manualne:
+
+- Podmieniając sekcję w `PLAN-FAZ.md` skasowałem przy okazji trzy tabele zadań
+  (10 831 znaków). Wyszło natychmiast, bo skrypt wypisywał liczbę usuwanych
+  znaków, a usuwaną treść zapisywałem do pliku przed nadpisaniem. Przywrócone
+  i sprawdzone.
+- **Własnym dziennikiem zapaliłem drugi czerwony w bramce** (N-8): skaner
+  sekretów uznał za sekret NAZWĘ PLIKU. Zlecenie mówiło „jeden czerwony ma
+  zostać czerwony" — więc drugiego trzeba było zamknąć, i zamknąłem go
+  najwęższym możliwym wyjątkiem, z dowodem, że nie oślepił kontroli.
+  Zasada na przyszłość (czy wyjątek ma obejmować wszystkie katalogi raportowe)
+  jest oddana do rozstrzygnięcia w `DO-DECYZJI.md`, poz. D-1 — **nie
+  rozstrzygam sam o rozluźnianiu kontroli bezpieczeństwa.**
 
 ---
 
