@@ -49,6 +49,18 @@ x-aplikacja: &aplikacja
     DB_USERNAME: ${DB_USERNAME}
   volumes:
     - .:/srv/gabinet
+    # PLIK ŚRODOWISKA APLIKACJI — montowany NAD zamontowanym repozytorium.
+    #
+    # Laravel czyta `.env` z dysku sam (patrz uwaga o `env_file` wyżej), więc
+    # podstawienia compose go NIE dotyczą. Bez tego montażu przebieg bramki
+    # ustawiał hasło postgresa z własnego pliku, a aplikacja logowała się
+    # hasłem z `.env` DEWELOPERA — zmierzone: `password authentication failed`
+    # w pętli, przez piętnaście minut, bez żadnego komunikatu o przyczynie.
+    #
+    # Domyślnie wskazuje na `.env` w repozytorium, czyli zachowanie dewelopera
+    # bez zmian. Bramka podstawia tu swój plik efemeryczny i dzięki temu
+    # NIE CZYTA sekretów dewelopera ani ich nie nadpisuje.
+    - ${GABINET_PLIK_ENV:-./.env}:/srv/gabinet/.env:ro
     # Wolumen NAD bind-mountem. Zależności przyjeżdżają z obrazu (Dockerfile),
     # a nie przez wolne przejście plikowe Windows/WSL — instalacja przy starcie
     # trwała ~10 minut i dawała wyścig nie do zamknięcia.

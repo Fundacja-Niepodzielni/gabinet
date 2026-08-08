@@ -3,3 +3,6 @@ vendor/
 node_modules/
 storage/*.key
 .phpunit.cache/
+
+# Środowiska efemeryczne przebiegów bramki — nigdy w repozytorium.
+.env.bramka.*

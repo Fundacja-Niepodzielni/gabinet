@@ -60,6 +60,9 @@ PROJEKT="${GABINET_BRAMKA_PROJEKT:-gabinet-bramka}"
 PORT_HTTP="${GABINET_BRAMKA_PORT_HTTP:-8099}"
 PORT_PG="${GABINET_BRAMKA_PORT_POSTGRES:-55443}"
 PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
+# Plik środowiska WYŁĄCZNIE dla tego przebiegu. Nigdy `.env` dewelopera.
+PLIK_ENV="$KORZEN/.env.bramka.$PROJEKT"
+
 ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # Podłoga liczby testów. Rośnie razem z suitą — obniżenie MUSI być świadomą
 # zmianą w repozytorium (zasada D-0013: pusta suita to zielone CI bez testów).
@@ -185,6 +188,10 @@ sciezka_hosta() {
 	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$KORZEN/$1"; else echo "$KORZEN/$1"; fi
 }
 
+sciezka_hosta_pliku() {
+	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi
+}
+
 # Prefiks nazw kontenerów/sieci/wolumenów. Bez niego drugi stos z tego samego
 # pliku zderza się z zasobami dewelopera po NAZWIE, mimo innego projektu —
 # a alias `postgres` rozwiązuje się wtedy losowo na jeden z dwóch serwerów.
@@ -193,38 +200,88 @@ dc() {
 	GABINET_PORT_HTTP="$PORT_HTTP" \
 	GABINET_PORT_POSTGRES="$PORT_PG" \
 	GABINET_PORT_REDIS="$PORT_REDIS" \
-		docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
+	GABINET_PLIK_ENV="$(sciezka_hosta_pliku "$PLIK_ENV")" \
+		docker compose --env-file "$(sciezka_hosta_pliku "$PLIK_ENV")" \
+			-p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
 }
 
 # ---------------------------------------------------------------------------
 # .env — bramka NIGDY nie nadpisuje pliku dewelopera.
 # ---------------------------------------------------------------------------
 przygotuj_env() {
-	if [ -f .env ]; then
-		echo "    .env istnieje — używam istniejącego"
-		return 0
-	fi
-
-	echo "    .env nie istnieje — tworzę z .env.example (wartości efemeryczne)"
-	cp .env.example .env
+	# DYSCYPLINA WERYFIKACJI USŁUGI STANOWEJ (korekta architekta, 08.08).
+	#
+	# Poprzednia wersja robiła: „jeśli `.env` istnieje — używam istniejącego".
+	# Skutek był podwójny i oba razy zły:
+	#
+	#  1. POMIAR. Na mojej maszynie bramka mieliła `.env` DEWELOPERA, a na
+	#     czystym klonie — plik wygenerowany z `.env.example`. To dwa RÓŻNE
+	#     środowiska pomiarowe, więc „u mnie zielone" nie znaczyło nic o klonie.
+	#     Dokładnie tak powstało V-2: perturbacja `sesja-jawna` była bezczynna
+	#     na klonie (`SESSION_ENCRYPT=true` z `.env.example`), a u mnie
+	#     działała, bo mój `.env` tej linii nie miał. Deklarowałem „42 kontrole"
+	#     z jedynego środowiska, w którym wychodzą.
+	#
+	#  2. SEKRETY. Przebieg weryfikacyjny nie ma prawa dotykać prawdziwych
+	#     poświadczeń. U zespołu helpdesku weryfikator skopiował `.env`
+	#     z sekretami do katalogu tymczasowego — near-miss.
+	#
+	# Dlatego: WŁASNY plik środowiska, budowany od zera przy KAŻDYM przebiegu,
+	# wyłącznie z `.env.example` (definicja w repozytorium) i z sekretami
+	# generowanymi na miejscu. `.env` dewelopera nie jest nawet czytany.
+	echo "    buduję środowisko efemeryczne: $(basename "$PLIK_ENV")"
+	cp .env.example "$PLIK_ENV"
 
 	local haslo klucz
 	haslo="$(openssl rand -hex 16)"
 	klucz="base64:$(openssl rand -base64 32)"
 
 	# `|` jako separator: klucz base64 zawiera `/`.
-	sed -i "s|^DB_PASSWORD=$|DB_PASSWORD=${haslo}|" .env
-	sed -i "s|^APP_KEY=$|APP_KEY=${klucz}|" .env
+	sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${haslo}|" "$PLIK_ENV"
+	sed -i "s|^APP_KEY=.*|APP_KEY=${klucz}|" "$PLIK_ENV"
+
+	# Prefiks i porty tego przebiegu — inaczej compose weźmie je z `.env.example`
+	# i stos bramki zderzy się z deweloperskim po NAZWIE zasobu.
+	sed -i "s|^GABINET_PREFIX=.*|GABINET_PREFIX=${PROJEKT}|" "$PLIK_ENV"
+	sed -i "s|^GABINET_PORT_HTTP=.*|GABINET_PORT_HTTP=${PORT_HTTP}|" "$PLIK_ENV"
+	sed -i "s|^GABINET_PORT_POSTGRES=.*|GABINET_PORT_POSTGRES=${PORT_PG}|" "$PLIK_ENV"
+	sed -i "s|^GABINET_PORT_REDIS=.*|GABINET_PORT_REDIS=${PORT_REDIS}|" "$PLIK_ENV"
 }
 
 # ---------------------------------------------------------------------------
 
 if [ "$TYLKO_KOD" -eq 0 ]; then
+	# KOLEJNOŚĆ MA ZNACZENIE: plik środowiska powstaje PRZED pierwszym
+	# wywołaniem `dc`. Odwrotna kolejność sprzątała stos plikiem z POPRZEDNIEGO
+	# przebiegu (albo bez pliku w ogóle), więc wolumen postgresa przeżywał
+	# z INNYM hasłem niż świeżo wygenerowane — i `app` wisiał jako niezdrowy
+	# do końca limitu. Zmierzone: 16 minut w pętli sond, zero komunikatu
+	# o przyczynie.
+	krok "przygotowanie środowiska efemerycznego"
+	przygotuj_env || zle
+
 	krok "sprzątanie po poprzednim przebiegu"
 	dc down -v --remove-orphans >/dev/null 2>&1 || true
 
-	krok "przygotowanie .env"
-	przygotuj_env || zle
+	# PYTAMY O STAN, NIE O KOD WYJŚCIA SPRZĄTANIA (zasada 1 z nagłówka).
+	#
+	# `down -v` MILCZY, gdy wolumen jest zajęty — a wtedy postgres startuje na
+	# STARYM woluminie i nie reinicjalizuje hasła. Skutek wychodzi dopiero
+	# kilkanaście minut później jako nieczytelny timeout sondy zdrowia:
+	# zmierzone dwa razy, `app` w pętli „password authentication failed"
+	# przy zielonym postgresie. Kod wyjścia sprzątania niczego o tym nie mówił.
+	for WOLUMEN in "${PROJEKT}-pg-data" "${PROJEKT}-redis-data"; do
+		if docker volume inspect "$WOLUMEN" >/dev/null 2>&1; then
+			echo "    wolumen $WOLUMEN przeżył down -v — usuwam wprost"
+			docker volume rm -f "$WOLUMEN" >/dev/null 2>&1 || true
+		fi
+
+		if docker volume inspect "$WOLUMEN" >/dev/null 2>&1; then
+			echo "    NIE UDAŁO SIĘ usunąć $WOLUMEN — postgres wystartuje ze starym hasłem"
+			echo "    (zatrzymaj kontenery trzymające ten wolumen i uruchom ponownie)"
+			zle
+		fi
+	done
 
 	krok "budowanie obrazu aplikacji"
 	dc build app || zle

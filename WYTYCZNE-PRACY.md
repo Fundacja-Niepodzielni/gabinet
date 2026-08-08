@@ -104,6 +104,18 @@ podnoszące błąd przy braku trafienia, a każda perturbacja ma **dowód mutacj
 ciszej** niż przedmiot badania. Gdy kontrola, bramka albo test wygląda na
 zepsuty — **sprawdź instrument przed systemem**.
 
+**To jest KOLEJNOŚĆ SPRAWDZANIA, nie WERDYKT.** Korekta architekta z 08.08,
+po trzech przypadkach w ekosystemie (hub B7, Gabinet V-8, helpdesk E6):
+„przyrząd" bywa w obie strony i część przypadków to **realny defekt systemu
+albo kontroli**. Sprawdzamy instrument najpierw, bo tak jest taniej — ale
+wynik trzeba **zmierzyć**, a nie założyć.
+
+Zakaz wprost: nie wolno zaklejać etykietą „to był przyrząd" ani błędu
+proceduralnego, ani prawdziwej dziury. U nas kosztowało to dwukrotnie —
+przy `SESSION_ENCRYPT` (V-2/V-3) nie było nawet atrybucji, tylko ciche
+„u mnie nie występuje", a przy B7 (V-8) przypisałem kontroli mechanizm,
+którego perturbacja nigdy nie uruchamia.
+
 Synteza zespołu helpdesku, potwierdzona czterokrotnie w trzech repozytoriach.
 We wszystkich instancjach mierzony system działał bez zarzutu — **kłamał
 przyrząd**.
@@ -204,6 +216,24 @@ Nasze instancje tej klasy:
   harmonogram sam zapisze wpis — mierzyła więc jego cadencję, nie czujność
   kontroli, i losowo padała po 90 s. Puls zapisujemy teraz **wprost**,
   niezależnym poleceniem.
+
+**Weryfikacja USŁUGI STANOWEJ: „czysty klon" dzielący działającą instancję to
+fikcja.** Klon, który podłącza się do cudzej bazy, kolejki albo poczty, mierzy
+CUDZY stan. Wymóg: w pełni **izolowany, efemeryczny projekt** — własna nazwa
+projektu compose, własne porty, wolumeny scope'owane projektem — postawiony na
+**sekretach testowych zdefiniowanych w repozytorium**, nigdy na kopii `.env`
+dewelopera.
+
+**Klon weryfikatora NIGDY nie trzyma prawdziwych sekretów.** U zespołu
+helpdesku weryfikator skopiował `.env` z sekretami do katalogu tymczasowego —
+near-miss.
+
+U nas dotyczyło to bramki wprost: `przygotuj_env()` robiło „jeśli `.env`
+istnieje — używam istniejącego", więc na maszynie dewelopera przebieg mielił
+JEGO plik, a na czystym klonie — plik z `.env.example`. Dwa różne środowiska
+pomiarowe; stąd wzięło się V-2 („42 kontrole" zmierzone w jedynym środowisku,
+w którym wychodzą). Bramka buduje teraz własny plik od zera przy każdym
+przebiegu, wyłącznie z definicji w repozytorium.
 
 **Nasze instancje** (rosną — dopisuj):
 

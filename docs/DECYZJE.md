@@ -703,3 +703,51 @@ po cichu którąkolwiek wersję, przez kolejne tygodnie nikt nie odtworzyłby,
 dlaczego repozytorium wygląda tak, a nie inaczej. Rekomendacja tańszej opcji
 została przyjęta — co jest argumentem za tym, żeby przy zgłaszaniu rozbieżności
 ZAWSZE podawać koszt cofnięcia, a nie samo „jest niezgodność".
+
+---
+
+## D-2026-08-08-24 — CLAUDE.md §2, wersja OSTATNIA: wąskie gardło zamiast listy
+
+**Historia.** Kontrola „żadnych własnych haseł" była obalana **cztery razy**:
+literalne nazwy (runda 1) → wzorce nazw (U-1, runda 3) → zadeklarowany schemat
+i zadeklarowane trasy (W-1, runda 4) → `sha256` w **zadeklarowanej** kolumnie
+`users.nazwa_wyswietlana` z logowaniem na **zadeklarowanej** trasie `GET /`
+(V-1, runda 5). Za każdym razem przy `BRAMKA OK`.
+
+**Diagnoza.** Wszystkie cztery wersje to DETEKCJA: pytanie „czy jest tu coś
+zakazanego". Zakres pytania zawsze był węższy niż zakres zagrożenia, a nazwy
+i miejsca wybiera atakujący.
+
+**Moja propozycja piątej wersji była tym samym błędem.** Zaproponowałem
+„pytać, co kolumna ZAWIERA i co trasa POTRAFI". Architekt to odrzucił i miał
+rację: „co zawiera kolumna" obchodzi się skrótem, który nie wygląda jak skrót,
+a „co potrafi trasa" jest **nierozstrzygalne**. Piąta lista padłaby jak cztery
+poprzednie.
+
+**Projekt przyjęty (architekt, 08.08) — STRUKTURALNE WĄSKIE GARDŁO,
+asertowane POZYTYWNIE:**
+
+1. **Jeden pisarz tożsamości sesji.** Klucze `zalogowany` / `sub` / `role` /
+   `bramki` zapisuje **dokładnie jeden** byt, np.
+   `SesjaKonta::ustawZTokenu(ZweryfikowanyToken $t)`. Typ wejścia wymusza
+   token zweryfikowany, a `ZweryfikowanyToken` potrafi wyprodukować
+   **wyłącznie** walidator OIDC.
+2. **Test §2 = dowód wąskiego gardła**, ograniczony i falsyfikowalny:
+   - (a) zbiór miejsc zapisujących TE KONKRETNE klucze sesji ma liczność **1**;
+   - (b) decyzje autoryzacyjne (role, bramki) czytają **wyłącznie** z tej
+     ustalonej tożsamości — nigdy z dowolnej kolumny bazy ani z parametru
+     żądania.
+
+**Dlaczego to zamyka atak V-1.** Trasa podstawiona przez napastnika nie
+wyprodukuje `ZweryfikowanyToken`, więc nie zaloguje nikogo. Autoryzacja nie
+czyta `nazwa_wyswietlana`, więc odcisk schowany w dowolnej kolumnie jest
+bezużyteczny. A gdyby jakaś trasa próbowała zapisać klucze tożsamości wprost —
+łapie ją asercja jednego pisarza.
+
+**To ma być OSTATNIA wersja §2:** ograniczona i pozytywna, nie kolejna lista
+zakazów. Różnica jest zasadnicza — lista zakazów rośnie w nieskończoność
+i zawsze przegrywa z pomysłowością; wąskie gardło ma **skończoną**,
+sprawdzalną liczność.
+
+**Kolejność prac (bez zmian):** W-8 → V-1 wg powyższego → V-4 / V-8 / V-9 →
+runda 6 na gałęzi → merge do `main` po zielonym (D-2026-08-08-23).
