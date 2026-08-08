@@ -9,8 +9,11 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Faza: F1 w toku.** F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
 - **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
-- **Bramka: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN, zamierzony i POTWIERDZONY
-  jako realny defekt: noga 1 pary negatywnej BLK-22 (wskrzeszenie tożsamości z refresh tokenu).
+- **Bramka: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: noga 1 pary
+  negatywnej BLK-22, **NIEROZSTRZYGNIĘTA**. Uwaga: wcześniejsza wersja tej linii mówiła
+  „POTWIERDZONY defekt: wskrzeszenie z refresh tokenu" — **ten wniosek został wieczorem
+  OBALONY moim własnym pomiarem kontrolnym**. Nie ścigaj go. Szczegóły w komentarzu testu
+  `NOGA 1` w `backend/tests/Feature/OdebranieRoliTest.php`.
 - **Testy: 180 zielonych, 1 czerwony, 640 asercji** — stan na 08.08, liczby ROSNĄ;
   sprawdź `pest` zamiast ufać tej linii.
 - **Perturbacje: 30 scenariuszy** (stan na 08.08, rośnie) — ze strażnikiem przyczyny
@@ -34,16 +37,28 @@ identyfikatory się nie starzeją, bo nazywają zdarzenie, nie stan bieżący):
 runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15, runda 5 na
 `b2084fc` — 12, z czego 8 zamkniętych.
 
-**PIERWSZE ZADANIE NASTĘPNEJ SESJI — naprawa nogi 1 (wskrzeszenie tożsamości).**
-Powód: to jedyny CZERWONY w bramce, jest POTWIERDZONYM defektem (nie hipotezą),
-i blokuje domknięcie pary negatywnej BLK-22, która z kolei blokuje rundę 6
-i merge do `main`. Wszystko inne w kolejce da się robić po nim; on nie da się
-odłożyć, bo bramka zostaje czerwona.
+**PIERWSZE ZADANIE NASTĘPNEJ SESJI — ODCZYT ROZSTRZYGAJĄCY dla nogi 1.**
+Powód: to jedyny CZERWONY w bramce i blokuje domknięcie pary negatywnej BLK-22,
+która blokuje rundę 6 i merge do `main`. Nie da się go odłożyć, bo bramka
+zostaje czerwona.
 
-Kształt naprawy jest ustalony i NIE wymaga ponownej diagnozy: odświeżanie ma być
-OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI — wejściem tożsamość wczytana z magazynu,
-brak wejścia czyni ścieżkę NIEWYWOŁYWALNĄ. Dziś jest to strażnik (`stanKonta()`
-czyta `konta` i wychodzi przy pustce), a strażnika da się ominąć — zmierzone.
+**NIE zaczynaj od naprawy — przyczyna NIE JEST znana.** Wieczorem 08.08:
+
+1. Migawki magazynu dały „zniknęło 1, pojawiło się 1, status 200" i odczytałem
+   to jako wskrzeszenie tożsamości z refresh tokenu.
+2. Przebudowałem pisarza tożsamości na wąskie gardło §2 (`SesjaKonta` +
+   `TozsamoscSesji`), przez które odświeżanie **nie może** utworzyć tożsamości.
+3. Zmierzyłem PONOWNIE: **liczby identyczne**. Czyli 200 nie pochodzi z tej
+   ścieżki, a wniosek z punktu 1 był przedwczesny.
+
+Przebudowa pisarza **zostaje** — jest poprawna niezależnie, bo realizuje wymóg
+§2 (jeden pisarz, aktualizacja wymaga istniejącego rekordu). Zmierzone: jeden
+pisarz klucza `konta` w całym `backend/app`.
+
+**Czego potrzeba:** odczytu odróżniającego „tożsamość odtworzona W MAGAZYNIE"
+od „tożsamość niesiona przez klienta testowego w pamięci procesu" — np. przez
+sprawdzenie ZAWARTOŚCI nowego klucza, nie samego faktu jego pojawienia się.
+Pre-flight (każda wartość → dokładnie jeden świat) wykonaj PRZED uruchomieniem.
 
 **OTWARTE, blokujące zamknięcie F1:**
 

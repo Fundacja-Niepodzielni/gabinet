@@ -391,6 +391,41 @@ zachowanie badam, jest w suicie prawdziwy?** Jeśli nie — kontrola trafia na
 jawną listę „bez pokrycia" z uzasadnieniem, zamiast udawać dowód.
 Przegląd sterowników: `docs/DECYZJE.md`, D-2026-08-08-27.
 
+**Po naprawie ZMIERZ PONOWNIE — czy cokolwiek się zmieniło.** Naprawa może być
+poprawna i jednocześnie **nie tłumaczyć objawu**. Pomiar kontrolny po naprawie
+jest darmowy (masz już przyrząd) i jest jedynym sposobem, żeby to odróżnić.
+
+*Zmierzona instancja (08.08):* przebudowałem pisarza tożsamości tak, że
+odświeżanie NIE MOŻE już utworzyć sesji — i zmierzyłem migawki ponownie.
+Liczby **identyczne** (zniknęło 1, pojawiło się 1, status 200). Skoro naprawa
+tej ścieżki niczego nie zmieniła, objaw nie pochodził z tej ścieżki, a moje
+wcześniejsze „POTWIERDZONY DEFEKT: wskrzeszenie" było przedwczesne. Bez pomiaru
+kontrolnego zamknąłbym sprawę jako naprawioną i zostawił prawdziwą przyczynę.
+
+**Naruszenie wąskiego gardła ma DWA kształty — sprawdź który, bo zmienia
+naprawę.** Albo (a) pisarzy jest kilku, albo (b) pisarz jest jeden, ale **nie
+odróżnia UTWORZENIA od AKTUALIZACJI**. W przypadku (b) asercja „zbiór piszących
+= 1" przechodzi **przy otwartej dziurze** — czyli kontrola świeci zielono nad
+defektem, który miała łapać.
+
+*Zmierzona instancja (08.08):* miałem przypadek (a) — `LogowanieController`
+i `OdswiezanieSesji` pisały klucz `konta` niezależnie. Naprawa: jeden pisarz,
+w którym operacja aktualizująca **przyjmuje istniejący rekord jako argument**
+(typ z prywatnym konstruktorem, tworzony wyłącznie z niepustego magazynu).
+Ścieżka „brak rekordu → utwórz" jest wtedy NIEWYWOŁYWALNA, a nie zabroniona
+warunkiem — strażnika da się ominąć, brakującej wartości nie.
+
+**Etykieta nazywa STAN WIEDZY i cofa się, gdy wiedza się cofa.** Zmiana
+etykiety w jedną stronę (nierozstrzygnięte → potwierdzone) jest łatwa; w drugą
+wymaga przyznania, że wcześniejszy wniosek był przedwczesny — i właśnie dlatego
+bywa pomijana. Etykieta, która została „potwierdzona" po obaleniu wniosku, jest
+dokumentacją kłamiącą o kodzie, tylko trudniejszą do wykrycia niż zwykły
+nieaktualny komentarz, bo brzmi jak wynik pracy.
+
+*Zmierzona instancja (08.08):* cofnąłem etykietę testu nogi 1
+z „POTWIERDZONY DEFEKT: wskrzeszenie" z powrotem na „NIEROZSTRZYGNIĘTE"
+po tym, jak pomiar kontrolny podważył moją diagnozę.
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
