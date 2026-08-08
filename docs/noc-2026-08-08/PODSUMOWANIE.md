@@ -77,9 +77,17 @@ BRAMKA CZERWONA — 1 nieudanych kroków z 22
      Obalone zostało moje twierdzenie o strukturze, nie bezpieczeństwo aplikacji.
    - **R6B-9** — `RejestrSesji` (bez niego wylogowanie nie znajdzie sesji) mieszka
      w cache'u; jego utrata daje „wylogowano 0 sesji" po cichu. Fail-open.
-4. **Pokrycie perturbacji jest mniejsze, niż mówiła liczba „30 scenariuszy".**
+4. **Perturbacje: 1 kontrola czerwona z 46** (`PERTURBACJE CZERWONE — 1 …
+   udanych: 45`). **Ta czerwień jest OCZEKIWANA i przewidziana**: to kierunek
+   odwrotny scenariusza BLK-22, który przywraca mechanizm i oczekuje zielonego
+   pliku testów — a tam siedzi noga 1. Weryfikator przewidział to z lektury
+   kodu, zanim ktokolwiek uruchomił zestaw, i pomiar to potwierdził.
+   **Zniknie sama po naprawie nogi 1 — nie ścigaj jej jako defektu.**
+5. **Pokrycie perturbacji jest mniejsze, niż mówiła liczba „30 scenariuszy".**
    Pięć scenariuszy nie może dziś zaświecić czerwono, bo celują w plik, który
    jest czerwony z innego powodu.
+6. **Dwa błędy, które sam popełniłem i sam wykryłem tej nocy** (N-10, N-11) —
+   opisane niżej. Oba zamknięte z pomiarem, oba zapisane, żadnego nie ukryłem.
 
 ---
 
