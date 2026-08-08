@@ -130,7 +130,32 @@ dc() {
 # sprawiły, że perturbacja „przechodziła", nie zmieniwszy niczego).
 # `sciezka_hosta`, nie "$KORZEN/..." — przy MSYS_NO_PATHCONV=1 ścieżka POSIX
 # dociera do windowsowego Pythona dosłownie i staje się `D:\d\KOD\...`.
-perturbuj() { python3 "$(sciezka_hosta skrypty/perturbuj.py)" "$@"; }
+# Perturbacja, która NIE MOŻE zawieść po cichu.
+#
+# Zmierzone 09.08 w nocy (N-3): `podmien()` w `perturbuj.py` poprawnie rzuca
+# `SystemExit`, gdy wzorca nie ma — ale tutaj nikt nie patrzył na kod wyjścia,
+# a skrypt biegnie bez `set -e`. Skutek: przemianowanie zmiennej w kodzie
+# produkcyjnym (`$konta` → `$tozsamosc`, commit cdc6fbb) uczyniło DWIE
+# perturbacje bezczynnymi, a scenariusze meldowały sukces.
+#
+# `MUTACJA_ZERWANA` niesie tę wiedzę dalej, do dowodu mutacji — inaczej dowód
+# orzekałby o mutacji, której nie było.
+MUTACJA_ZERWANA=0
+
+perturbuj() {
+	MUTACJA_ZERWANA=0
+
+	if python3 "$(sciezka_hosta skrypty/perturbuj.py)" "$@"; then
+		return 0
+	fi
+
+	printf '    ✗ PERTURBACJA NIE WESZŁA W ŻYCIE: %s — scenariusz NIEROZSTRZYGAJĄCY\n' "$1"
+	printf '      (najczęstsza przyczyna: kod produkcyjny zmienił kształt, a wzorzec podmiany został stary)\n'
+	NIEUDANE=$((NIEUDANE + 1))
+	MUTACJA_ZERWANA=1
+
+	return 1
+}
 
 # Liczba testów — DOKŁADNIE ta sama procedura co w bramce, bo ten sam plik.
 . "$KORZEN/skrypty/licz-testy.sh"
@@ -272,8 +297,59 @@ export -f dc_wiek_pulsu 2>/dev/null || true
 # którą za chwilę sprawdzamy. Bez tego „kontrola zapaliła się na czerwono"
 # może znaczyć „coś innego poszło nie tak", a „kontrola przeszła" —
 # „mutacja nigdy nie weszła w życie".
+# ---------------------------------------------------------------------------
+# DOWÓD ZNIKNIĘCIA — dowód mutacji Z ODCZYTEM BAZOWYM.
+#
+# Zastępuje formę `! grep -q 'stary tekst' plik`, która ma GAŁĄŹ ZDEGENEROWANĄ:
+# wartość „prawda" jest zgodna z DWOMA światami — (I) mutacja weszła i usunęła
+# tekst, (II) tekstu NIGDY TAM NIE BYŁO, bo kod przemianowano. Zmierzone 09.08:
+# dwa z pięciu takich dowodów były w świecie II i zaświadczały o mutacji,
+# której nie było (N-3).
+#
+# Odczyt bazowy bierzemy z kopii sprzed mutacji, którą i tak robi `zachowaj`.
+# Pytanie brzmi więc nie „czy tekstu nie ma", tylko **„czy tekst BYŁ, a potem
+# ZNIKNĄŁ"** — i to rozróżnia oba światy.
+dowod_zniknieciem() {
+	local opis="$1" wzorzec="$2" plik="$3"
+	local kopia="$KOPIE/$(printf '%s' "$plik" | tr '/' '_')"
+
+	if [ "${MUTACJA_ZERWANA:-0}" -eq 1 ]; then
+		printf '    ✗ DOWÓD MUTACJI POMINIĘTY: perturbacja nie weszła w życie (%s)\n' "$opis"
+		return 1
+	fi
+
+	if [ ! -f "$kopia" ]; then
+		printf '    ✗ BRAK ODCZYTU BAZOWEGO: nie ma kopii %s — dowód nierozstrzygający\n' "$plik"
+		NIEUDANE=$((NIEUDANE + 1))
+		return 1
+	fi
+
+	# ODCZYT BAZOWY: czy wzorzec w ogóle istniał PRZED mutacją.
+	if ! grep -qF "$wzorzec" "$kopia"; then
+		printf '    ✗ PERTURBACJA ROZJECHAŁA SIĘ Z KODEM: wzorca „%s" NIE BYŁO w %s przed mutacją\n' "$wzorzec" "$plik"
+		printf '      (dowód w formie „starego tekstu już nie ma" byłby tu PRAWDZIWY BEZ MUTACJI)\n'
+		NIEUDANE=$((NIEUDANE + 1))
+		return 1
+	fi
+
+	if grep -qF "$wzorzec" "$plik"; then
+		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: %s — wzorzec nadal w pliku\n' "$opis"
+		NIEUDANE=$((NIEUDANE + 1))
+		return 1
+	fi
+
+	printf '    · dowód mutacji (był → zniknął): %s\n' "$opis"
+
+	return 0
+}
+
 dowod_mutacji() {
 	local opis="$1"; shift
+
+	if [ "${MUTACJA_ZERWANA:-0}" -eq 1 ]; then
+		printf '    ✗ DOWÓD MUTACJI POMINIĘTY: perturbacja nie weszła w życie (%s)\n' "$opis"
+		return 1
+	fi
 
 	if "$@" >/dev/null 2>&1; then
 		printf '    · dowód mutacji: %s
@@ -590,8 +666,8 @@ p_wzmacniacz() {
 
 	perturbuj wzmacniacz-zadan
 
-	dowod_mutacji "bramka częstotliwości zniknęła z kodu" \
-		bash -c "! grep -q 'KLUCZ_ODSWIEZANIE, 1' '$plik'"
+	dowod_zniknieciem "bramka częstotliwości zniknęła z kodu" \
+		"KLUCZ_ODSWIEZANIE, 1" "$plik"
 
 	oczekuj_czerwone "test liczby żądań wykrywa wzmacniacz" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/WzmacniaczZadanTest.php
@@ -801,8 +877,8 @@ p_role_zamrozone() {
 
 	perturbuj role-zamrozone
 
-	dowod_mutacji "sprawdzanie wieku access tokenu zniknęło z kodu" \
-		bash -c "! grep -q 'wymagaOdswiezenia(\$konta)' '$plik'"
+	dowod_zniknieciem "sprawdzanie wieku access tokenu zniknęło z kodu" \
+		"if (! $this->wymagaOdswiezenia($tozsamosc)) {" "$plik"
 
 	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
@@ -821,8 +897,8 @@ p_logout_failsafe() {
 
 	perturbuj logout-bez-failsafe
 
-	dowod_mutacji "awaryjne zakończenie sesji zniknęło z handlera" \
-		bash -c "! grep -q 'sidNiezweryfikowany' '$plik'"
+	dowod_zniknieciem "awaryjne zakończenie sesji zniknęło z handlera" \
+		"} catch (Throwable $blad) {" "$plik"
 
 	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
@@ -887,8 +963,8 @@ p_id_token_w_sesji() {
 
 	perturbuj id-token-jawny
 
-	dowod_mutacji "kontroler zapisuje ID token bez szyfrowania" \
-		bash -c "! grep -q 'Crypt::encryptString(\$idToken)' '$plik'"
+	dowod_zniknieciem "kontroler zapisuje ID token bez szyfrowania" \
+		"Crypt::encryptString($idToken)" "$plik"
 
 	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
@@ -960,8 +1036,8 @@ p_uniewaznienie_sid() {
 
 	perturbuj uniewaznienie-po-sid
 
-	dowod_mutacji "sprawdzanie unieważnienia po sid zniknęło z kodu" \
-		bash -c "! grep -q 'RejestrSesji::uniewazniona' '$plik'"
+	dowod_zniknieciem "sprawdzanie unieważnienia po sid zniknęło z kodu" \
+		"RejestrSesji::uniewazniona" "$plik"
 
 	# ALLOWLISTA przyczyny, nie podłoga: to tożsamość, więc fałszywe zielone
 	# kosztuje tu najwięcej. Fragment skopiowany DOSŁOWNIE z komunikatu Pesta.

@@ -87,10 +87,25 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # w pełni zielonej bramce. Podłoga ma siedzieć TUŻ POD stanem bieżącym, żeby
 # każde zniknięcie kontroli było widoczne — a jej podniesienie to jedna linia
 # w tym pliku, świadoma i w `git diff`.
-MINIMUM_TESTOW=170
+#
+# PODNIESIENIE 08.08 w nocy, NAPRAWA PRZYRZĄDU. V-10 zostało zamknięte tylko
+# na chwilę: podłoga 170 przy 181 wykonanych testach dawała 11 testów zapasu,
+# a w tym zapasie mieści się SKASOWANIE W CAŁOŚCI dziesięciu z siedemnastu
+# plików kontrolnych — w tym `ObietniceKomentarzyTest` (2 testy), czyli
+# kontroli NAD KONTROLAMI. Zmierzone: `pest` → 181 wykonanych / 640 asercji;
+# rozkład na pliki od 2 do 36. Komentarz obiecywał „TUŻ POD stanem bieżącym"
+# i był nieprawdziwy wobec własnej wartości — dokładnie ta klasa, przed którą
+# ostrzega `ObietniceKomentarzyTest`.
+#
+# Podnoszę do 180 / 635, czyli o jeden test i pięć asercji pod stanem
+# bieżącym. Zapas zostaje CELOWO minimalny: każde zniknięcie choćby jednego
+# testu ma zapalić bramkę. Gdy suita urośnie, ta liczba rośnie razem z nią —
+# w tym samym commicie, świadomie i w `git diff`.
+MINIMUM_TESTOW=180
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
-# choćby liczba testów wyglądała dobrze.
-MINIMUM_ASERCJI=590
+# choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
+# testów: 640 zmierzonych, podłoga 635.
+MINIMUM_ASERCJI=635
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

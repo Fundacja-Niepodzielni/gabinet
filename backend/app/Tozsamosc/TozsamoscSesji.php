@@ -9,11 +9,21 @@ use App\Wsparcie\Typy;
 /**
  * ISTNIEJĄCA tożsamość w sesji — typ, którego nie da się wytworzyć z niczego.
  *
- * Powód istnienia (noga 1 pary negatywnej BLK-22, potwierdzona pomiarem):
- * odświeżanie tokenu potrafiło TOŻSAMOŚĆ STWORZYĆ. Wymóg standardu B8 mówi,
- * że odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI — a u nas był to
- * strażnik: `stanKonta()` czytał tablicę i wychodził przy pustce. Strażnika
- * da się ominąć; pomiar pokazał, że został ominięty.
+ * Powód istnienia: wymóg CLAUDE.md §2 i standardu B8 — odświeżanie ma być
+ * OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Wcześniej pilnował tego STRAŻNIK:
+ * `stanKonta()` czytał tablicę i wychodził przy pustce, więc miał dostęp do
+ * zapisu niezależnie od wyniku sprawdzenia. Strażnika da się ominąć —
+ * i to samo w sobie wystarcza, żeby go zastąpić strukturą.
+ *
+ * CZEGO TEN KOMENTARZ NIE TWIERDZI (sprostowanie z 08.08, wieczór): NIE jest
+ * zmierzone, że odświeżanie kiedykolwiek tożsamość STWORZYŁO. Taki wniosek
+ * postawiono z migawek magazynu i **obalono go pomiarem kontrolnym** — po tej
+ * przebudowie liczby były IDENTYCZNE, więc objaw nie pochodził z tej ścieżki.
+ * Noga 1 pary negatywnej BLK-22 pozostaje NIEROZSTRZYGNIĘTA; patrz komentarz
+ * testu `NOGA 1` w `tests/Feature/OdebranieRoliTest.php`.
+ *
+ * Przebudowa zostaje mimo obalenia diagnozy, bo jej uzasadnieniem jest wymóg
+ * §2, a nie tamten objaw. To była właściwa naprawa — tylko nie tego objawu.
  *
  * Konstruktor jest PRYWATNY, a jedyna droga do instancji prowadzi przez
  * `zMagazynu()`, które zwraca `null`, gdy w sesji nie ma tożsamości. Dzięki

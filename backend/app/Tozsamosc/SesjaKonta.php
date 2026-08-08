@@ -23,9 +23,12 @@ use Illuminate\Http\Request;
  * od wyniku sprawdzenia. Teraz zapis aktualizujący wymaga WARTOŚCI, której
  * przy braku tożsamości po prostu nie ma.
  *
- * Zmierzone, dlaczego to było potrzebne: po usunięciu tożsamości z magazynu
- * żądanie wracało z kodem 200 i pełnymi uprawnieniami — odświeżanie
- * odtwarzało ją z refresh tokenu (noga 1, świat 2).
+ * Co jest ZMIERZONE, a co NIE: zmierzone jest to, że pisarzy klucza `konta`
+ * było DWÓCH (`LogowanieController` i `OdswiezanieSesji` pisały niezależnie),
+ * co samo w sobie łamie §2. NIE jest zmierzone, że odświeżanie kiedykolwiek
+ * tożsamość odtworzyło — ten wniosek postawiono z migawek magazynu i OBALONO
+ * pomiarem kontrolnym po tej przebudowie (liczby identyczne). Noga 1 pary
+ * negatywnej BLK-22 pozostaje NIEROZSTRZYGNIĘTA.
  */
 final class SesjaKonta
 {

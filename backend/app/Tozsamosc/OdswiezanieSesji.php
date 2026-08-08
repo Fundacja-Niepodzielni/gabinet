@@ -59,9 +59,13 @@ final class OdswiezanieSesji
         // NIEWYWOŁYWALNA, a nie „zabroniona warunkiem".
         //
         // Poprzednia wersja czytała tablicę i sprawdzała `if` — czyli miała
-        // dostęp do zapisu niezależnie od wyniku sprawdzenia. Zmierzone:
-        // po usunięciu tożsamości z magazynu żądanie wracało z 200 i pełnymi
-        // uprawnieniami, bo odświeżanie odtwarzało ją z refresh tokenu.
+        // dostęp do zapisu niezależnie od wyniku sprawdzenia. To wystarcza
+        // za uzasadnienie: wymóg §2 mówi o STRUKTURZE, nie o tym, czy dziurę
+        // ktoś już wykorzystał.
+        //
+        // NIE jest natomiast zmierzone, że odświeżanie tożsamość odtwarzało.
+        // Taki wniosek postawiono z migawek i OBALONO pomiarem kontrolnym
+        // (po tej zmianie liczby identyczne). Noga 1 — NIEROZSTRZYGNIĘTA.
         $tozsamosc = SesjaKonta::odczytaj($request);
 
         if ($tozsamosc === null) {

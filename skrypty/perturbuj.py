@@ -291,8 +291,10 @@ def role_zamrozone() -> None:
     """
     podmien(
         ODSWIEZANIE,
-        "        if (! $this->wymagaOdswiezenia($konta)) {\n            return $konta;\n        }",
-        "        return $konta;",
+        "        if (! $this->wymagaOdswiezenia($tozsamosc)) {\n"
+        "            return $tozsamosc->dane;\n"
+        "        }",
+        "        return $tozsamosc->dane;",
     )
 
 
@@ -405,7 +407,7 @@ def uniewaznienie_po_sid() -> None:
     """
     podmien(
         ODSWIEZANIE,
-        "        if (RejestrSesji::uniewazniona(Typy::napis($konta['sid'] ?? null))) {",
+        "        if (RejestrSesji::uniewazniona($tozsamosc->sid())) {",
         "        if (false) {",
     )
 
