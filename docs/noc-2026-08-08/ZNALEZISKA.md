@@ -220,3 +220,104 @@ przeczytać wersję nieprawdziwą). Przy pozycji 3 (V-4, V-8, V-9, W-8) wpisałe
 wprost, że stanu **nie zmierzyłem** — „otwarte, bo nikt nie sprawdzał" to inny
 stan wiedzy niż „otwarte, bo sprawdzone i czerwone", a zlanie ich w jedno jest
 dokładnie tym, co wywróciło pozycję 1.
+
+---
+
+# RUNDA 6, część B — 17 znalezisk niezależnego weryfikatora
+
+Pełny raport: [`RUNDA-6-B-RAPORT.md`](RUNDA-6-B-RAPORT.md) (719 wierszy, z tabelami
+wszystkich dyskryminatorów i projektem odczytu rozstrzygającego).
+Przypięty do SHA `49131d8`. **Nie naprawiam ich tej nocy** — poza tymi, które
+sam zamknąłem wcześniej, zanim raport przyszedł (patrz zbieżność niżej).
+
+## Najcięższe — po ludzku
+
+**Runda NIE jest zerowa. F1 zostaje otwarte.** Weryfikator znalazł rzeczy,
+których nie znalazłem, w tym trzy, które podważają twierdzenia uznane u nas
+za zamknięte.
+
+1. **R6B-1 — wiemy WRESZCIE, dlaczego noga 1 jest czerwona, i to nie jest defekt
+   systemu.** Tożsamość niesie **middleware `StartSession`**, który sam jest
+   singletonem kontenera i trzyma referencję do menedżera sesji sprzed
+   `forgetInstance` — więc `forgetInstance('session')` nie ma jak go dosięgnąć.
+   Dowód z przypiętego frameworka (`laravel/framework v13.24.0`):
+   `SessionServiceProvider.php:22-26`, `StartSession.php:157-160`,
+   `Store.php:116`, `Container.php:1731-1734`. Do tego klient testowy **nie odsyła
+   ciasteczka sesji** (`MakesHttpRequests.php:730-737`), więc każde żądanie dostaje
+   nowy losowy identyfikator. **To jest wada PRZYRZĄDU, nie produktu** —
+   i weryfikator wskazał jednolinijkową, falsyfikowalną próbę naprawy
+   (dołożyć `forgetInstance(StartSession::class)`), której świadomie NIE wdrożył.
+
+2. **R6B-2 — test POZYTYWNY BLK-22 mierzy co innego, niż deklaruje.** Komentarz
+   mówi „odtwarzamy granicę procesu jawnie"; z R6B-1 wynika, że jej NIE odtwarza,
+   a 401 pochodzi ze znacznika unieważnienia w BAZIE. Czyli test dubluje
+   `znacznik unieważnienia PRZEŻYWA Cache::flush()` i **nie dowodzi BLK-22**.
+   To jest dokumentacja kłamiąca o kodzie w pliku, który uznawaliśmy za zielony.
+
+3. **R6B-13 — pięć perturbacji tożsamości NIE MOŻE dziś zaświecić „z badanego
+   powodu".** Wszystkie uruchamiają CAŁY `OdebranieRoliTest.php`, który jest
+   trwale czerwony przez nogę 1 — więc `oczekuj_czerwone` musi zwrócić ✓
+   niezależnie od mutacji. Symetrycznie: „kierunek odwrotny" w
+   `p_uniewaznienie_sid` nie może dziś przejść i będzie meldował wadę tam,
+   gdzie jej nie ma.
+
+4. **R6B-16 / G-1 — perturbacje montują `.env` DEWELOPERA (z prawdziwymi
+   sekretami).** V-2 zamknięto tylko po stronie bramki: `bramka.sh` buduje własny
+   plik środowiska i podaje `--env-file`, a `perturbacje.sh:124-126` nie robi ani
+   jednego, ani drugiego, więc `docker-compose.yml:73` montuje `./.env`.
+   Łamie to regułę „klon weryfikatora NIGDY nie trzyma prawdziwych sekretów"
+   i unieważnia porównywalność wyników między maszyną wykonawcy a czystym klonem.
+
+5. **E-3 — zdanie z D-2026-08-08-27 jest NIEPRAWDZIWE.** Przegląd sterowników
+   twierdzi: „testy badające magazyn sesji sięgają po sterownik produkcyjny
+   jawnie". Zmierzone: `config(['session.driver' => 'redis'])` występuje tylko
+   w 4 miejscach, a **cztery testy magazynu sesji biegną na `array`** — w tym
+   JEDYNY test adwersarialny (wymuszone wylogowanie).
+
+6. **R6B-9 — `RejestrSesji` łamie nasze własne cztery wymagania trwałości.**
+   Zastosowaliśmy je do znacznika unieważnienia (baza), a mapa `sid → sesje`,
+   bez której back-channel logout nie znajdzie ŻADNEJ sesji, została w cache'u
+   z TTL 86400 s — podatna na `cache:clear`, restart i eksmisję. Utrata rejestru
+   daje `skasowane_sesje = 0` **po cichu**. Fail-open.
+
+7. **R6B-15 — sześć z ośmiu allowlist `--przyczyna` nic nie zawęża**, bo to nazwy
+   testów, nazwy klas albo wartości `--filter`, które Pest wypisuje ZAWSZE.
+   Realnie zawężają tylko dwie (komunikaty asercji).
+
+Pozostałe: R6B-4 (`p_sesja_jawna` zalicza się z innej przyczyny — mutuje wartość
+DOMYŚLNĄ, gdy środowisko i tak ma `SESSION_ENCRYPT=true`), R6B-6 (test odmowy IdP
+bez odczytu bazowego), R6B-7 (`przygotuj_env()` — sześć `sed -i` bez odczytu
+zwrotnego; `sed` bez trafienia kończy się SUKCESEM), R6B-8
+(`skrypty-uruchamialne.sh` — „nieznana nazwa" przechodzi na cudzym kodzie wyjścia,
+dopasowanie podciągiem), R6B-10 (puls harmonogramu też mieszka w cache'u
+podlegającym eksmisji — D-28 tego nie zauważa), R6B-11 (aktywna kontrola portów
+pyta HTTP-em, więc nie wykryje wystawionego Postgresa ani Redisa; bywa milcząco
+pomijana i mimo to przechodzi), R6B-12, R6B-14 (bramka częstotliwości JWKS —
+atomowość `Cache::add` mierzona magazynem `array`, czyli w jednym procesie),
+R6B-17 (`p_statyka` — jedna z dwóch podmian jest cichym no-opem).
+
+## Zbieżność z moimi znaleziskami — dwa niezależne tory, ten sam wynik
+
+**R6B-3 to jest moje N-3.** Znaleźliśmy to niezależnie i innymi drogami: ja przez
+przegląd form dowodu mutacji, weryfikator przez czytanie wzorców `perturbuj.py`
+wobec kodu. Zbieżność dwóch niezależnych torów jest tu mocniejszym dowodem niż
+którykolwiek z nich osobno.
+
+Weryfikator dodał obserwację, której nie miałem: `p_uniewaznienie_sid` **ratował
+się przypadkiem** — jego dowód negował wzorzec, który akurat przetrwał zmianę
+nazw, więc poprawnie meldował „MUTACJA NIE WESZŁA". Czyli o wyniku decydował
+przypadek doboru nazw, nie konstrukcja dowodu. Dokładnie to zamyka
+`dowod_zniknieciem`.
+
+## Stan wobec moich napraw z tej nocy (uczciwe rozliczenie)
+
+| znalezisko B | stan po moich naprawach | uwaga |
+|---|---|---|
+| R6B-3 (martwe mutacje) | **ZAMKNIĘTE** przed przyjściem raportu | = N-3; wzorce uzgodnione, kod wyjścia sprawdzany, dowód z odczytem bazowym |
+| R6B-5 (dowód na symbolu, którego nie ma) | **ZAMKNIĘTE** | `sidNiezweryfikowany` → `} catch (Throwable $blad) {`, wzorzec zweryfikowany (`grep -cF` → 1) |
+| R6B-12 (perturbacje dowodzą 100/300, bramka egzekwuje 170/590) | **POGORSZONE MOJĄ RĘKĄ** | podniosłem podłogi do 180/635, więc rozjazd urósł. Naprawa N-2 była słuszna, ale **otworzyła** R6B-12 szerzej — zapisuję to przeciw sobie |
+| pozostałe 14 | **OTWARTE** | do rundy 7, nie tej nocy |
+
+Wpis o R6B-12 jest tu celowo, choć mnie obciąża: naprawa jednej kontroli
+powiększyła lukę w drugiej, a raport, który to przemilcza, jest raportem
+nieprawdziwym.
