@@ -561,6 +561,23 @@ if docker run --rm -v "$(cygpath -w "$KORZEN" 2>/dev/null || echo "$KORZEN"):/re
 	--no-banner --redact 2>&1 | tail -3; then
 	echo "    bez wycieków"
 else
+	# KOMUNIKAT MA UCZYĆ WŁAŚCIWEJ NAPRAWY (odpowiedź architekta na D-1, 09.08).
+	#
+	# Obie drogi do czerwieni w katalogu raportowym — zapomniany wyjątek i
+	# niezredagowany cytat — kończą się tak samo, więc kontrola jest fail-closed
+	# i to jest dobra wiadomość. Niebezpieczny jest ODRUCH: najtańszą reakcją na
+	# „leaks found" jest dopisanie wyjątku, a nie usunięcie przyczyny. Jedno
+	# zdanie tutaj zamienia domyślny odruch z rozluźniania kontroli na naprawę.
+	echo "    ────────────────────────────────────────────────────────────────"
+	echo "    Trafienie w katalogu raportowym (docs/…)? Zanim dopiszesz wyjątek:"
+	echo "    · jeśli to ZACYTOWANY IDENTYFIKATOR (sesja, skrót, klucz) — SKRÓĆ GO."
+	echo "      Wartość dowodowa raportu jest w RELACJI między odczytami, nie"
+	echo "      w pełnej wartości; pełny identyfikator w dokumencie to sam w sobie"
+	echo "      drobny wyciek. Skrócenie usuwa PRZYCZYNĘ."
+	echo "    · wyjątek w .gitleaks.toml dopisuj TYLKO dla historii, której nie da"
+	echo "      się już zmienić — wąsko (jedna reguła, jedna ścieżka) i z przynętą"
+	echo "      dowodzącą, że skaner dalej łapie prawdziwy sekret."
+	echo "    ────────────────────────────────────────────────────────────────"
 	zle
 fi
 

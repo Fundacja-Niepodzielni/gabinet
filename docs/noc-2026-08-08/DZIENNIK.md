@@ -381,3 +381,29 @@ zbieżność liczb jest tropem tylko przy liczbie RZADKIEJ (86400 to doba) · ko
 wyjścia potoku należy do ostatniego polecenia · naprawa jednej kontroli potrafi
 powiększyć lukę w drugiej · dokumentacja potrafi zapalić bramkę · podmiana
 „od kotwicy do kotwicy" ma zasięg większy, niż wygląda.
+
+## 01:25 — odpowiedź architekta na D-1 ZASTOSOWANA
+
+Architekt potwierdził mój wariant docelowy (3 z elementem 1) i odrzucił wariant 2
+(`docs/**`) — z mojego własnego argumentu. Ale **przesunął uzasadnienie**, i to
+jest cenniejsze niż sama decyzja: nie chodzi o to, żeby skaner był ostry, tylko
+o to, że **raporty nie potrzebują pełnych identyfikatorów**. Wartość dowodowa
+jest w RELACJI między odczytami, nie w konkretnej wartości; pełny identyfikator
+sesji w dokumencie to sam w sobie drobny wyciek. Skracanie usuwa PRZYCZYNĘ
+i obowiązywałoby, **gdyby żaden skaner nie istniał**.
+
+Historii `83775f4` nie przepisuję — nie przepisujemy wypchniętej historii dla
+samej czystości. Wyjątek per katalog zostaje jako zawór na historię, której nie
+da się już zmienić; dyscyplina skracania obowiązuje NAPRZÓD.
+
+**Wdrożone (naprawa przyrządu, 5):** komunikat kroku `[21] sekrety` w
+`skrypty/bramka.sh` **uczy teraz właściwej naprawy**. Rozumowanie architekta,
+które warto zapamiętać: obie drogi do czerwieni w katalogu raportowym —
+zapomniany wyjątek i niezredagowany cytat — kończą się tak samo, więc kontrola
+jest **fail-closed** i to jest dobra wiadomość. Niebezpieczna nie jest czerwień,
+tylko **ODRUCH, jaki wywoła**: najtańszą reakcją na „leaks found" jest dopisanie
+wyjątku, a nie skrócenie cytatu. Jedno zdanie w komunikacie zamienia domyślny
+odruch z rozluźniania kontroli na usuwanie przyczyny.
+
+`bash -n skrypty/bramka.sh` → OK. Komunikat jest w gałęzi `else`, czyli
+wykonuje się wyłącznie przy trafieniu — przebieg zielony wygląda jak dotąd.

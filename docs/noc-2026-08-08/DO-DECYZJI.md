@@ -16,6 +16,30 @@ niezależnie od niej.
 
 ## D-1 — czy wyjątek w skanerze sekretów ma obejmować WSZYSTKIE katalogi raportowe
 
+> **ROZSTRZYGNIĘTE tej samej nocy — odpowiedź architekta w `OD-ARCHITEKTA.md`.**
+> Wybrany wariant **3 z elementem 1**, czyli mój wybór docelowy. Wariant 2
+> (`docs/**`) odrzucony stanowczo — z mojego własnego argumentu: raporty
+> z natury cytują konfiguracje, katalog rośnie, nikt nie przewiduje zawartości.
+>
+> **Uzasadnienie przesunięte, i to jest istotne:** nie „żeby skaner był ostry",
+> tylko dlatego, że raporty **nie potrzebują pełnych identyfikatorów** —
+> wartość dowodowa jest w RELACJI między odczytami. Pełny identyfikator sesji
+> w dokumencie to sam w sobie drobny wyciek. Skracanie usuwa PRZYCZYNĘ,
+> a nie objaw, i obowiązywałoby nawet gdyby żaden skaner nie istniał.
+>
+> **Historii `83775f4` NIE przepisujemy** — nie przepisujemy wypchniętej
+> historii dla samej czystości; wyjątek per katalog zostaje jako zawór na
+> historię, której nie da się już zmienić. Dyscyplina skracania obowiązuje
+> NAPRZÓD, od następnego raportu. Ta sama figura co przy dyscyplinie gałęzi:
+> reguła wchodzi od teraz, a bieżący stan legitymizuje runda, nie przepisanie
+> przeszłości.
+>
+> **Wdrożone tej nocy:** komunikat kroku „sekrety" w `skrypty/bramka.sh` UCZY
+> teraz właściwej naprawy. Powód: obie drogi do czerwieni (zapomniany wyjątek,
+> niezredagowany cytat) kończą się tak samo, więc kontrola jest fail-closed —
+> niebezpieczny jest ODRUCH, bo najtańszą reakcją na „leaks found" jest
+> dopisanie wyjątku zamiast usunięcia przyczyny.
+
 **Co blokuje.** Nic nie blokuje pracy — pozycja jest zamknięta wariantem
 odwracalnym. Rozstrzygnięcia wymaga **zasada na przyszłość**, bo dotyczy
 kontroli bezpieczeństwa, a takich nie rozluźnia się po cichu ani zwyczajowo.
