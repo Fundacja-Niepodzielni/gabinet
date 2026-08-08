@@ -27,9 +27,21 @@
 #
 # BEZPIECZEŃSTWO: przebieg dostaje WŁASNY projekt compose (domyślnie
 # `gabinet-bramka`), własny PREFIKS nazw (kontenery, sieć, wolumeny) i własne
-# porty. Sprzątanie to wyłącznie `docker compose -p <ten projekt> down -v`.
-# Skrypt ODMAWIA startu, gdyby ktoś wskazał projekt `gabinet` — to stos
+# porty. Skrypt ODMAWIA startu, gdyby ktoś wskazał projekt `gabinet` — to stos
 # dewelopera i jego danych nie kasujemy.
+#
+# SPRZĄTANIE — V-6 z rundy 5, poprawka instrukcji dla człowieka.
+# Poprzedni nagłówek mówił: „sprzątanie to wyłącznie
+# `docker compose -p <ten projekt> down -v`". To było NIEBEZPIECZNE: nazwy
+# wolumenów i sieci biorą się z `GABINET_PREFIX`, a NIE z `-p`. Weryfikator
+# wykonał tę instrukcję literalnie dla własnego projektu i zaczął kasować
+# `gabinet-pg-data` — bazę dewelopera. Uratowało go tylko to, że stos akurat
+# chodził („Resource is still in use").
+#
+# Poprawnie sprząta się ZAWSZE z prefiksem:
+#   GABINET_PREFIX=<projekt> docker compose -p <projekt> down -v
+# Od tej rundy `docker-compose.yml` WYMAGA `GABINET_PREFIX` (bez wartości
+# domyślnej), więc pominięcie go kończy się odmową compose, nie kasowaniem.
 # NIGDY nie wołamy globalnych `docker system/volume prune`.
 # ===========================================================================
 set -uo pipefail
@@ -56,10 +68,17 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # `GABINET_MINIMUM_TESTOW=0`, kontrolę wyłączało się bez śladu w repozytorium —
 # a kontrola, którą można wyłączyć niewidocznie, nie jest kontrolą. Obniżenie
 # podłogi ma być widoczne w `git diff` i przejść przez przegląd.
-MINIMUM_TESTOW=100
+#
+# V-10 z rundy 5: komentarz twierdził „rośnie razem z suitą", a nie rósł —
+# 100 przy 174 testach. Weryfikator zmierzył, że w tym zapasie mieści się
+# SKASOWANIE CAŁEGO pliku kontroli CLAUDE.md §2 (7 testów, 21 asercji) przy
+# w pełni zielonej bramce. Podłoga ma siedzieć TUŻ POD stanem bieżącym, żeby
+# każde zniknięcie kontroli było widoczne — a jej podniesienie to jedna linia
+# w tym pliku, świadoma i w `git diff`.
+MINIMUM_TESTOW=170
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze.
-MINIMUM_ASERCJI=300
+MINIMUM_ASERCJI=590
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0
@@ -255,7 +274,15 @@ if [ "$TYLKO_KOD" -eq 0 ]; then
 		zle
 	fi
 
-	krok 'zależności zgodne z composer.lock (rozjazd wolumenu vendor)'
+	krok "skrypty bramki DAJĄ SIĘ URUCHOMIĆ (nie tylko sparsować)"
+# V-5 z rundy 5: `skrypty-uruchamialne.sh` powstał dokładnie po to, żeby łapać
+# literówki w nazwach scenariuszy i podkomend — i NIE BYŁ WOŁANY PRZEZ NIC.
+# Ani przez bramkę, ani przez CI, ani przez dokumentację. Kontrola, której
+# nikt nie uruchamia, jest wg reguły tego projektu nieistniejąca — a ta od
+# dawna wiedziała o realnej wadzie i nikt tego nie widział.
+bash "$KORZEN/skrypty/skrypty-uruchamialne.sh" || zle
+
+krok 'zależności zgodne z composer.lock (rozjazd wolumenu vendor)'
 	# O-4: wolumen `vendor` NIE odświeża się z przebudowanego obrazu. Podbicie
 	# lockfile'a (np. łatka bezpieczeństwa) bez `down -v` było dotąd ignorowane
 	# BEZ ŻADNEGO SYGNAŁU — README ostrzegał prozą, nic tego nie egzekwowało.

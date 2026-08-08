@@ -120,14 +120,30 @@ it('mierzy realny magazyn — ten sam ciąg BEZ szyfrowania jest znajdowany', fu
     $polaczenie->del('gabinet:test-jawnosci');
 });
 
-it('ma szyfrowanie sesji włączone DOMYŚLNIE, nie tylko w .env', function (): void {
-    // Wartość domyślna jest tym, co działa na środowisku, którego nikt nie
-    // skonfigurował. Ustawienie „bezpieczne, o ile ktoś pamiętał" nie jest
-    // ustawieniem bezpiecznym.
-    $domyslna = Typy::mapa(require base_path('config/session.php'));
+it('ma szyfrowanie sesji włączone DOMYŚLNIE — czytane z TREŚCI pliku, nie przez env()', function (): void {
+    // V-3 z rundy 5, reguła C1. Poprzednia wersja robiła
+    // `require config/session.php` i porównywała z `config('session.encrypt')`.
+    // To NIE są dwa sygnały — `require` ponownie wykonuje `env('SESSION_ENCRYPT')`,
+    // więc obie strony jadą JEDNYM mechanizmem. Weryfikator zmierzył: przy
+    // domyślnej ustawionej na `false` i `SESSION_ENCRYPT=true` w `.env` test
+    // przechodził, a na każdym środowisku bez tej zmiennej — w tym na `.env`
+    // dewelopera — e-mail pacjenta lądował w Redisie jawnie (RODO art. 9).
+    //
+    // Teraz czytamy TREŚĆ PLIKU. To ścieżka niezależna od środowiska: żadna
+    // wartość w `.env` nie zmieni tego, co jest zapisane w kodzie.
+    $tresc = (string) file_get_contents(base_path('config/session.php'));
 
-    expect(config('session.encrypt'))->toBeTrue()
-        ->and($domyslna['encrypt'])->toBeTrue();
+    // `toContain()` w Pest traktuje kolejne argumenty jako KOLEJNE IGŁY,
+    // nie jako komunikat — dlatego jawne `str_contains` z opisem błędu.
+    expect(str_contains($tresc, "'encrypt' => env('SESSION_ENCRYPT', true)"))->toBeTrue(
+        'Wartość DOMYŚLNA szyfrowania sesji nie jest `true` w kodzie — środowisko bez tej zmiennej zapisuje sesję jawnie.'
+    );
+
+    // Drugi, osobny sygnał: bieżąca konfiguracja też ma być włączona. Tu
+    // ŚWIADOMIE dopuszczamy zależność od `.env` — to jest inne pytanie
+    // („czy TU jest bezpiecznie") niż poprzednie („czy jest bezpiecznie
+    // DOMYŚLNIE"). Rozdzielenie tych dwóch pytań jest całym sensem naprawy.
+    expect(config('session.encrypt'))->toBeTrue();
 });
 
 it('SKANER DEKODUJE base64url — inaczej mierzy węższą klasę, niż deklaruje', function (): void {

@@ -35,7 +35,10 @@ sciezka_hosta() {
 # --- 1. perturbuj.py realnie startuje i wypisuje swoje polecenia -----------
 UZYCIE="$(python3 "$(sciezka_hosta skrypty/perturbuj.py)" 2>&1)"
 
-if printf '%s' "$UZYCIE" | grep -q 'użycie: perturbuj.py'; then
+# ŚWIADOMIE wzorzec bez polskich znaków: `użycie:` przychodzi z windowsowego
+# Pythona w innej stronie kodowej i grep go nie trafia. Przyrząd, nie system —
+# ale przyrząd, który meldował awarię sprawnego programu.
+if printf '%s' "$UZYCIE" | grep -q 'perturbuj.py \['; then
 	ok_ "perturbuj.py startuje i wypisuje listę poleceń"
 else
 	zle_ "perturbuj.py nie wystartował albo nie wypisał listy poleceń: ${UZYCIE:0:200}"
@@ -68,7 +71,7 @@ NAZWY="$(printf '%s' "$LISTA" | sed 's/^Perturbacje: //')"
 for NAZWA in $NAZWY; do
 	# Nazwa scenariusza nie musi równać się nazwie procedury (jest tabela
 	# rozdzielająca), więc pytamy o WPIS W ROZDZIELACZU i o samą procedurę.
-	PROCEDURA="$(grep -oE "^\s*${NAZWA}\) p_[a-z_]+" skrypty/perturbacje.sh | grep -oE 'p_[a-z_]+' | head -1)"
+	PROCEDURA="$(grep -oE "^\s*${NAZWA}\) p_[a-z0-9_]+" skrypty/perturbacje.sh | grep -oE 'p_[a-z0-9_]+' | head -1)"
 
 	if [ -z "$PROCEDURA" ]; then
 		zle_ "scenariusz '$NAZWA' jest na liście, ale nie ma wpisu w rozdzielaczu — nigdy się nie uruchomi"

@@ -114,7 +114,10 @@ sciezka_hosta() {
 # z zasobami dewelopera PO NAZWIE mimo innego projektu, a alias `postgres`
 # rozwiązuje się losowo na jeden z dwóch serwerów (ta sama pułapka, którą
 # bramka zamknęła prefiksem `GABINET_PREFIX`).
-PORT_HTTP="${GABINET_PERTURBACJE_PORT_HTTP:-8098}"
+# V-12 z rundy 5: domyślny port HTTP perturbacji był IDENTYCZNY z portem
+# dewelopera (`.env.example: GABINET_PORT_HTTP=8098`), mimo że nagłówek
+# deklarował „własne porty". PG i Redis były własne, HTTP nie.
+PORT_HTTP="${GABINET_PERTURBACJE_PORT_HTTP:-8097}"
 PORT_PG="${GABINET_PERTURBACJE_PORT_POSTGRES:-55444}"
 PORT_REDIS="${GABINET_PERTURBACJE_PORT_REDIS:-56391}"
 
@@ -1183,11 +1186,29 @@ for NAZWA in $WYBRANE; do
 		puls) p_puls ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
-		*) pominieta "$NAZWA" "nieznana perturbacja" ;;
+		*)
+			# V-5 z rundy 5: literówka w nazwie dawała „PERTURBACJE OK — 0 kontroli"
+			# i kod wyjścia 0. To jest awaria D-0013 („pusta suita = zielone CI")
+			# odtworzona w runnerze, który D-0013 egzekwuje. Nieznana nazwa to
+			# BŁĄD WYWOŁANIA, nie scenariusz do pominięcia.
+			printf '    ✗ NIEZNANA PERTURBACJA: %s — literówka albo usunięty scenariusz
+' "$NAZWA"
+			NIEUDANE=$((NIEUDANE + 1))
+			;;
 	esac
 done
 
 printf '\n'
+# V-5: zestaw, który nie wykonał ANI JEDNEJ kontroli, nie jest „OK" — to ta
+# sama awaria co pusta suita testów. Podłoga jest tu jedynką, bo zestaw bywa
+# świadomie wołany z jedną nazwą.
+if [ "$UDANE" -eq 0 ]; then
+	printf '
+PERTURBACJE NIEROZSTRZYGNIĘTE — wykonano ZERO kontroli (pominięte: %s)
+' "$POMINIETE"
+	exit 1
+fi
+
 if [ "$NIEUDANE" -eq 0 ]; then
 	echo "PERTURBACJE OK — $UDANE kontroli udowodniło, że umie zaświecić czerwono (pominięte: $POMINIETE)"
 	exit 0

@@ -66,15 +66,33 @@ for i in $(seq 1 "$PRZEBIEGI"); do
 		printf '    · kod wyjścia zestawu: %s\n' "$KOD_PRZEBIEGU"
 	fi
 
+	# V-7 z rundy 5: kod wyjścia zestawu był WYPISYWANY, ale nie wchodził do
+	# werdyktu — trzy padnięcia pod rząd dawały „POWTARZALNE" i kod 0.
+	# Naprawa z D-2026-08-07-22 zamknęła jeden wariant fałszywego zielonego
+	# (zgubione podsumowanie) i zostawiła drugi. Powtarzalność CZERWONEGO
+	# to nie jest sukces.
+	if [ "$KOD_PRZEBIEGU" -ne 0 ]; then
+		POPSUTE=$((POPSUTE + 1))
+	fi
+
 	WYNIKI+=("$PODSUMOWANIE")
 
+	# V-11 z rundy 5: `STAN_WYJSCIOWY` była USTAWIONA I NIGDY NIEUŻYTA, a kod
+	# w pętli robił dokładnie to, co komentarz przy niej nazywał „pierwszą
+	# wersją" — porównywał z CZYSTYM repozytorium. Komentarz opisywał naprawę,
+	# której nikt nie napisał. Trzecia instancja tej klasy w projekcie, tym
+	# razem w pliku będącym PRZYRZĄDEM ODTWARZALNOŚCI.
+	#
+	# Skutek praktyczny był konkretny: każda praca w toku w drzewie roboczym
+	# dawała „NIEPOWTARZALNE", oskarżając perturbacje o cudze zmiany.
 	STAN="$(git status --porcelain)"
-	if [ -n "$STAN" ]; then
-		printf '    ✗ przebieg %s zostawił zmiany w drzewie roboczym:\n' "$i"
-		printf '%s\n' "$STAN" | sed 's/^/      /'
+
+	if [ "$STAN" != "$STAN_WYJSCIOWY" ]; then
+		printf '    ✗ przebieg %s ZMIENIŁ drzewo robocze — różnica wobec stanu wyjściowego:\n' "$i"
+		diff <(printf '%s\n' "$STAN_WYJSCIOWY") <(printf '%s\n' "$STAN") | sed 's/^/      /'
 		BRUDNE=$((BRUDNE + 1))
 	else
-		printf '    ✓ drzewo robocze czyste po przebiegu %s\n' "$i"
+		printf '    ✓ drzewo robocze bez zmian wobec stanu sprzed przebiegu %s\n' "$i"
 	fi
 done
 

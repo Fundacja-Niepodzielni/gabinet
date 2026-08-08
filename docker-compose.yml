@@ -71,7 +71,7 @@ services:
   # -------------------------------------------------------------------------
   postgres:
     image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
-    container_name: ${GABINET_PREFIX:-gabinet}-postgres
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:?brak DB_DATABASE — skopiuj .env.example do .env}
@@ -105,7 +105,7 @@ services:
   # -------------------------------------------------------------------------
   redis:
     image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
-    container_name: ${GABINET_PREFIX:-gabinet}-redis
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -126,7 +126,7 @@ services:
   # -------------------------------------------------------------------------
   app:
     <<: *aplikacja
-    container_name: ${GABINET_PREFIX:-gabinet}-app
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-app
     command: ["php-fpm"]
     healthcheck:
       # Pyta o STAN, nie o deklarację: framework musi się wystartować, baza
@@ -146,7 +146,7 @@ services:
   # -------------------------------------------------------------------------
   web:
     image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
-    container_name: ${GABINET_PREFIX:-gabinet}-web
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-web
     restart: unless-stopped
     depends_on:
       app:
@@ -172,7 +172,7 @@ services:
   # -------------------------------------------------------------------------
   horizon:
     <<: *aplikacja
-    container_name: ${GABINET_PREFIX:-gabinet}-horizon
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-horizon
     command: ["php", "artisan", "horizon"]
     stop_signal: SIGTERM
     stop_grace_period: 30s
@@ -202,7 +202,7 @@ services:
   # -------------------------------------------------------------------------
   scheduler:
     <<: *aplikacja
-    container_name: ${GABINET_PREFIX:-gabinet}-scheduler
+    container_name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-scheduler
     command: ["php", "artisan", "schedule:work"]
     stop_signal: SIGTERM
     stop_grace_period: 30s
@@ -237,13 +237,13 @@ networks:
     # serwerów. Zmierzone przez niezależnego weryfikatora: 6 trafień w bazę
     # dewelopera na 10 prób. Bramka kasowałaby wtedy `gabinet_test`
     # dewelopera mniej więcej co drugi przebieg.
-    name: ${GABINET_PREFIX:-gabinet}
+    name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}
     driver: bridge
 
 volumes:
   pg-data:
-    name: ${GABINET_PREFIX:-gabinet}-pg-data
+    name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-pg-data
   redis-data:
-    name: ${GABINET_PREFIX:-gabinet}-redis-data
+    name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-redis-data
   vendor:
-    name: ${GABINET_PREFIX:-gabinet}-vendor
+    name: ${GABINET_PREFIX:?brak GABINET_PREFIX — patrz .env.example; bez niego down -v skasowalby wolumeny dewelopera}-vendor
