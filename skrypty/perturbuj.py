@@ -30,6 +30,7 @@ PEST = KORZEN / "backend/tests/Pest.php"
 OCENA = KORZEN / "backend/app/Reguly/OcenaAnulacji.php"
 SESJA = KORZEN / "backend/config/session.php"
 ODSWIEZANIE = KORZEN / "backend/app/Tozsamosc/OdswiezanieSesji.php"
+REJESTR = KORZEN / "backend/app/Tozsamosc/RejestrSesji.php"
 WYLOGOWANIE = KORZEN / "backend/app/Http/Controllers/BackchannelLogoutController.php"
 KONTROLER = KORZEN / "backend/app/Http/Controllers/LogowanieController.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
@@ -394,6 +395,21 @@ def retencja_bez_kasowania() -> None:
     )
 
 
+def uniewaznienie_po_sid() -> None:
+    """Usuwa sprawdzanie uniewaznienia po `sid` — odtwarza BLK-22.
+
+    Zapamietany identyfikator sesji ROTUJE (zmierzone: Set-Cookie z dwoch
+    kolejnych odpowiedzi daje rozne wartosci przy zachowanej tozsamosci),
+    wiec wylogowanie kasuje wpis, ktorego nikt juz nie uzywa. Bez tego
+    sprawdzenia konsument serwuje dalej po zamknieciu sesji w IdP.
+    """
+    podmien(
+        ODSWIEZANIE,
+        "        if (RejestrSesji::uniewazniona(Typy::napis($konta['sid'] ?? null))) {",
+        "        if (false) {",
+    )
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -408,6 +424,7 @@ POLECENIA = {
     "retencja-bez-kasowania": retencja_bez_kasowania,
     "id-token-zakodowany": id_token_zakodowany,
     "role-zamrozone": role_zamrozone,
+    "uniewaznienie-po-sid": uniewaznienie_po_sid,
     "logout-bez-failsafe": logout_bez_failsafe,
     "role-ze-zlego-zrodla": role_ze_zlego_zrodla,
     "logout-niezweryfikowany-sid": logout_na_niezweryfikowanym_sid,

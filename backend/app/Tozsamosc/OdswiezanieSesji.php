@@ -57,6 +57,21 @@ final class OdswiezanieSesji
             return null;
         }
 
+        // BLK-22: sesja SSO mogła zostać unieważniona back-channel logoutem
+        // PO tym, jak identyfikator sesji frameworka zrotował. Pytamy więc
+        // o `sid` — tożsamość, którą zna IdP i która NIE rotuje — a nie
+        // o identyfikator sesji, którego trwałości nic nie gwarantuje.
+        //
+        // Zmierzone przed tą zmianą: `Set-Cookie` z dwóch kolejnych
+        // odpowiedzi dawał RÓŻNE identyfikatory przy zachowanej tożsamości,
+        // więc wylogowanie kasowało wpis, którego nikt już nie używał,
+        // a żądanie po wylogowaniu dostawało 200.
+        if (RejestrSesji::uniewazniona(Typy::napis($konta['sid'] ?? null))) {
+            $this->zakoncz($request);
+
+            return null;
+        }
+
         if (! $this->wymagaOdswiezenia($konta)) {
             return $konta;
         }
@@ -151,6 +166,9 @@ final class OdswiezanieSesji
 
     private function zakoncz(Request $request): void
     {
+        // `flush()` usuwa CAŁĄ tożsamość, w tym refresh token — a to jest
+        // wymóg, nie skutek uboczny: refresh token pozostawiony po
+        // wylogowaniu jest paliwem do wskrzeszenia sesji (standard B8).
         $request->session()->flush();
         $request->session()->regenerate();
     }

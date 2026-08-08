@@ -943,6 +943,44 @@ p_retencja_wykonanie() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_uniewaznienie_sid() {
+	naglowek "BLK-22 — unieważnienie sesji po sid, odporne na rotację identyfikatora"
+	# Defekt WZORCA, potwierdzony w ekosystemie: back-channel logout zamyka
+	# sesję po stronie IdP, a KONSUMENT DALEJ SERWUJE.
+	#
+	# Zmierzone u nas: `RejestrSesji` zapamiętuje POPRAWNIE identyfikator sesji
+	# z chwili logowania, ale ten identyfikator ROTUJE przy kolejnych żądaniach
+	# (`Set-Cookie` z dwóch kolejnych odpowiedzi: A ≠ B przy zachowanej
+	# tożsamości). Wylogowanie kasowało więc wpis, którego nikt już nie używa.
+	#
+	# Mutacja zdejmuje sprawdzanie unieważnienia po `sid` — czyli jedyny
+	# mechanizm odporny na tę rotację.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj uniewaznienie-po-sid
+
+	dowod_mutacji "sprawdzanie unieważnienia po sid zniknęło z kodu" \
+		bash -c "! grep -q 'RejestrSesji::uniewazniona' '$plik'"
+
+	# ALLOWLISTA przyczyny, nie podłoga: to tożsamość, więc fałszywe zielone
+	# kosztuje tu najwięcej. Fragment skopiowany DOSŁOWNIE z komunikatu Pesta.
+	oczekuj_czerwone "test pozytywny wykrywa konsumenta serwującego po wylogowaniu" \
+		--przyczyna "POZYTYWNY" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+
+	# Kierunek odwrotny: po przywróceniu kontrola wraca na zielone.
+	if dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php >/dev/null 2>&1; then
+		printf '    ✓ po przywróceniu unieważnienia po sid kontrola wraca na zielone\n'
+		UDANE=$((UDANE + 1))
+	else
+		printf '    ✗ kontrola pozostaje czerwona mimo przywróconego mechanizmu\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+}
+
 p_zamek() {
 	naglowek "zamek bramki — drugi równoległy przebieg"
 	# O-5: dwa przebiegi mielą jedną bazę `gabinet_test`. Sprawdzamy, że drugi
@@ -1156,7 +1194,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
@@ -1223,6 +1261,7 @@ for NAZWA in $WYBRANE; do
 		logout_failsafe) p_logout_failsafe ;;
 		zrodlo_rol) p_zrodlo_rol ;;
 		wymuszone_wylogowanie) p_wymuszone_wylogowanie ;;
+		uniewaznienie_sid) p_uniewaznienie_sid ;;
 		id_token_sesja) p_id_token_w_sesji ;;
 		zamek) p_zamek ;;
 		sonda_bazy) p_sonda_bazy ;;

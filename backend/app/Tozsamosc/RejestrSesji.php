@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tozsamosc;
 
 use App\Wsparcie\Typy;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 
@@ -48,6 +49,24 @@ final class RejestrSesji
             }
         }
 
+        // UNIEWAŻNIENIE PO `sid`, NIEZALEŻNE OD IDENTYFIKATORA SESJI.
+        //
+        // BLK-22, zmierzone: `RejestrSesji` zapamiętuje POPRAWNIE ten
+        // identyfikator sesji, który klient dostał przy logowaniu — ale
+        // identyfikator ROTUJE przy kolejnych żądaniach (zmierzone przez
+        // `Set-Cookie` z dwóch kolejnych odpowiedzi: A ≠ B przy zachowanej
+        // tożsamości). Zapamiętany identyfikator starzeje się więc przy
+        // pierwszym ruchu użytkownika, a wylogowanie kasuje wpis, którego
+        // nikt już nie używa. Żywa sesja zostaje nietknięta i konsument
+        // serwuje dalej — dokładnie defekt wzorca BLK-22.
+        //
+        // Kasowanie po identyfikatorach ZOSTAJE (jest tanie i działa, dopóki
+        // identyfikator nie zrotował), ale przestaje być jedynym mechanizmem.
+        // Znacznik unieważnienia wiąże się z `sid` — tożsamością, którą IdP
+        // faktycznie zna i która NIE rotuje. Sprawdza go `OdswiezanieSesji`
+        // przy każdym żądaniu.
+        Cache::put(self::kluczUniewaznienia($sid), CarbonImmutable::now()->getTimestamp(), self::CZAS_ZYCIA_SEKUND);
+
         Cache::forget(self::klucz($sid));
 
         return $skasowane;
@@ -61,8 +80,24 @@ final class RejestrSesji
         return Typy::listaNapisow(Cache::get(self::klucz($sid), []));
     }
 
+    /**
+     * Czy sesja SSO o tym `sid` została unieważniona.
+     *
+     * Pytanie zadawane przy KAŻDYM żądaniu, bo tylko ono jest odporne na
+     * rotację identyfikatora sesji frameworka.
+     */
+    public static function uniewazniona(string $sid): bool
+    {
+        return $sid !== '' && Cache::has(self::kluczUniewaznienia($sid));
+    }
+
     private static function klucz(string $sid): string
     {
         return 'konta:sid:'.hash('sha256', $sid);
+    }
+
+    private static function kluczUniewaznienia(string $sid): string
+    {
+        return 'konta:uniewazniony:'.hash('sha256', $sid);
     }
 }
