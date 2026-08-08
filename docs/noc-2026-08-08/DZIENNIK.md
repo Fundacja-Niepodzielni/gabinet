@@ -254,3 +254,63 @@ odczyt mówi, że nie. Nie znam mechanizmu, nie zgaduję go o tej porze — idzi
 To druga tej nocy sytuacja, w której mój własny wniosek nie przeżył kolejnego
 pomiaru. Zapisuję ją tak samo jak pierwszą: wniosek postawiony za wcześnie kosztuje
 tyle, ile go się zostawi w dokumencie.
+
+## 00:30 — RUNDA 6 część A ODEBRANA (12 znalezisk) + odpowiedź architekta
+
+**Sprzątanie A sprawdzone przeze mnie, nie przyjęte na słowo:** kontenery `r6a` —
+BRAK, wolumeny `r6a` — BRAK, klon — BRAK, obraz `gabinet-r6a-app:local` ZOSTAJE
+(zamierzone), 42 cudze kontenery nadal działają.
+
+**Wynik główny: przyczyna nogi 1 USTALONA — to wada PRZYRZĄDU, nie systemu.**
+Trzy niezależne tory dały ten sam mechanizm (singleton `StartSession`).
+Szczegóły i surowe wydruki: `ZNALEZISKA.md`, sekcja rundy 6 A.
+**Testu NIE naprawiam** — zlecenie mówi „noga 1 ma zostać czerwona", a naprawa
+kontroli bezpieczeństwa przez autora, w nocy, bez rundy, zamieniłaby jedyny
+uczciwy czerwony na zielony bez pokrycia.
+
+**Architekt odpowiedział na O-N1** i miał rację w sposób, który warto zapisać:
+zbieżność TTL 86400 s z `RejestrSesji::CZAS_ZYCIA_SEKUND` uznałem za trop, a
+**86400 to po prostu doba** — najczęstsza wartość TTL w oprogramowaniu w ogóle.
+Błąd częstości bazowej. Rozstrzyga NAZWA klucza, nie TTL.
+Zmierzyłem sam (nie przyjąłem pomiaru architekta na słowo): db0 zawiera
+**wyłącznie 5 kluczy `gabinet_horizon:*`**, zero kluczy rejestru sesji.
+**O-N1 zamknięte.** Przy okazji obniżyłem wagę własnego N-7 — mój „test
+rozstrzygający" przez restart Horizona był zgodny z dwoma światami, więc
+zmierzyłem zgodność z hipotezą, nie jej wyłączność. Trzeci raz tej nocy
+ta sama wada u mnie.
+
+## 00:45 — NAPRAWY PRZYRZĄDU (3) i (4) ze znalezisk rundy 6
+
+**(3) R6A-10 — `bramka.sh` ignorował `--projekt` przy nazwie pliku środowiska.**
+`PLIK_ENV` liczone w linii 73, `--projekt` parsowane w 98. Skutek gorszy niż
+mylna nazwa: dwa przebiegi o RÓŻNYCH projektach dzieliły JEDEN plik
+z wygenerowanym `APP_KEY` i `DB_PASSWORD`, a zamek (per projekt) ich nie
+rozdzielał. Definicja przeniesiona pod pętlę parsującą (teraz linia 141 vs 126).
+Zmierzone po naprawie: odtworzenie samej logiki z `--projekt gabinet-r6x` daje
+`PLIK_ENV=/tmp/.env.bramka.gabinet-r6x`; `bash -n` czysty.
+
+**(4) R6A-9 — `PLAN-FAZ.md` miał DWIE sekcje `CURRENT WORK`.** Druga niosła
+„`BRAMKA OK — 21 kroków, 0 nieudanych`", „151 testów", „20 scenariuszy" i była
+sprzeczna z pierwszą. Przemianowana na „F1 — rozpiska zadań fazy (to NIE jest
+sekcja stanu)", nieaktualne liczby usunięte ze SPROSTOWANIEM. Zmierzone:
+`grep -c "^## CURRENT WORK"` → **1**.
+
+**Pomyłka przy tej naprawie — zapisuję, bo dotyczy przyrządu, którym jestem ja.**
+Podmieniając sekcję „Do rozstrzygnięcia" wskazałem zakres od jej nagłówka do
+`## F0 — Fundament` i skasowałem przy okazji **rozpiskę zadań F0, blokery
+i rozpiskę F1** — 10 831 znaków. Zauważyłem to natychmiast, bo skrypt wypisał
+liczbę usuniętych znaków, i **dlatego** zapisywałem usuwaną treść do pliku,
+zanim ją nadpisałem. Przywrócone (6 719 znaków), sprawdzone: jedna sekcja
+`CURRENT WORK`, zero duplikatów tabel, `F1.7` na miejscu.
+Lekcja: podmiana „od kotwicy do kotwicy" w dokumencie o wielu sekcjach to
+operacja o zasięgu większym, niż wygląda. Zapis usuwanego fragmentu kosztował
+jedną linijkę i uratował trzy tabele.
+
+## 00:50 — CURRENT WORK zaktualizowane Z ODCZYTU
+
+Nie z pamięci i nie z poprzedniego zapisu: liczby pochodzą z dwóch niezależnych
+pomiarów (mój stos i czysty klon weryfikatora — identyczne 180/1/640).
+Dopisane wprost ostrzeżenie, którego wcześniej nie było: **„nie cytuj »30
+scenariuszy« jako miary pokrycia"**, bo pięć z nich nie może dziś zaświecić.
+Sekcja „PIERWSZE ZADANIA NASTĘPNEJ SESJI" ułożona wg jednej zasady: najpierw
+przywróć zdolność przyrządu do świecenia czerwono, potem mierz nim cokolwiek.

@@ -9,91 +9,99 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Faza: F1 w toku.** F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
 - **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
-- **Bramka: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: noga 1 pary
-  negatywnej BLK-22, **NIEROZSTRZYGNIĘTA**. Uwaga: wcześniejsza wersja tej linii mówiła
-  „POTWIERDZONY defekt: wskrzeszenie z refresh tokenu" — **ten wniosek został wieczorem
-  OBALONY moim własnym pomiarem kontrolnym**. Nie ścigaj go. Szczegóły w komentarzu testu
-  `NOGA 1` w `backend/tests/Feature/OdebranieRoliTest.php`.
-- **Testy: 180 zielonych, 1 czerwony, 640 asercji** — stan na 08.08, liczby ROSNĄ;
-  sprawdź `pest` zamiast ufać tej linii.
-- **Perturbacje: 30 scenariuszy** (stan na 08.08, rośnie) — ze strażnikiem przyczyny
-  czerwieni: denylista awarii pobocznych jako podłoga, allowlista `--przyczyna` w 7 miejscach
-  o najwyższym koszcie fałszywego zielonego.
+- **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
+  na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
+- **Testy: 180 zielonych, 1 czerwony, 0 pominiętych, 640 asercji** (zmierzone 09.08
+  dwukrotnie: mój stos i czysty klon weryfikatora — identycznie). Liczby ROSNĄ;
+  sprawdzaj `pest`, nie tę linię.
+- **NOGA 1 — PRZYCZYNA USTALONA 09.08 W NOCY: to wada PRZYRZĄDU, nie systemu.**
+  Zmierzone niezależnie przez DWÓCH weryfikatorów, trzema metodami. Tożsamość niesie
+  middleware `StartSession`, który sam jest singletonem kontenera i trzyma referencję
+  do menedżera sesji sprzed `forgetInstance` — więc `forgetInstance('session')` nie ma
+  jak go dosięgnąć, a klient testowy Pesta nie odsyła ciasteczka sesji. Po dołożeniu
+  `forgetInstance(StartSession::class)` **i** jawnego ciasteczka: baza (tożsamość
+  nietknięta) = 200, po usunięciu tożsamości = **401**, jedno żądanie do punktu tokenów.
+  **System NIE wskrzesza tożsamości — wymóg nogi 1 standardu B8 jest SPEŁNIONY.**
+  Dowody: `docs/noc-2026-08-08/ZNALEZISKA.md` (R6A-2, R6B-1).
+  **Test zostaje CZERWONY do naprawy z rundą** — nie naprawiałem go w nocy jako autor.
+- **Perturbacje: 30 scenariuszy, ale POKRYCIE JEST MNIEJSZE, NIŻ TA LICZBA SUGERUJE.**
+  Zmierzone w nocy: 2 mutacje były MARTWE (naprawione), a **5 scenariuszy celujących
+  w `OdebranieRoliTest.php` nie może dziś paść**, bo plik jest trwale czerwony przez
+  nogę 1 i `oczekuj_czerwone` bez `--przyczyna` przyjmuje tę czerwień (R6A-5, R6B-13).
+  Ponadto 6 z 8 allowlist `--przyczyna` nic nie zawęża (R6B-15).
+  **Nie cytuj „30 scenariuszy" jako miary pokrycia.**
 
 ### Do rozstrzygnięcia w następnej sesji
 
-> **SPROSTOWANIE (08.08).** Poprzednia wersja tej sekcji kierowała następną
-> sesję do „rundy 4 weryfikacji na `1204daa`" — a rundy 4 **i** 5 są wykonane.
-> Sesja czytająca to jako punkt wejścia ścigałaby zadanie już zamknięte,
-> trzymając dokument brzmiący autorytatywnie. Oznaczam jawnie, bo ktoś mógł
-> przeczytać wersję nieprawdziwą, a cicha podmiana do niego nie dotrze.
+> **SPROSTOWANIE (09.08, noc).** Ta sekcja kierowała sesję do „ODCZYTU
+> ROZSTRZYGAJĄCEGO dla nogi 1", pisząc „przyczyna NIE JEST znana".
+> **Przyczyna została ustalona w nocy 08/09.08 pomiarem dwóch niezależnych
+> weryfikatorów** — patrz `CURRENT WORK` wyżej i `docs/noc-2026-08-08/`.
+> Zostawiam ślad po starej treści, bo ktoś mógł ją przeczytać, a cicha podmiana
+> do niego nie dotrze. Wcześniejsze sprostowanie (08.08) dotyczyło rund 4 i 5.
 
-**Runda 6 na gałęzi `faza-1-retencja`**, po zamknięciu otwartych znalezisk.
-Reguła zbieżności (D-2026-08-07-16): faza jest zamknięta dopiero, gdy runda na
-konkretnym SHA kończy się ZEREM znalezisk.
+**Runda 6 WYKONANA** w nocy 08/09.08 na SHA `49131d8`, dwoma niezależnymi
+weryfikatorami, na osobnych czystych klonach i w pełni izolowanych projektach.
+**Wynik: 29 znalezisk — runda NIE jest zerowa, więc F1 i F0 pozostają OTWARTE**
+(reguła zbieżności D-2026-08-07-16).
 
-Historia rund (każda odnosi się do KONKRETNEGO, przeszłego SHA — takie
-identyfikatory się nie starzeją, bo nazywają zdarzenie, nie stan bieżący):
-runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15, runda 5 na
-`b2084fc` — 12, z czego 8 zamkniętych.
+Raporty w całości: `docs/noc-2026-08-08/RUNDA-6-A-RAPORT.md` (bramka na żywym
+stosie, 12 znalezisk) i `RUNDA-6-B-RAPORT.md` (analiza dyskryminatorów
+i sterowników, 17 znalezisk). Streszczenie z wagami: `ZNALEZISKA.md`.
 
-**PIERWSZE ZADANIE NASTĘPNEJ SESJI — ODCZYT ROZSTRZYGAJĄCY dla nogi 1.**
-Powód: to jedyny CZERWONY w bramce i blokuje domknięcie pary negatywnej BLK-22,
-która blokuje rundę 6 i merge do `main`. Nie da się go odłożyć, bo bramka
-zostaje czerwona.
+Historia rund (każda nazywa PRZESZŁE ZDARZENIE, więc się nie starzeje):
+runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15,
+runda 5 na `b2084fc` — 12 (8 zamkniętych), **runda 6 na `49131d8` — 29**.
 
-**NIE zaczynaj od naprawy — przyczyna NIE JEST znana.** Wieczorem 08.08:
+### PIERWSZE ZADANIA NASTĘPNEJ SESJI — w tej kolejności
 
-1. Migawki magazynu dały „zniknęło 1, pojawiło się 1, status 200" i odczytałem
-   to jako wskrzeszenie tożsamości z refresh tokenu.
-2. Przebudowałem pisarza tożsamości na wąskie gardło §2 (`SesjaKonta` +
-   `TozsamoscSesji`), przez które odświeżanie **nie może** utworzyć tożsamości.
-3. Zmierzyłem PONOWNIE: **liczby identyczne**. Czyli 200 nie pochodzi z tej
-   ścieżki, a wniosek z punktu 1 był przedwczesny.
+**Kolejność wynika z jednej zasady: najpierw przywróć zdolność przyrządu do
+świecenia czerwono, potem mierz nim cokolwiek.** Naprawianie systemu narzędziem,
+o którym wiemy, że mówi „zdaliśmy" bez względu na stan, jest pracą bez pokrycia.
 
-Przebudowa pisarza **zostaje** — jest poprawna niezależnie, bo realizuje wymóg
-§2 (jeden pisarz, aktualizacja wymaga istniejącego rekordu). Zmierzone: jeden
-pisarz klucza `konta` w całym `backend/app`.
+1. **PRZYRZĄD — dokończ to, co zaczęte w nocy.** Sprawdź pozostałe **28 z 30**
+   wzorców `perturbuj.py` pod kątem rozjazdu z kodem (w nocy sprawdzono 2, oba
+   były martwe). Metoda jest już gotowa: `python3 skrypty/perturbuj.py <nazwa>`
+   ma zwrócić `kod=0` i niepusty `git diff --stat`; `kod=1` znaczy „wzorzec
+   nieaktualny". To jest najpilniejsza luka pokrycia, nazwana przez weryfikatora.
+2. **PRZYRZĄD — `--przyczyna` tam, gdzie plik już jest czerwony** (R6A-5, R6B-13,
+   R6B-15). Pięć scenariuszy celujących w `OdebranieRoliTest.php` nie może dziś
+   paść. Allowlisty mają być KOMUNIKATAMI ASERCJI, nie nazwami testów ani
+   wartościami `--filter` — dwie takie już są (`WYMUSZONE WYLOGOWANIE`,
+   `PRZEŻYŁ zadanie retencyjne`) i one jedne realnie zawężają.
+3. **NOGA 1 — naprawa TESTU, nie systemu.** Przyczyna znana i zmierzona.
+   Dołóż `forgetInstance(\Illuminate\Session\Middleware\StartSession::class)`
+   obok dwóch istniejących oraz jawne niesienie ciasteczka sesji
+   (`withCookie(config('session.cookie'), $idSesji)`). **Po naprawie ZMIERZ
+   PONOWNIE** — noga 1 ma zzielenieć, a test POZYTYWNY ma ZOSTAĆ zielony.
+   To samo dotyczy `:568-569` w teście POZYTYWNYM (R6A-1, R6B-2): dziś jego
+   401 pochodzi ze znacznika w bazie, nie z kasowania sesji.
+4. **§2 — domknij STRUKTURALNIE (R6A-3).** `TozsamoscSesji::zMagazynu()` jest
+   publiczną fabryką przyjmującą dowolną tablicę; weryfikator wytworzył przez nią
+   tożsamość koordynatora bez logowania (a także przez `Reflection`
+   i `unserialize`). Moje twierdzenie „NIEWYWOŁYWALNE" było za mocne — warunek
+   przeniósł się o poziom wyżej. Naprawa: `zMagazynu()` prywatne, jedyne wejście
+   przez `SesjaKonta::odczytaj(Request)`.
+5. **V-1 — kontrola, która nie powstała (R6A-4, waga KRYTYCZNA).** Mechanizm
+   własnych haseł nadal przechodzi `BrakWlasnychHaselTest` (7 passed), zapisując
+   tożsamość PRZEZ wąskie gardło. D-2026-08-08-24 obiecuje kontrolę „liczność
+   zbioru pisarzy = 1" — nie istnieje.
+6. **`RejestrSesji` — fail-open (R6B-9).** Mapa `sid → sesje`, bez której
+   back-channel logout nie znajdzie ŻADNEJ sesji, mieszka w cache'u z TTL 86400 s.
+   Zastosowaliśmy cztery wymagania trwałości do znacznika unieważnienia i NIE
+   zastosowaliśmy ich tutaj. Utrata rejestru = `skasowane_sesje = 0`, po cichu.
+7. **Retencja nie jest podpięta (R6A-11)** — `ZadanieRetencji` nie ma ani jednego
+   wywołującego; `routes/console.php` ma tylko `gabinet:puls`. Na gałęzi
+   `faza-1-retencja`. Rozstrzygnąć: podpiąć czy jawnie zapisać, że czeka na IOD.
+8. **Perturbacje mielą `.env` DEWELOPERA (R6B-16).** V-2 zamknięto tylko po
+   stronie bramki. `perturbacje.sh` nie podaje `--env-file`, więc
+   `docker-compose.yml` montuje `./.env` z prawdziwymi sekretami.
+9. Reszta znalezisk wg wag w `ZNALEZISKA.md`.
 
-**Czego potrzeba:** odczytu odróżniającego „tożsamość odtworzona W MAGAZYNIE"
-od „tożsamość niesiona przez klienta testowego w pamięci procesu" — np. przez
-sprawdzenie ZAWARTOŚCI nowego klucza, nie samego faktu jego pojawienia się.
-Pre-flight (każda wartość → dokładnie jeden świat) wykonaj PRZED uruchomieniem.
+**Czego NIE robić:** nie ścigaj hipotezy „odświeżanie wskrzesza tożsamość" —
+obalona dwukrotnie, ostatnio pomiarem rozstrzygającym z odczytem bazowym.
 
-**OTWARTE, blokujące zamknięcie F1:**
-
-> **SPROSTOWANIE (09.08, noc).** Ta lista mówiła rzeczy nieprawdziwe wobec
-> pomiaru, i to w tym samym pliku, którego nagłówek ostrzega przed dokumentami
-> stanu kłamiącymi o kodzie. Poprawiam pozycje, które ZMIERZYŁEM; przy
-> pozostałych piszę wprost, że stanu nie zmierzyłem — zamiast przepisywać
-> dalej cudzy zapis jako fakt.
-
-1. **BLK-22 — pozycja ZAMKNIĘTA, poprzedni zapis był nieprawdziwy.**
-   Twierdził, że test pozytywny „żądanie po wylogowaniu dostaje 401" jest
-   CZERWONY. Zmierzone 09.08 (`./vendor/bin/pest`): ten test jest **ZIELONY**,
-   a jedynym czerwonym w całym pliku jest `NOGA 1`.
-   Hipoteza „wskrzeszenie sesji przez odświeżenie tokenu" pozostaje OBALONA —
-   nie ścigaj jej ponownie.
-2. **V-1** — kontrola CLAUDE.md §2. Projekt naprawy (D-2026-08-08-24, wąskie
-   gardło zamiast piątej listy zakazów) jest już **WDROŻONY** w `cdc6fbb`
-   (`SesjaKonta` + `TozsamoscSesji`); zapis „projekt naprawy" sugerował,
-   że to jeszcze przed nami.
-   **Czego NIE zmierzyłem:** czy istnieje KONTROLA, która złapie pojawienie się
-   drugiego pisarza klucza `konta`. Zmierzone tylko tyle, że dziś pisarz jest
-   jeden, a to jest zdjęcie stanu, nie zabezpieczenie. Weryfikacja tego punktu
-   jest zadaniem (c) rundy 6.
-3. **V-4, V-8, V-9** oraz **W-8** (rozdzielenie ról bazodanowych) — **stanu
-   NIE ZMIERZYŁEM tej nocy.** Zostawiam jako otwarte, ale bez dowodu w żadną
-   stronę: „otwarte, bo nikt nie sprawdzał" to inny stan niż „otwarte, bo
-   sprawdzone i czerwone", a mieszanie ich jest tym, co wywróciło pozycję 1.
-
-**Zostało w F1:** F1.7 — seed o wiarygodnych proporcjach (111 specjalistów,
-poniżej 40 wizyt na pacjenta, limit niskopłatnych musi RÓŻNICOWAĆ pacjentów).
-
-**Dług O-7 (nowy):** podmiana TREŚCI istniejącego pliku w `vendor/` pozostaje
-niewykryta — Composer nie trzyma sum kontrolnych rozpakowanych plików.
-Wykrycie wymaga podpisanego obrazu i wolumenu tylko do odczytu. Do F9,
-razem z O-1 i hartowaniem obrazu.
+---
 
 ### Rozpiska zadań F0 — stan końcowy sesji
 
@@ -119,13 +127,28 @@ razem z O-1 i hartowaniem obrazu.
 
 ### Następny krok
 
+> Ta lista dotyczy **domknięcia F0** i jest starsza niż `CURRENT WORK` na górze.
+> Kolejność pracy bierz z sekcji „PIERWSZE ZADANIA NASTĘPNEJ SESJI", nie stąd.
+
 1. ✅ Push + CI zielone (`ee85c83`).
-2. ⏳ Powtórna niezależna weryfikacja — **to ona domyka F0**.
+2. ⏳ Powtórna niezależna weryfikacja — **to ona domyka F0**. Wykonano rundy 3–6;
+   **żadna nie skończyła się zerem znalezisk**, więc F0 nadal nie jest domknięte
+   (runda 6 na `49131d8`: 29 znalezisk).
 3. Zgłoszenie klienta `gabinet` w repo `konta` (właściciel / sesja `konta`) → domknięcie BLK-01 i F0.8.
 
 ---
 
-## CURRENT WORK — F1 (rozpoczęta 2026-08-07)
+## F1 — rozpiska zadań fazy (to NIE jest sekcja stanu)
+
+> Nagłówek brzmiał wcześniej „CURRENT WORK — F1", więc w pliku były **DWIE**
+> sekcje `CURRENT WORK` (linie 5 i 128) o sprzecznej treści. `CLAUDE.md`
+> wskazuje „sekcję `CURRENT WORK`" w liczbie pojedynczej jako stan między
+> sesjami — a przy dwóch sekcjach o tej samej nazwie nie da się powiedzieć,
+> która to. Zmierzone przez weryfikatora rundy 6 (R6A-9).
+>
+> **Stan bieżący jest wyłącznie w sekcji `CURRENT WORK` na górze pliku.**
+> Poniżej są zadania fazy i kryteria „zrobione" — rzeczy, które się nie
+> starzeją z każdym przebiegiem.
 
 Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista.md) (wymagania W-1…W-12),
 `docs/specyfikacja/05-DECYZJE-makiety.md` rozdz. 3 (macierz odwołań) i 4 (szkic modelu danych).
@@ -144,10 +167,20 @@ Materiał wejściowy: [`docs/rodo/DPIA-checklista.md`](docs/rodo/DPIA-checklista
 **Bramka F1:** testy tabelaryczne reguł na wartościach granicznych (**23:59 / 24:00 / 24:01**);
 seed o wiarygodnych proporcjach; migracje w górę i w dół.
 
-**Stan bramki dziś:** `BRAMKA OK — 21 kroków, 0 nieudanych`; **151 testów**
-(479 asercji). Granica okna sprawdzona co do sekundy.
-**Perturbacje: `PERTURBACJE OK` — 44 kontrole** udowodniły, że umieją zaświecić
-czerwono, w **20 scenariuszach** (D-2026-08-07-13, -18, -19, -20).
+**Stanu bramki NIE MA już w tej sekcji.** Stała tu wcześniej linia
+„`BRAMKA OK — 21 kroków, 0 nieudanych`; 151 testów (479 asercji)" oraz
+„44 kontrole w 20 scenariuszach" — **nieprawdziwe od kilku dni i sprzeczne
+z sekcją `CURRENT WORK` na górze pliku**, która mówiła „CZERWONA". Weryfikator
+rundy 6 zmierzył to jako R6A-9: sesja czytająca akurat tę sekcję startowała
+z fałszywego „BRAMKA OK".
+
+Stan bramki, liczby testów i perturbacji czytaj **wyłącznie** z sekcji
+`CURRENT WORK` na górze pliku — a najlepiej z pomiaru (`bash skrypty/bramka.sh`,
+`./vendor/bin/pest`). Dwa miejsca trzymające ten sam stan zawsze rozjadą się
+w czasie; to nie jest hipoteza, tylko przyczyna tego wpisu.
+
+Granica okna 23:59 / 24:00 / 24:01 sprawdzona co do sekundy (to zostaje —
+opisuje ZAKRES testów fazy, nie ich chwilowy wynik).
 **Powtarzalność perturbacji:** 3 przebiegi z rzędu, identyczny wynik, czyste
 drzewo robocze — `skrypty/perturbacje-powtarzalne.sh` (reguła 4, D-2026-08-07-21).
 
@@ -155,7 +188,9 @@ drzewo robocze — `skrypty/perturbacje-powtarzalne.sh` (reguła 4, D-2026-08-07
 
 **Weryfikacja niezależna:** runda 1 (`0af30ae`) — 5 twierdzeń obalonych;
 runda 2 (`eadf5c5`) — 4 obalone, w tym dwa dotyczące bezpieczeństwa;
-runda 3 — w toku. Reguła zbieżności rund: D-2026-08-07-16.
+rundy 3, 4 i 5 wykonane, runda 6 wykonana w nocy 08/09.08 (29 znalezisk,
+raporty w `docs/noc-2026-08-08/`). „Runda 3 — w toku" stało tu jeszcze
+09.08 w nocy, trzy rundy po fakcie. Reguła zbieżności rund: D-2026-08-07-16.
 
 **Wartości startowe reguł** (do tabeli konfiguracji, wszystkie wersjonowane):
 okno bezpłatnego odwołania 24 h · limit przełożeń 2 · najbliższy termin 2 h ·
@@ -163,6 +198,8 @@ kalendarz pacjenta 30 dni · specjalista wystawia 7 dni · przerwa 10 min ·
 blokada koszyka 10 min · link płatności 2 dni · **limit niskopłatnych 10 wizyt**
 (D-2026-08-07-08) · limit podażowy 4 terminy/tydzień/specjalista ·
 kredyt za odsprzedany termin: włączony.
+
+---
 
 ## F0 — Fundament (S)
 

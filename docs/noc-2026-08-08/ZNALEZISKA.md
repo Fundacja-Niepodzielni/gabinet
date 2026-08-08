@@ -456,3 +456,228 @@ Wykazałem, że pisał je proces starszy niż zmiana konfiguracji i że restart
 to zatrzymał. Do rozstrzygnięcia, czy któreś z nich były kluczami SESJI sprzed
 rozdzielenia — jeśli tak, jest to również pytanie o retencję (RODO), nie tylko
 o spójność cache'u.
+
+---
+
+# RUNDA 6, część A — 12 znalezisk (bramka na żywym, izolowanym stosie)
+
+Pełny raport: [`RUNDA-6-A-RAPORT.md`](RUNDA-6-A-RAPORT.md). Przypięty do `49131d8`.
+
+Metryki przebiegu (surowo, czysty klon, projekt `gabinet-r6a`, porty 8107/55461/56407):
+**22 kroki, 1 nieudany** (`[19] testy (Pest)`), **181 testów** (180 zielonych,
+1 czerwony, 0 pominiętych), **640 asercji**, Pint `PASS 74 files`, Larastan
+`[OK] No errors`, gitleaks `49 commits scanned, no leaks found`.
+Stopka: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`.
+
+## Rzecz najważniejsza tej nocy: NOGA 1 to wada PRZYRZĄDU. System jest w porządku.
+
+**R6A-2 — zmierzone, nie wywnioskowane.** Weryfikator zbudował przyrząd
+rozstrzygający (pełny reset singletonów **plus jawne niesienie ciasteczka sesji**)
+i zmierzył OBIE gałęzie:
+
+```
+[R6A-P] BAZA (tożsamość NIETKNIĘTA):   200  {"zalogowany":true,…,"role":["koordynator"]}
+[R6A-P] po destroy długość w magazynie: 0
+[R6A-P] PO USUNIĘCIU:                  401  {"zalogowany":false}
+[R6A-P] żądań do punktu tokenów:       1     ← tylko wymiana kodu przy logowaniu
+```
+
+**Wniosek: system NIE wskrzesza tożsamości z refresh tokenu. Wymóg nogi 1
+standardu B8 jest SPEŁNIONY.** Test jest czerwony, bo jego symulacja granicy
+procesu jest niekompletna: `app()->forgetInstance('session')` tworzy NOWY
+menedżer, ale middleware `StartSession` — sam będąc singletonem — trzyma STARY,
+a z nim wczytany w pamięci `Store` z tożsamością:
+
+```
+[R6A] StartSession::manager id=5858  vs  app("session") id=3801
+[R6A] długość sesji w magazynie po destroy: 0        ← magazyn PUSTY
+[R6A] status BEZ forgetInstance(StartSession): 200   ← a mimo to 200
+[R6A] status PO  forgetInstance(StartSession): 401
+```
+
+**TRZY niezależne tory, jeden wynik.** Część B doszła do tego samego mechanizmu
+CZYTAJĄC źródła frameworka (`SessionServiceProvider.php:22-26`,
+`StartSession.php:157-160`, `Container.php:1731-1734`), część A — MIERZĄC
+identyfikatory obiektów na żywym stosie. Zbieżność metody analitycznej
+i pomiarowej jest mocniejsza niż każda z osobna.
+
+**Weryfikator A złapał się przy tym na własnej gałęzi zdegenerowanej i sam ją
+zgłosił:** jego pierwszy dyskryminator (`forgetInstance(StartSession)` → 401)
+dawał 401 TAKŻE przy nietkniętej tożsamości — był więc zgodny z dwoma światami.
+Dopiero odczyt bazowy to ujawnił i wymusił zbudowanie lepszego przyrządu.
+
+**NIE NAPRAWIAM tego dziś.** Zlecenie nocne mówi wprost: „jeden czerwony (noga 1)
+ma zostać czerwony". Naprawa testu bezpieczeństwa autorem, w nocy, bez rundy,
+zamieniłaby jedyny uczciwy czerwony na zielony bez pokrycia.
+
+## Znaleziska podważające twierdzenia uznane u nas za zamknięte
+
+**R6A-3 — wąskie gardło §2 NIE jest strukturalne.** `TozsamoscSesji::zMagazynu()`
+jest **publiczną statyczną fabryką przyjmującą DOWOLNĄ tablicę** — z magazynem
+wiąże ją wyłącznie nazwa. Weryfikator wytworzył tożsamość trzema drogami (dane
+z żądania, `Reflection`, `unserialize`) i uzyskał przez HTTP pełne uprawnienia
+koordynatora **bez żadnego logowania**:
+
+```
+{"zalogowany":true,"sub":"napastnik-1","role":["koordynator"],
+ "bramki":{"panel.koordynacji":true,"rozliczenia.akceptuj":true,"dziennik.zapisz":true}}
+```
+
+**Uczciwe zastrzeżenie samego weryfikatora:** to NIE jest dziura eksploatowalna
+z zewnątrz w obecnym kodzie — trasy musiał dopisać. Obalone zostaje twierdzenie
+o STRUKTURZE („nie da się"), nie stan bieżący aplikacji.
+**To jest moje twierdzenie i było za mocne.** Pisałem „NIEWYWOŁYWALNE, a nie
+zabronione warunkiem" — a warunek tylko przeniósł się o poziom wyżej.
+Naprawa jest tania i strukturalna: `zMagazynu()` prywatne, jedyne wejście przez
+`SesjaKonta::odczytaj(Request)`. **Nie robię jej dziś** — to zmiana kodu
+produkcyjnego w obszarze, który właśnie był weryfikowany.
+
+Druga strona sprawdzona: gardło NIE jest za ciasne (mutacja `odczytaj() → null`
+zapala 8 testów, w tym ten pilnujący legalnego odświeżenia).
+
+**R6A-4 — V-1 OTWARTE: mechanizm własnych haseł przechodzi PRZEZ nowe gardło.**
+Logowanie hasłem na zadeklarowanej trasie, skrót w zadeklarowanej kolumnie,
+prymityw spoza zamkniętej listy, zapis tożsamości przez `SesjaKonta::zaloz()` —
+`BrakWlasnychHaselTest`: **7 passed**. Waga: **krytyczna** (CLAUDE.md §2).
+Kontrola obiecana w D-2026-08-08-24 (liczność zbioru pisarzy = 1) **nie powstała**.
+
+**R6A-1 — test „POZYTYWNY … logout REALNIE zabija sesję" przechodzi, gdy logout
+NIE kasuje żadnej sesji.** Mutacja: `destroy()` usunięte, licznik podbijany mimo
+to → ten właśnie test **zielony**, a dwa inne czerwone. Czyli 401 pochodzi ze
+znacznika w PostgreSQL, nie z kasowania. Zbieżne z R6B-2, uzyskane inną metodą
+(A mutacją, B czytaniem źródeł).
+
+**R6A-5 — potwierdza N-3 po raz TRZECI**, uruchamiając każde ogniwo łańcucha:
+`PERTURBACJA NIEUDANA … KOD WYJSCIA=1` → plik niezmieniony → `DOWOD MUTACJI KOD=0`
+(„mutacja potwierdzona"). Dodaje zasięg, którego nie policzyłem: `oczekuj_czerwone`
+bez `--przyczyna` celujące w `OdebranieRoliTest.php` występuje w liniach
+**807, 827, 847, 893, 903** — pięć scenariuszy, które dopóki noga 1 jest czerwona,
+**nie mogą paść**.
+
+## Pozostałe
+
+**R6A-9** — `PLAN-FAZ.md` ma **DWIE** sekcje `CURRENT WORK` (linie 5 i 113)
+o sprzecznym stanie: druga mówi „`BRAMKA OK — 21 kroków, 0 nieudanych`",
+„151 testów (479 asercji)", „20 scenariuszy". Sesja czytająca tę drugą startuje
+z fałszywego „BRAMKA OK". **Miałem ten pomiar w ręku o 23:36 i go nie wykorzystałem** —
+`grep -n "CURRENT WORK"` zwrócił mi wtedy obie linie, a ja przeczytałem tylko pierwszą.
+
+**R6A-10** — `bramka.sh` liczy `PLIK_ENV` w linii 73, a `--projekt` parsuje w 98,
+więc **nazwa pliku środowiska ignoruje `--projekt`**: dwa przebiegi o różnych
+projektach dzielą JEDEN plik z wygenerowanym `APP_KEY` i `DB_PASSWORD`, a zamek
+(liczony per projekt) ich nie rozdziela. Dotyczy też `perturbacje.sh`, który woła
+`bramka.sh --projekt … --tylko-kod`.
+
+**R6A-11** — **retencja nie jest podpięta do harmonogramu**: `ZadanieRetencji` nie
+ma ani jednego wywołującego w `app/`, `routes/`, `bootstrap/`; `routes/console.php`
+ma jedno zadanie (`gabinet:puls`). Kontrole są falsyfikowalne, ale mierzą
+bibliotekę i rejestr, nie działający mechanizm. Na gałęzi `faza-1-retencja`.
+
+**R6A-6** — kontrola „szyfrowanie domyślnie, czytane z TREŚCI pliku" przechodzi,
+gdy literał wystąpi w KOMENTARZU (`str_contains` nie odróżnia kodu od komentarza).
+
+**R6A-7** — `ObietniceKomentarzyTest` obejmuje regexem `[UWO]-\d+` sześć znaczników,
+a **pomija siedem** — w tym `B7`, `B8`, `BLK-22`, `D-2026-08-08-24`, czyli wszystkie,
+na które powołuje się warstwa `Tozsamosc`. Zdanie z `WYTYCZNE-PRACY.md` o „każdym
+znalezisku powołanym w kodzie produkcyjnym" jest nieprawdziwe.
+
+**R6A-8** — komentarz w `config/database.php` wiąże rozdzielenie baz z ochroną przed
+eksmisją; D-2026-08-08-28 mówi wprost coś przeciwnego, a plik jej nie cytuje.
+Zbieżne z moim N-6 i z R6B-10.
+
+**R6A-12** — poza gardłem została jedna ścieżka KASOWANIA tożsamości
+(`LogowanieController.php:186-187`) i jeden ODCZYT literałem `'konta'` (`:174`),
+z pominięciem stałej `KLUCZ`.
+
+## Czego A NIE zdążył — cytuję, bo cichy brak pokrycia jest gorszy niż jawny
+
+Zero mutacji dla: `BramkiTest`, `ModelDanychTest`, `RejestrRegulTest`,
+`WzmacniaczZadanTest`, `SekretyTest`, `SzkieletTest`, `LogowanieTest`.
+Nie uruchomił pełnego `perturbacje.sh`. **Sprawdził 2 z 30 wzorców `perturbuj.py`
+pod kątem nieaktualności — pozostałe 28 mogą mieć tę samą wadę.** Weryfikator sam
+nazywa to najpilniejszą luką swojego pokrycia i zgadzam się z tą oceną.
+
+## Zadanie G — odpowiedź, której się nie spodziewałem
+
+Weryfikator A **nie znalazł** przypadku, w którym zasłoniłem defekt systemu
+etykietą „przyrząd". Zwrócił uwagę na coś odwrotnego: przy nodze 1 miałem pełną
+wygodę zamknięcia sprawy zdaniem „to artefakt klienta testowego" i tego **nie
+zrobiłem** — zostawiłem `NIEROZSTRZYGNIĘTE`. Zmierzył, że atrybucja, której nie
+postawiłem, była prawdziwa.
+
+Wskazał natomiast coś gorszego niż wygodna atrybucja: **narzędzie do wykrywania
+fałszywych zielonych samo produkuje fałszywe zielone** (R6A-5), a `CURRENT WORK`
+niesie z tego liczbę „30 scenariuszy ze strażnikiem przyczyny czerwieni" jako
+miarę pokrycia. Cytat z raportu: *„To ten sam mechanizm co wygodna atrybucja,
+tylko zautomatyzowany: nie ma tu człowieka, który przypisuje winę — jest skrypt,
+który zawsze mówi »zdaliśmy«."*
+
+---
+
+## N-7 — KOREKTA WŁASNEGO ZNALEZISKA (03:00 sesji, po pomiarze nazw kluczy)
+
+Znalezisko N-7 wyżej twierdzi, że **workery Horizona pisały cache do db0 przez
+półtorej godziny**, i przypisuje zatrzymanie tego zapisu **mojemu restartowi
+Horizona**. Obniżam to twierdzenie do tego, co jest zmierzone.
+
+**Co zostaje zmierzone i pewne:**
+
+```
+$ docker exec gabinet-redis redis-cli -n 0 --scan   (odczyt SAMYCH NAZW, 00:29:47)
+gabinet_horizon:master:249476ee1a97-WTVw
+gabinet_horizon:masters
+gabinet_horizon:monitor:time-to-clear
+gabinet_horizon:supervisor:249476ee1a97-WTVw:supervisor-1
+gabinet_horizon:supervisors
+
+DBSIZE:  db0 = 5   ·   db1 (cache) = 4   ·   db2 (sesje) = 104
+klucze db0 SPOZA prefiksu `gabinet_horizon:`  →  ZERO
+```
+
+- **Rozdzielenie przestrzeni kluczy DZIAŁA** — potwierdzone z zewnątrz, nie
+  z konfiguracji: kolejki w db0, cache w db1, sesje w db2.
+- **Wcześniej db0 zawierał ~34–45 kluczy z prefiksem cache'u**, o krótkich TTL,
+  które opadały i zniknęły. To jest zmierzone.
+
+**Czego NIE ustaliłem i cofam:** który proces te klucze pisał, ani że to mój
+restart Horizona je zatrzymał. Mój „test rozstrzygający" (restart → rozpad TTL
+w tempie zegara) jest zgodny z DWOMA światami: (I) restart zatrzymał zapisy,
+(II) to były pozostałości, które i tak wygasały, a restart nie miał z tym nic
+wspólnego. **Rozpad w tempie zegara zachodzi w obu.** Zmierzyłem zgodność
+z hipotezą, nie jej wyłączność — czyli popełniłem TĘ SAMĄ wadę, którą ta noc
+bada, po raz trzeci.
+
+**Zastrzeżenie do wyjaśnienia „to były pozostałości":** arytmetyka mu nie
+sprzyja. Klucze o TTL ≤ 809 s widziane o 00:14 musiałyby powstać po ~00:00,
+czyli **półtorej godziny PO** zmianie konfiguracji (commit `5f1eaf4`, 22:36).
+Pozostałość sprzed 22:36 z takim TTL już by nie żyła. Więc ani moja wersja,
+ani konkurencyjna nie są dowiedzione.
+
+**Co to rozstrzyga (jedna komenda, rano):** powtórzyć na CZYSTYM stosie, gdzie
+żadnej historii sprzed rozdzielenia być nie może. Pojawienie się w db0
+jakiegokolwiek klucza spoza prefiksu `gabinet_horizon:` obala wersję
+„pozostałości"; brak takiego klucza ją potwierdza.
+
+**Co z N-7 zostaje jako ostrzeżenie mimo obniżenia wagi:** teza „długo żyjące
+procesy czytają konfigurację przy starcie i nigdy więcej" jest prawdziwa
+niezależnie od tego sporu i **musi trafić do procedury wdrożeniowej F9**
+(`horizon:terminate` przy każdej zmianie połączeń Redisa). Nie dowiodłem, że to
+zaszło u nas — dowiodłem, że może.
+
+## O-N1 — ZAMKNIĘTE pomiarem (błąd częstości bazowej po mojej stronie)
+
+Zgłosiłem O-N1, bo klucz o TTL 86400 s „co do sekundy" zgadzał się
+z `RejestrSesji::CZAS_ZYCIA_SEKUND`. **Ta zbieżność nie niosła prawie żadnej
+informacji: 86400 to po prostu DOBA** — najczęstsza wartość TTL w oprogramowaniu
+w ogóle. Gdyby stała wynosiła 73 412 s, zgodność byłaby mocnym tropem; przy
+86400 spodziewamy się jej u połowy komponentów stosu.
+
+Rozstrzyga **NAZWA klucza, nie jego TTL** — a nazwę wolno odczytać bez zaglądania
+w wartość. Odczytałem (wyżej): w db0 nie ma ani jednego klucza rejestru sesji,
+są wyłącznie klucze Horizona, który siedzi na połączeniu domyślnym zgodnie
+z projektem. **O-N1 zamknięte.**
+
+Lekcja jest ogólniejsza niż ten wpis i dlatego ją zapisuję: *zbieżność liczb
+jest tropem tylko wtedy, gdy liczba jest RZADKA.* Szukałem potwierdzenia
+w wartości, którą dzieli pół świata, zamiast w nazwie, która identyfikuje
+jednoznacznie — i o mało nie wydałem na to rundy z `MONITOR`-em.

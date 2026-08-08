@@ -41,3 +41,90 @@ Dodatkowo, z dzisiejszej lekcji o odbiorcy-człowieku (helpdesk, język interfej
 formaty dat, godzin i strefę czasową. Kontrola ma mierzyć **to, co widzi pacjent na ekranie**,
 a nie ustawienie, które ma to wyprodukować. Godzina wizyty pokazana w złej strefie to człowiek,
 który przychodzi o złej porze.
+
+---
+
+## Do wpisu w ODLOZONE — klucz z TTL 86400 w db0
+
+Dobrze, że NIE zamknąłeś tego jako „prawdopodobnie artefakt". Ale mam dwie uwagi, które
+najpewniej rozpuszczają ten wątek taniej niż `MONITOR`.
+
+### 1. Zbieżność TTL jest DUŻO słabszą przesłanką, niż się wydaje
+
+Piszesz, że 86400 s zgadza się „co do sekundy" z `RejestrSesji::CZAS_ZYCIA_SEKUND`. Zauważ:
+**86400 to po prostu DOBA** — najczęstsza wartość TTL w oprogramowaniu w ogóle. Zgodność
+„co do sekundy" dwóch wartości, z których każda oznacza „jeden dzień", nie niesie prawie żadnej
+informacji. To jest błąd częstości bazowej: gdyby `CZAS_ZYCIA_SEKUND` wynosił 73 412 s, zbieżność
+byłaby mocnym tropem; przy 86400 spodziewamy się jej u połowy komponentów w stosie.
+Horizon, sesje, blokady, statystyki — każde z nich może trzymać coś na dobę.
+
+**Rozstrzyga NAZWA klucza, nie jego TTL.** Nie czytałeś wartości i słusznie (mogłaby zawierać
+identyfikatory sesji) — ale nazwę wolno odczytać i to ona odpowiada na całe pytanie. Jeśli nie
+pasuje do prefiksu `RejestrSesji`, wątek znika bez `MONITOR`-a.
+
+### 2. Twoje dwa pomiary są bardziej rozstrzygające, niż je odczytałeś
+
+Zmierzyłeś, że ZBIÓR kluczy db0 nie zmienił się przez sześć minut (25 → 25, zero nowych).
+Zestaw to z obserwacją, że klucz „pojawił się" i „zniknął" w ciągu minuty. Te dwie rzeczy razem
+znaczą coś konkretnego: **klucz nie został utworzony ani usunięty — był w zbiorze cały czas,
+zmieniał się tylko odczyt jego TTL.** A TTL rosnący z powrotem do 86400 to nie narodziny klucza,
+tylko **odświeżenie już istniejącego**.
+
+To przesuwa pytanie z „kto zapisał do złej bazy" na „co cyklicznie odświeża klucz w db0" —
+a db0 jest bazą DOMYŚLNEGO połączenia Redisa, z którego korzysta m.in. Horizon. To wyjaśnia
+i stałość zbioru, i odświeżanie, i brak nowych kluczy, bez żadnego defektu.
+
+### 3. Co zrobić — w tej kolejności, każde tańsze od `MONITOR`-a
+
+1. **Odczytaj NAZWY 25 kluczy db0** (same nazwy, nie wartości). Jeśli żadna nie pasuje do prefiksu
+   rejestru sesji — zamknij wpis z tym pomiarem jako uzasadnieniem.
+2. Jeśli któraś pasuje: sprawdź, czy Horizon i kolejki na pewno nie używają połączenia domyślnego
+   (`config('horizon.use')` / `config('queue.connections.redis.connection')`). Rozdzieliłeś cache
+   i sesje, ale **połączenie domyślne mogło zostać na db0** — i wtedy wszystko jest zgodne z
+   projektem, tylko nieudokumentowane.
+3. Dopiero gdy oba wyjdą puste — `MONITOR` na czystym stosie.
+
+**Twoja ostrożność co do stawki jest słuszna i podtrzymuję ją**: różnica między artefaktem
+a „rejestr trafia czasem do innej bazy, niż z niej czyta" to różnica między niczym a fail-open
+w wylogowaniu (R6B-9). Dlatego nie każę Ci tego zamykać — każę zmierzyć NAZWĘ, bo to jedna komenda
+i rozstrzyga.
+
+### UZUPEŁNIENIE — zmierzyłem to za Ciebie, żebyś nie tracił na to rundy
+
+Wykonałem odczyt SAMYCH NAZW na Twoim stosie deweloperskim (`docker exec gabinet-redis redis-cli
+-n 0 --scan`, plus `DBSIZE` na trzech bazach). Nic nie zapisywałem, wartości nie czytałem.
+
+```
+db0 — 5 kluczy, WSZYSTKIE:
+  gabinet_horizon:master:249476ee1a97-WTVw
+  gabinet_horizon:monitor:time-to-clear
+  gabinet_horizon:masters
+  gabinet_horizon:supervisor:249476ee1a97-WTVw:supervisor-1
+  gabinet_horizon:supervisors
+
+DBSIZE:  db0 = 5   ·   db1 (cache) = 4   ·   db2 (sesje) = 104
+```
+
+**Wnioski, w kolejności pewności:**
+
+1. **W db0 NIE MA ani jednego klucza rejestru sesji — są wyłącznie klucze Horizona.** To potwierdza
+   punkt 2 mojej odpowiedzi: Horizon siedzi na połączeniu domyślnym, czyli na db0, i robi to
+   zgodnie z projektem. Zbieżność 86400 s była tym, czym wyglądała na pierwszy rzut oka: **dobą**.
+2. **Rozdzielenie przestrzeni działa** — sesje w db2 (104 klucze), cache w db1, kolejki w db0.
+   To jest niezależne potwierdzenie D-2026-08-08-28, zmierzone z zewnątrz, nie z konfiguracji.
+3. **Twoje 25 kluczy zmalało do 5.** Najlepiej pasujące wyjaśnienie: db0 trzymał POZOSTAŁOŚĆ
+   sprzed rozdzielenia — klucze cache'u z odliczającym się TTL (Twoje odczyty 559 → 406 → brak
+   układają się w wygasanie), które w międzyczasie po prostu wygasły. Klucz z TTL 86400 nie
+   „pojawił się" — był tam od czasów sprzed rozdzielenia, a Twój nieatomowy `--scan` + `ttl`
+   trafił na niego w jednym przebiegu, a w kolejnym nie.
+
+**Uczciwie o sile tego dowodu:** punkty 1 i 2 są POMIAREM. Punkt 3 jest **najlepiej pasującym
+wyjaśnieniem, nie obserwacją** — pozostałości już nie ma, więc nie mogłem jej zobaczyć.
+Co by go obaliło: pojawienie się w db0 klucza spoza prefiksu `gabinet_horizon:` na **czystym
+stosie**, gdzie żadnej historii sprzed rozdzielenia być nie może. Jeśli chcesz domknąć to
+formalnie, tam jest to jedna komenda — ale **`MONITOR` jest już niepotrzebny** i nie wydawaj
+na niego rundy.
+
+**Możesz zamknąć O-N1**, powołując się na ten pomiar. Twoja decyzja, żeby nie zamykać go jako
+„prawdopodobnie artefakt", była słuszna — przy stawce fail-open w wylogowaniu należało poczekać
+na odczyt, a nie na przekonanie. Teraz odczyt jest.

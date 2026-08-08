@@ -70,7 +70,16 @@ PORT_HTTP="${GABINET_BRAMKA_PORT_HTTP:-8099}"
 PORT_PG="${GABINET_BRAMKA_PORT_POSTGRES:-55443}"
 PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
 # Plik środowiska WYŁĄCZNIE dla tego przebiegu. Nigdy `.env` dewelopera.
-PLIK_ENV="$KORZEN/.env.bramka.$PROJEKT"
+#
+# UWAGA: `PLIK_ENV` NIE MOŻE powstać tutaj — `--projekt` jest parsowany DOPIERO
+# niżej, więc nazwa brałaby się z wartości domyślnej i ignorowała argument.
+# Zmierzone przez weryfikatora rundy 6 (R6A-10): przebieg `--projekt gabinet-r6a`
+# zbudował `.env.bramka.gabinet-bramka`. Skutek jest gorszy niż mylna nazwa —
+# dwa przebiegi o RÓŻNYCH projektach dzielą JEDEN plik z wygenerowanym `APP_KEY`
+# i `DB_PASSWORD`, a zamek (liczony per projekt) ich nie rozdziela. Dotyczy to
+# także `perturbacje.sh`, który woła `bramka.sh --projekt … --tylko-kod`.
+#
+# Definicja przeniesiona POD pętlę parsującą argumenty.
 
 ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # Podłoga liczby testów. Rośnie razem z suitą — obniżenie MUSI być świadomą
@@ -125,6 +134,11 @@ if [ "$PROJEKT" = "$PROJEKT_DEWELOPERA" ]; then
 	echo "ODMOWA: projekt bramki nie może nazywać się '$PROJEKT_DEWELOPERA' — to stos dewelopera." >&2
 	exit 2
 fi
+
+# Plik środowiska tego przebiegu — DOPIERO TU, gdy `$PROJEKT` jest już ostateczny
+# (R6A-10). Każdy projekt dostaje własny plik, więc dwa równoległe przebiegi
+# o różnych nazwach nie mielą jednego zestawu poświadczeń.
+PLIK_ENV="$KORZEN/.env.bramka.$PROJEKT"
 
 # O-5: zamek na równoległy przebieg TEGO SAMEGO projektu.
 #
