@@ -371,6 +371,26 @@ etykieta mówiła „świat 2 — wskrzeszenie", czego nie udowodniłem. To
 dokumentacja kłamiąca o kodzie: następny czytelnik odziedziczyłby wniosek bez
 pomiaru. Poprawna postać nazywa stan wiedzy — „NIEROZSTRZYGNIĘTE: światy 1 i 2".
 
+**P25 i gałąź zdegenerowana to TA SAMA WADA** — raz po stronie czerwieni, raz
+po stronie zieleni. „Perturbacja zaliczona z innej przyczyny niż badana"
+i „wartość dyskryminatora zgodna z więcej niż jednym światem" to jedno
+zjawisko: **wynik, którego nie da się przypisać badanemu zjawisku**.
+
+**Odruch:** zobaczywszy wynik, pytaj **„jakie światy dają tę wartość"**, nie
+„czy wynik jest taki, jak chciałem". Dotyczy zieleni tak samo jak czerwieni —
+zielony test przechodzący z niewłaściwego powodu jest groźniejszy, bo nikt go
+nie bada.
+
+Dwa pomiary usunięte w ciągu godziny właśnie z tego powodu: migawka magazynu
+(105 kluczy, bez izolacji sesji) i test „`Cache::flush()` nie wylogowuje"
+(przechodził także po cofnięciu zmiany, bo w suicie `CACHE_STORE=array`).
+
+**Cicha podmiana sterownika w suicie jest gorsza od braku kontroli**, bo
+wygląda jak pokrycie. Przy dodawaniu kontroli pytamy: **czy sterownik, którego
+zachowanie badam, jest w suicie prawdziwy?** Jeśli nie — kontrola trafia na
+jawną listę „bez pokrycia" z uzasadnieniem, zamiast udawać dowód.
+Przegląd sterowników: `docs/DECYZJE.md`, D-2026-08-08-27.
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`

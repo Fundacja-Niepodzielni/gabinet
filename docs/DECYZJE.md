@@ -846,3 +846,87 @@ kontroli — albo nigdy.
 nie planował, nie jest uciążliwa — jest jedynym momentem, w którym pytanie
 w ogóle pada. „To tylko techniczna tabelka" jest właśnie tym zdaniem, przed
 którym rejestr ma bronić.
+
+---
+
+## D-2026-08-08-27 — przegląd sterowników podmienianych w suicie
+
+**Cicha podmiana sterownika jest gorsza od braku kontroli, bo wygląda jak
+pokrycie.** Dwie instancje w ekosystemie: hub miał sterownik sesji `array`,
+przez co skan danych wrażliwych omijał prawdziwy magazyn; u nas `CACHE_STORE`
+= `array` sprawił, że test „`Cache::flush()` nie wylogowuje" przechodził
+**także wtedy, gdy sesje siedziały w tej samej przestrzeni co cache**.
+
+Zmierzone z `backend/phpunit.xml` (nie z pamięci):
+
+| zmienna | wartość w suicie | co przez to staje się puste |
+|---|---|---|
+| `CACHE_STORE` | `array` | wszystko, co bada ZACHOWANIE cache'u: `Cache::flush()`, TTL, eksmisja, współdzielenie między procesami |
+| `SESSION_DRIVER` | `array` | kontrole magazynu sesji — obchodzone jawnie przez `app('session')->driver('redis')` w testach, które tego wymagają |
+| `QUEUE_CONNECTION` | `sync` | ponowienia, kolejność, zadania odłożone, martwe listy |
+| `MAIL_MAILER` | `array` | realna wysyłka; blokada wysyłki sprawdzana osobno flagą `GABINET_BLOKADA_WYSYLKI` |
+| `BROADCAST_CONNECTION` | `null` | rozgłaszanie — nieużywane w F1 |
+| `DB_CONNECTION` | `pgsql` | **NIEPODMIENIONE** — baza jest prawdziwa, dlatego kontrole schematu, wyzwalaczy i retencji mają pokrycie |
+| `BCRYPT_ROUNDS` | `4` | koszt hasha — nieistotne, nie mamy własnych haseł (CLAUDE.md §2) |
+
+### (a) Kontrole z pokryciem prawdziwego magazynu
+
+- **Wszystko wokół PostgreSQL** — schemat zadeklarowany (§2), wyzwalacz
+  tylko-do-dopisywania, unikalność `(specjalista_id, termin)`, retencja
+  i jej wykonanie, znacznik unieważnienia sesji. `DB_CONNECTION` nie jest
+  podmieniane, więc te kontrole mierzą to, co deklarują.
+- **Magazyn sesji** — testy, które go badają (`SesjaBezJawnychDanychTest`,
+  BLK-22), sięgają po sterownik produkcyjny jawnie: `app('session')->driver('redis')`.
+  To obejście jest ŚWIADOME i opisane w tych plikach.
+
+### (b) BEZ POKRYCIA — lista jawna, z uzasadnieniem
+
+- **Zachowanie cache'u** (`Cache::flush()`, TTL, współdzielenie). Skutek: nie
+  mam dziś kontroli dowodzącej, że rozdzielenie przestrzeni kluczy sesji
+  i cache'u działa w Redisie — tylko konfigurację. Test, który to „dowodził",
+  usunąłem, bo przechodził z innej przyczyny. **Wymaga suity z realnym
+  magazynem cache.**
+- **Kolejki** (`sync`). W F1 nie mamy zadań asynchronicznych; wchodzi w F2
+  razem z materializacją slotów, i wtedy kontrola ponowień musi dostać
+  prawdziwy sterownik.
+- **Poczta** (`array`). Blokada wysyłki poza produkcją jest sprawdzana flagą,
+  nie sterownikiem — i to jest właściwe rozdzielenie: flaga jest tym, co
+  chroni, a nie sterownik testowy.
+
+### Zasada
+
+Przy dodawaniu kontroli pytamy: **czy sterownik, którego zachowanie badam,
+jest w suicie prawdziwy?** Jeśli nie — kontrola trafia na listę (b) z jawnym
+uzasadnieniem, zamiast udawać pokrycie.
+
+---
+
+## D-2026-08-08-28 — eksmisja Redisa: decyzja z NAZWANYM WYZWALACZEM
+
+**Poprawka techniczna do mojego wcześniejszego wniosku.** Napisałem, że
+rozdzielenie sesji i cache'u na osobne bazy Redisa zamyka temat eksmisji.
+To **nieprawda**: `maxmemory` i polityka eksmisji są własnością **INSTANCJI**
+Redisa, nie bazy. Rozdzielenie chroni sesje przed `FLUSHDB` (ten działa na
+jednej bazie) — i to jest realny zysk — ale **nie chroni przed eksmisją**,
+bo eksmisja wybiera klucze z całej instancji. Klucze sesji mają TTL, więc
+zdjęłaby je nawet polityka `volatile-*`.
+
+**Stan zmierzony dziś:** `maxmemory-policy` = `noeviction`, `maxmemory` = `0`.
+Brak limitu, więc polityka nie ma znaczenia. Ale to jest **domyślna wartość
+produktu, której nikt świadomie nie wybrał** — ta sama klasa co `GRANT` na
+schemacie `public` w PostgreSQL (W-8).
+
+**DECYZJA z nazwanym wyzwalaczem:**
+
+> Gdy ustawiamy limit pamięci Redisa (`maxmemory` ≠ 0) — co nastąpi, bo plan
+> infrastruktury zakłada niewielkie VPS-y — **sesje idą na osobną instancję
+> Redisa albo instancja trzymająca sesje dostaje `maxmemory-policy=noeviction`.**
+
+Bez tego użytkownicy wylatują losowo pod presją pamięci, **bez śladu w logach
+aplikacji**. Osoba ustawiająca limit będzie miała rację ze swojej perspektywy
+i nie ma jak wiedzieć, że dotyka sesji — dlatego wyzwalacz jest zapisany tutaj,
+a nie zostawiony jako obserwacja.
+
+**Do kontroli konfiguracji produkcyjnej (F9, hartowanie):** magazyn sesji nie
+może podlegać eksmisji. Sprawdzenie: `CONFIG GET maxmemory` i
+`CONFIG GET maxmemory-policy` na instancji trzymającej sesje.
