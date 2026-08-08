@@ -18,6 +18,16 @@ use Tests\Wsparcie\FabrykaTokenow;
  * E-mail pacjenta leżał więc w magazynie sesji jawnie — w systemie
  * przetwarzającym dane o zdrowiu (RODO art. 9).
  *
+ * ZAKRES TEGO PLIKU — czytaj, zanim uznasz go za dowód (D-2026-08-08-25).
+ *
+ * Cztery z pięciu zapisów to FIXTURE TESTU: plik wkłada dane do magazynu
+ * i sam ich potem szuka. To kształt (c) z przeglądu C1 — kontrola sprawdza
+ * stan, który sama wyprodukowała, więc dowodzi głównie, że `Crypt` działa.
+ *
+ * Asercja o KODZIE PRODUKCYJNYM — czy kontroler naprawdę szyfruje ID token —
+ * mieszka w `OdebranieRoliTest` („zapisuje ID token do sesji ZASZYFROWANY")
+ * i tam ma perturbację dwunożną. Nie szukaj jej tutaj.
+ *
  * NAJWAŻNIEJSZE W TYM TEŚCIE: szuka WARTOŚCI, nie NAZW.
  *
  * Asercja „w sesji nie ma klucza `email`" jest bezwartościowa — dane wyciekają

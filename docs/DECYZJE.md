@@ -751,3 +751,63 @@ sprawdzalną liczność.
 
 **Kolejność prac (bez zmian):** W-8 → V-1 wg powyższego → V-4 / V-8 / V-9 →
 runda 6 na gałęzi → merge do `main` po zielonym (D-2026-08-08-23).
+
+---
+
+## D-2026-08-08-25 — przegląd kontroli pod TRZY kształty C1
+
+Reguła C1 rozrosła się w trzy odrębne kształty. Przegląd wykonany na całym
+zestawie kontrol, nie tylko na kandydatach.
+
+**(a) WSPÓLNY MECHANIZM** — kontrola i przedmiot idą tą samą drogą.
+**(b) WSPÓLNY KLUCZ** — kontrola pyta o klucz, który naprawiana operacja sama
+kasuje albo ustawia; klucz zawsze ma „właściwą" wartość, więc kontrola nie może
+zaświecić.
+**(c) STAN WŁASNEJ PRODUKCJI** — kontrola sprawdza stan, który sama wytworzyła
+(R4 helpdesku: audyt historii, którą bramka sama tworzyła i kasowała).
+
+### Wynik przeglądu
+
+| kontrola | kształt | stan |
+|---|---|---|
+| `SladWylogowania` ↔ `RejestrSesji` | (a) wspólny cache | **naprawione** — ślad przeniesiony do pliku |
+| perturbacja pulsu ↔ harmonogram | (a) czekanie na ten sam mechanizm | **naprawione** — puls zapisywany niezależnym poleceniem |
+| test logoutu ↔ `RejestrSesji` | **(b)** | **OTWARTE — to jest BLK-22** |
+| `ObietniceKomentarzyTest` | (a) obie strony z jednej funkcji | **OTWARTE — V-4** |
+| `SesjaBezJawnychDanychTest` | **(c)** 5 zapisów / 9 asercji | **CZĘŚCIOWO** — patrz niżej |
+| `ModelDanychTest` (szyfrowanie) | **(c)** 9 zapisów / 15 asercji | **OTWARTE — W-9** |
+| `RetencjaWykonanieTest` | pozornie (c) | **CZYSTE** — patrz niżej |
+| `licz-testy.sh` (bramka ↔ perturbacje) | (a) świadomie dzielony | **CZYSTE** — falsyfikowalny w obie strony |
+
+### Trzy rozstrzygnięcia wymagające uzasadnienia
+
+**Test logoutu — kształt (b), najkosztowniejszy.** Kontrola pytała
+`sesjaWMagazynie($id)`, gdzie `$id` pochodzi z `RejestrSesji::odczytaj($sid)` —
+czyli z **tego samego klucza**, który wylogowanie kasuje. Klucz po logoucie jest
+pusty **zawsze**, niezależnie od tego, czy użytkownik został realnie
+wylogowany. Kontrola nie mogła zaświecić. Dopiero test pozytywny (żądanie →
+401) pokazał, że konsument serwuje dalej. To jest **dowód wartości kształtu
+(b)** jako osobnej kategorii — samo pytanie „czy mechanizm i przedmiot dzielą
+drogę" tego nie łapało, bo drogi były różne.
+
+**`RetencjaWykonanieTest` — pozornie (c), realnie czyste.** Test wstawia
+rekordy, które potem kasuje zadanie. Ale weryfikacja idzie **niezależnym
+zapytaniem do bazy**, nie przez wartość zwróconą przez zadanie, a perturbacja
+blokuje kasowanie **regułą PostgreSQL**, o której zadanie nic nie wie.
+Producent (test), wykonawca (zadanie) i obserwator (zapytanie) to trzy różne
+ścieżki.
+
+**`SesjaBezJawnychDanychTest` — kształt (c), częściowo.** Cztery z pięciu
+zapisów to fixture testu, więc plik dowodzi głównie, że `Crypt` działa —
+to samo, co W-9 zarzuca kontroli szyfrowania. Asercja o KODZIE PRODUKCYJNYM
+(czy kontroler szyfruje ID token) mieszka osobno, w `OdebranieRoliTest`,
+i tam ma perturbację dwunożną. Plik zostaje, ale jego docblock nie może
+obiecywać więcej, niż plik sprawdza — poprawione przy tym wpisie.
+
+### Wniosek dla następnych kontroli
+
+Przy pisaniu kontroli zadajemy trzy pytania, nie jedno: **czy patrzę inną
+drogą** niż badany mechanizm, **czy pytam o inny klucz** niż ten, którym
+operuje naprawiana czynność, i **czy sam nie wyprodukowałem stanu**, o który
+pytam. Kształt (b) jest najtrudniejszy do zauważenia, bo drogi bywają
+poprawnie rozdzielone — a mimo to odpowiedź jest z góry ustalona.
