@@ -67,6 +67,35 @@ heurystyka entropii nie potrafi.
 targetRules = ["generic-api-key"]
 paths = ['''(^|/)\.env\.example$''']
 
+[[allowlists]]
+description = """
+Heurystyka `generic-api-key` na raportach nocy 08/09.08 — WYŁĄCZONA WĄSKO.
+
+Powód, zmierzony: krok bramki „sekrety" zapalił się na `leaks found: 1`, a
+„sekretem" była NAZWA PLIKU we własnym dzienniku — `ZLECENIE-RUNDA-6.md`
+w zdaniu „Treść obu zleceń zapisana obok:". Reguła entropijna nie odróżnia
+nazwy pliku od klucza API. Żadnej wartości sekretnej tam nie ma.
+
+Dlaczego nie samo przeredagowanie zdania: gitleaks skanuje HISTORIĘ (56
+commitów), więc treść z commita `83775f4` zostaje w skanie niezależnie od
+tego, co pokazuje drzewo robocze. Zdanie i tak przeredagowałem — allowlista
+nie jest jedyną linią obrony, tylko domyka historię.
+
+Dlaczego to nie jest dziura: wyłączona jest JEDNA reguła (heurystyka entropii)
+na JEDNYM katalogu z raportami tekstowymi. Wszystkie reguły WŁASNE tego
+projektu — `laravel-app-key`, `smsapi-token`, `keycloak-client-secret`,
+`haslo-bazy` — obowiązują tam dalej, a to one opisują kształty sekretów, które
+w tym repozytorium naprawdę występują. Katalog jest przy tym z definicji
+prozą: raporty weryfikacji, dziennik, znaleziska.
+
+DO ROZSTRZYGNIĘCIA (`docs/noc-2026-08-08/DO-DECYZJI.md`, poz. 1): czy taka
+wyłączność ma obowiązywać dla WSZYSTKICH przyszłych katalogów raportowych,
+czy każdy ma dostawać własny wpis. Wybrałem wariant najwęższy — ten jeden
+katalog — bo jest odwracalny i nie tworzy precedensu na przyszłość.
+"""
+targetRules = ["generic-api-key"]
+paths = ['''docs/noc-2026-08-08/.*''']
+
 # `.env.example` ma same puste przypisania (pilnuje tego test `SekretyTest`),
 # więc nie potrzebuje wyjątku — i celowo go nie dostaje. Gdyby ktoś wpisał tam
 # wartość, MA zapalić skan. Skuteczność tej konfiguracji sprawdza krok bramki

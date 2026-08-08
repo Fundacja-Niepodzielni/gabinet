@@ -681,3 +681,67 @@ Lekcja jest ogólniejsza niż ten wpis i dlatego ją zapisuję: *zbieżność li
 jest tropem tylko wtedy, gdy liczba jest RZADKA.* Szukałem potwierdzenia
 w wartości, którą dzieli pół świata, zamiast w nazwie, która identyfikuje
 jednoznacznie — i o mało nie wydałem na to rundy z `MONITOR`-em.
+
+---
+
+## N-8 — mój własny DZIENNIK zapalił bramkę: nazwa pliku wzięta za klucz API
+
+**Skutek po ludzku:** pisząc dziennik tej nocy, wprowadziłem DRUGI czerwony krok
+w bramce. Skaner sekretów uznał **nazwę pliku** za sekret. Zlecenie mówiło
+„jeden czerwony (noga 1) ma zostać czerwony" — a ja przez własną dokumentację
+zrobiłem drugi.
+
+**Dowód:**
+
+```
+=== [21] sekrety (gitleaks) — ten sam skan co w CI
+INF  56 commits scanned.          (weryfikator rundy 6 na 49131d8 skanował 49)
+WRN  leaks found: 1
+    ^ KROK NIEUDANY
+BRAMKA CZERWONA — 2 nieudanych kroków z 22
+
+$ gitleaks … --report-format json
+REGUŁA  : generic-api-key
+PLIK    : docs/noc-2026-08-08/DZIENNIK.md
+LINIA   : 62
+COMMIT  : 83775f47fa
+SEKRET  : ZLECENIE-RUN…
+KONTEKST: zapisana obok: `ZLECENIE-RUNDA-6.md`
+```
+
+„Sekretem" jest **nazwa pliku** `ZLECENIE-RUNDA-6.md` w zdaniu „Treść obu zleceń
+zapisana obok:". Heurystyka entropii nie odróżnia nazwy pliku od klucza API.
+
+**Dlaczego samo przeredagowanie nie wystarczyło:** gitleaks w trybie bramki
+skanuje **HISTORIĘ** (56 commitów). Treść z commita `83775f4` zostaje w skanie
+niezależnie od tego, co pokazuje drzewo robocze. Historii nie przepisuję —
+przepisywanie historii o pierwszej w nocy, bez świadka, na gałęzi tuż przed
+wypchnięciem, to dokładnie ten rodzaj obejścia, którego zlecenie zabrania.
+
+**Zrobione — dwa niezależne posunięcia, nie jedno:**
+
+1. **Zdanie przeredagowane**, żeby drzewo robocze nie zależało od wyjątku.
+2. **Wyjątek najwęższy z możliwych**: JEDNA reguła (`generic-api-key`) na JEDNYM
+   katalogu (`docs/noc-2026-08-08/`). Reguły WŁASNE projektu obowiązują tam dalej.
+
+**Sprawdzone, że wyjątek NIE oślepił skanera** — bo wyjątek bez dowodu
+falsyfikowalności jest dziurą, nie decyzją. Podłożyłem przynętę w tym samym
+katalogu, którego dotyczy wyłączenie:
+
+```
+$ printf 'DB_PASSWORD=…\nSMSAPI_TOKEN=…\n' > docs/noc-2026-08-08/PRZYNETA.md
+$ gitleaks detect --no-git …
+WRN  leaks found: 6          ← reguły własne ŁAPIĄ mimo allowlisty
+$ rm docs/noc-2026-08-08/PRZYNETA.md   (drzewo sprawdzone: czyste)
+```
+
+Po naprawie, tą samą komendą co w bramce: `56 commits scanned` → **`no leaks found`**.
+
+**Waga:** średnia. Nie dotyczy bezpieczeństwa produktu — dotyczy tego, że
+**pisanie dokumentacji potrafi zapalić bramkę**, a to nie jest oczywiste
+i kosztowało mi drugi czerwony.
+**Czy blokuje:** nie; zamknięte tej samej nocy z dowodem w obie strony.
+
+**Lekcja szersza niż ten wpis:** raport z weryfikacji jest tekstem o wysokiej
+entropii — pełnym identyfikatorów sesji, skrótów i nazw plików. Katalog raportów
+i skaner sekretów będą się o siebie ocierać zawsze, nie ten jeden raz.

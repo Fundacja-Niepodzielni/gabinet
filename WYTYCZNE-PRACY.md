@@ -456,6 +456,76 @@ po tym, jak pomiar kontrolny podważył moją diagnozę.
 5. Heredoc basha zapisał `/tmp/parser.txt`, Python z tego samego polecenia
    zgłosił `FileNotFoundError` — dwa razy tego samego dnia.
 
+### Lekcje nocy 08/09.08 — przyrząd, który przestał świecić
+
+**Dowód mutacji w formie „starego tekstu już nie ma" MA GAŁĄŹ ZDEGENEROWANĄ.**
+Wartość „prawda" jest zgodna z dwoma światami: (I) mutacja weszła i usunęła
+tekst, (II) tekstu NIGDY TAM NIE BYŁO, bo kod przemianowano. Poprawna postać
+pyta **„czy tekst BYŁ, a potem ZNIKNĄŁ"** — odczyt bazowy bierze z kopii sprzed
+mutacji, którą i tak robi `zachowaj`. Wtedy rozjazd perturbacji z kodem melduje
+się sam, i to z właściwą przyczyną („PERTURBACJA ROZJECHAŁA SIĘ Z KODEM"),
+zamiast udawać sukces.
+
+*Zmierzona instancja (09.08, noc):* przemianowanie zmiennej `$konta` →
+`$tozsamosc` w kodzie produkcyjnym (własny commit z tego samego wieczora)
+uczyniło DWIE perturbacje bezczynnymi. Zawiodły trzy zabezpieczenia po kolei:
+`perturbuj()` nie sprawdzał kodu wyjścia (skrypt bez `set -e`), dowód mutacji
+był negacją nieistniejącego wzorca, a oczekiwana czerwień i tak przyszła —
+z niepowiązanego, trwale czerwonego testu w tym samym pliku. Znalezione
+niezależnie trzy razy: przeze mnie, przez weryfikatora A (uruchomieniem każdego
+ogniwa) i przez weryfikatora B (porównaniem wzorców z kodem).
+
+**Refaktor kodu produkcyjnego UNIEWAŻNIA perturbacje, które ten kod cytują.**
+Perturbacja podmienia tekst, więc każda zmiana nazw jest dla niej zmianą
+zrywającą — cichą, bo nikt nie uruchamia perturbacji przy zmianie nazwy
+zmiennej. Po każdym refaktorze w obszarze objętym perturbacjami: uruchom je
+albo przynajmniej sprawdź, że wzorce nadal trafiają.
+
+**Perturbacja celująca w plik, który jest JUŻ czerwony z innego powodu, nie może
+paść.** `oczekuj_czerwone` bez zawężenia przyjmie tamtą czerwień i zaliczy
+scenariusz, choćby mutacja nie zmieniła nic. Gdy w pliku siedzi znany czerwony,
+**każde** wymierzone w niego `oczekuj_czerwone` musi mieć `--przyczyna`.
+A `--przyczyna` ma być **KOMUNIKATEM ASERCJI**, nie nazwą testu, nazwą klasy
+ani wartością `--filter` — te trzy Pest wypisuje w KAŻDYM przebiegu, także
+zielonym, więc jako allowlisty nie zawężają niczego.
+
+**Zbieżność liczb jest tropem tylko wtedy, gdy liczba jest RZADKA.**
+Błąd częstości bazowej. Zgodność „co do sekundy" dwóch wartości, z których każda
+znaczy „jedna doba", nie niesie prawie żadnej informacji — 86400 trzyma połowa
+komponentów w stosie. Przy wartości 73 412 s byłby to mocny trop.
+
+*Zmierzona instancja (09.08):* zgłosiłem podejrzenie, że klucz rejestru sesji
+trafia do złej bazy Redisa, bo jego TTL wynosił 86400 s — tyle, co
+`RejestrSesji::CZAS_ZYCIA_SEKUND`. Rozstrzygała **NAZWA** klucza, nie TTL:
+odczyt nazw (wolno je czytać, wartości nie) pokazał w tej bazie wyłącznie klucze
+Horizona i wątek zniknął w minutę. Szukałem potwierdzenia w wielkości, którą
+dzieli pół świata, zamiast w identyfikatorze, który identyfikuje.
+
+**Kod wyjścia potoku należy do OSTATNIEGO polecenia.** `komenda | tail` zwraca
+kod `tail`, czyli prawie zawsze zero. Dwa razy jednej nocy „exit code 0" znaczyło
+u mnie „pomiar w ogóle się nie wykonał" — raz przez nieistniejącą flagę
+(`docker exec -T`, gdzie `-T` należy do `docker compose exec`), raz przez `tail`.
+Wniosek czytaj z TREŚCI wyjścia, nie z kodu; przy potokach `set -o pipefail`.
+
+**Naprawa jednej kontroli potrafi POWIĘKSZYĆ lukę w drugiej.** Podniesienie
+podłogi liczby testów w bramce było słuszne — i tym samym powiększyło rozjazd
+wobec perturbacji, które dowodzą podłogi o innej, niższej wartości. Raport
+z naprawy, który przemilcza jej skutek uboczny, jest raportem nieprawdziwym.
+
+**Dokumentacja potrafi zapalić bramkę.** Raport z weryfikacji to tekst
+o wysokiej entropii — identyfikatory sesji, skróty, nazwy plików — a skaner
+sekretów nie odróżnia go od klucza API. U nas heurystyka `generic-api-key`
+uznała za sekret **nazwę pliku** we własnym dzienniku. Wyjątek w skanerze wolno
+dodać tylko wąsko (jedna reguła, jedna ścieżka) i **z dowodem, że nie oślepił
+kontroli** — przynęta w tym samym katalogu musi go nadal zapalać.
+
+**Podmiana „od kotwicy do kotwicy" w dokumencie wielosekcyjnym ma zasięg
+większy, niż wygląda.** Zamieniając jedną sekcję na nową, wskazałem zakres
+„od jej nagłówka do następnego znanego nagłówka" i skasowałem po drodze trzy
+tabele zadań. Wyszło natychmiast wyłącznie dlatego, że skrypt wypisywał liczbę
+usuwanych znaków, a usuwaną treść zapisywał do pliku przed nadpisaniem.
+**Zapisuj to, co nadpisujesz** — kosztuje jedną linijkę.
+
 ## Czego agentom nie wolno nigdy
 
 Wdrażać na produkcję bez zgody właściciela · zapisywać sekretów · wyłączać/obchodzić bramek · relitygować decyzji z `CLAUDE.md` i `docs/DECYZJE.md` · pracować dalej mimo niezrozumienia wymagania (wtedy: pytanie do właściciela w raporcie, praca na innym froncie).

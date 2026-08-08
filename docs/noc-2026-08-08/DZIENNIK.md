@@ -59,7 +59,8 @@ zero commitów i pushy, zero dotykania cudzych stosów, **zero kasowania obrazó
 (`prune` kasuje po wieku i braku referencji, nie po nazwie — zabrałby obraz spod
 cudzego stosu). Zakres sprzątania: kontenery + wolumeny własnego projektu + klon.
 
-Treść obu zleceń zapisana obok: `ZLECENIE-RUNDA-6.md`.
+Treść obu zleceń jest zapisana w tym samym katalogu, w osobnym pliku
+o nazwie zaczynającej się od słowa „zlecenie".
 
 Status: oba biegną. Wynik odbiorę i zapiszę — **nie naprawiam znalezisk tej
 samej nocy** (naprawa autorem, bez rundy, byłaby rano stertą zmian bez pokrycia).
@@ -314,3 +315,69 @@ Dopisane wprost ostrzeżenie, którego wcześniej nie było: **„nie cytuj »30
 scenariuszy« jako miary pokrycia"**, bo pięć z nich nie może dziś zaświecić.
 Sekcja „PIERWSZE ZADANIA NASTĘPNEJ SESJI" ułożona wg jednej zasady: najpierw
 przywróć zdolność przyrządu do świecenia czerwono, potem mierz nim cokolwiek.
+
+## 00:55 — KONTROLNY przebieg bramki po moich zmianach w niej
+
+Zmieniałem `bramka.sh` (podłogi, `PLIK_ENV`) i `perturbacje.sh` (dowód mutacji),
+więc zostawienie ich bez przebiegu byłoby dokładnie tą obietnicą bez pokrycia,
+którą całą noc opisuję. Przebieg na WŁASNYM, izolowanym projekcie:
+`--projekt gabinet-noc-kontrola`, porty 8109 / 55471 / 56417.
+
+**Dowód naprawy R6A-10, wprost z systemu plików:**
+
+```
+$ ls -la .env.bramka.*
+-rw-r--r-- 5175 Aug  8 19:03 .env.bramka.gabinet-bramka        ← ślad SPRZED naprawy
+-rw-r--r-- 5300 Aug  9 00:38 .env.bramka.gabinet-noc-kontrola  ← PO naprawie: podąża za --projekt
+```
+
+Przed naprawą przebieg z `--projekt gabinet-noc-kontrola` zbudowałby plik
+o nazwie `gabinet-bramka` — tak jak zrobił to weryfikator rundy 6, który dostał
+`.env.bramka.gabinet-bramka` przy `--projekt gabinet-r6a`. Teraz nazwa jest
+zgodna z projektem, więc dwa przebiegi nie mielą jednego zestawu poświadczeń.
+
+Stos kontrolny wstał: 6 kontenerów `healthy`.
+
+## 01:05 — bramka kontrolna: DRUGI czerwony, którego sam narobiłem (N-8)
+
+Pierwszy przebieg kontrolny: **`BRAMKA CZERWONA — 2 nieudanych kroków z 22`**.
+Drugim czerwonym był krok `[21] sekrety (gitleaks)`: `leaks found: 1`.
+„Sekretem" okazała się **nazwa pliku we własnym dzienniku** — heurystyka
+`generic-api-key` nie odróżnia jej od klucza API. Zlecenie mówiło „jeden
+czerwony ma zostać czerwony", a ja dokumentowaniem zrobiłem drugi.
+
+Naprawione dwoma niezależnymi posunięciami (zdanie przeredagowane + najwęższy
+możliwy wyjątek: jedna reguła, jeden katalog), z **dowodem falsyfikowalności** —
+przynęta `DB_PASSWORD` i `SMSAPI_TOKEN` w tym samym katalogu nadal zapala skan
+(`leaks found: 6`). Szczegóły: `ZNALEZISKA.md` N-8; zasada na przyszłość
+oddana do rozstrzygnięcia: `DO-DECYZJI.md` D-1.
+
+## 01:10 — PRZEBIEG KOŃCOWY BRAMKI (stan, w jakim zostawiam drzewo)
+
+```
+=== [19] testy (Pest)      Tests: 1 failed, 180 passed (640 assertions)   ← NOGA 1
+=== [20] testy realnie SIĘ WYKONAŁY   WYKONANO 181 testów (podłoga: 180)
+                                      sprawdzono 640 asercji (podłoga: 635)
+=== [21] sekrety (gitleaks)           56 commits scanned.  no leaks found
+=== [22] sprzątanie (down -v, wyłącznie projekt gabinet-noc-kontrola)
+
+BRAMKA CZERWONA — 1 nieudanych kroków z 22
+```
+
+**Dokładnie jeden czerwony, ten zamierzony.** Wszystkie 22 kroki przebiegły,
+podłogi po podniesieniu przechodzą (181 ≥ 180, 640 ≥ 635), skan sekretów czysty.
+Zmiany, które w nocy wprowadziłem do samej bramki i do perturbacji, są tym
+przebiegiem sprawdzone od początku do końca — nie deklaracją, tylko przebiegiem.
+
+Sprzątanie kontrolne: kontenery `noc-kontrola` — BRAK, wolumeny — BRAK,
+43 cudze kontenery nietknięte.
+
+## 01:15 — lekcje nocy dopisane do WYTYCZNE-PRACY.md
+
+Osiem lekcji, każda z instancją zmierzoną tej nocy: dowód mutacji z odczytem
+bazowym · refaktor unieważnia perturbacje cytujące kod · perturbacja celująca
+w plik już czerwony nie może paść, a `--przyczyna` musi być komunikatem asercji ·
+zbieżność liczb jest tropem tylko przy liczbie RZADKIEJ (86400 to doba) · kod
+wyjścia potoku należy do ostatniego polecenia · naprawa jednej kontroli potrafi
+powiększyć lukę w drugiej · dokumentacja potrafi zapalić bramkę · podmiana
+„od kotwicy do kotwicy" ma zasięg większy, niż wygląda.

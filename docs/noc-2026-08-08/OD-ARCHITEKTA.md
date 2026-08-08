@@ -128,3 +128,43 @@ na niego rundy.
 **Możesz zamknąć O-N1**, powołując się na ten pomiar. Twoja decyzja, żeby nie zamykać go jako
 „prawdopodobnie artefakt", była słuszna — przy stawce fail-open w wylogowaniu należało poczekać
 na odczyt, a nie na przekonanie. Teraz odczyt jest.
+
+---
+
+## Odpowiedź na D-1 — Twój wybór docelowy (3 z elementem 1) POTWIERDZAM
+
+Ale zwróć uwagę, **dla którego z Twoich argumentów** go potwierdzam, bo to zmienia sposób wykonania.
+
+Nie dlatego, że utrzymuje skaner ostrym. Dlatego, że sam napisałeś rzecz rozstrzygającą:
+**„pełny identyfikator sesji w dokumencie to sam w sobie drobny wyciek"** oraz **„wartość dowodowa
+jest w RELACJI między odczytami, nie w konkretnej wartości"**. To jest argument merytoryczny,
+niezależny od gitleaksa: raporty nie potrzebują pełnych identyfikatorów, więc nie powinny ich
+zawierać, nawet gdyby żaden skaner nie istniał. Skracanie usuwa PRZYCZYNĘ.
+
+**Wariant 2 (`docs/**`) odrzucam stanowczo** — z Twojego własnego powodu: raporty z natury cytują
+konfiguracje, katalog rośnie, a nikt nie przewiduje jego zawartości. To wyłączenie kontroli
+bezpieczeństwa na obszarze, który do niej najbardziej się nadaje.
+
+### Mechanizm, bez którego wariant 3 jest tylko postanowieniem
+
+„Skracaj cytowane identyfikatory" to reguła zależna od pamięci — czyli ta klasa, o której wiemy,
+że pada pod obciążeniem. Nie da się jej tanio zmechanizować w pełni, ale da się zmechanizować
+**odruch po czerwieni**, a to wystarczy, bo obie ścieżki (zapomniany wyjątek, niezredagowany cytat)
+i tak kończą się czerwoną bramką — czyli **fail-closed**, i to jest dobra wiadomość.
+
+Niebezpieczeństwo nie polega na tym, że bramka zapali. Polega na tym, **jaki odruch wywoła**:
+najtańszą reakcją na „leaks found" w katalogu raportowym jest dopisanie wyjątku, a nie skrócenie
+cytatu. Dlatego: **komunikat bramki przy trafieniu w katalogu raportowym ma UCZYĆ właściwej
+naprawy** — coś w rodzaju *„jeśli to zacytowany identyfikator, SKRÓĆ GO; wyjątek dopisuj tylko
+dla historii, której nie da się już zmienić"*. Jedno zdanie w komunikacie zamienia domyślny
+odruch z rozluźniania kontroli na usuwanie przyczyny.
+
+### Co do historii commita `83775f4` — nie przepisuj
+
+Zgodnie z zasadą, którą już mamy: nie przepisujemy wypchniętej historii dla samej czystości.
+Gałąź robocza, jeden piszący, nic od niej nie zależy — koszt operacji destrukcyjnej przewyższa
+zysk. **Wyjątek per katalog zostaje dokładnie jako to, co sam nazwałeś: zawór na historię,
+której nie da się już zmienić.** Dyscyplina skracania obowiązuje NAPRZÓD, od następnego raportu.
+
+To jest ta sama figura co przy dyscyplinie gałęzi: reguła wchodzi w życie od teraz, a bieżący
+stan legitymizuje runda, nie przepisanie przeszłości.
