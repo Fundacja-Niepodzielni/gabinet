@@ -14,17 +14,38 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **`main`** — zweryfikowany rundą 5 do `b2084fc`, z 12 znaleziskami (8 zamkniętych).
 - **Bramka na gałęzi: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: otwarty
   test pozytywny BLK-22 („żądanie po wylogowaniu dostaje 401"). Pozostałe 21 kroków zielone.
-- **Testy: 178 / 621 asercji** (177 zielonych + 1 czerwony BLK-22).
-- **Perturbacje: `PERTURBACJE OK` — 44 kontrole**, ze strażnikiem przyczyny czerwieni
+- **Testy: 178 / 621 asercji** (177 zielonych + 1 czerwony BLK-22) — stan na 08.08; liczby ROSNĄ, sprawdź `pest` zamiast ufać tej linii.
+- **Perturbacje: `PERTURBACJE OK` — 44 kontrole** (stan na 08.08, rośnie), ze strażnikiem przyczyny czerwieni
   (denylista awarii pobocznych + allowlista `--przyczyna` w 7 miejscach o najwyższym koszcie).
 
 ### Do rozstrzygnięcia w następnej sesji
 
-**Runda 4 weryfikacji na `1204daa`.** Reguła zbieżności (D-2026-08-07-16):
-faza jest zamknięta dopiero, gdy runda na konkretnym SHA kończy się ZEREM
-znalezisk. Runda 3 na `a660753` dała 11 znalezisk — wszystkie naprawione
-(D-2026-08-07-18), ale to naprawy, nie potwierdzenie. **F0 i F1 pozostają
-formalnie otwarte do rundy 4.**
+> **SPROSTOWANIE (08.08).** Poprzednia wersja tej sekcji kierowała następną
+> sesję do „rundy 4 weryfikacji na `1204daa`" — a rundy 4 **i** 5 są wykonane.
+> Sesja czytająca to jako punkt wejścia ścigałaby zadanie już zamknięte,
+> trzymając dokument brzmiący autorytatywnie. Oznaczam jawnie, bo ktoś mógł
+> przeczytać wersję nieprawdziwą, a cicha podmiana do niego nie dotrze.
+
+**Runda 6 na gałęzi `faza-1-retencja`**, po zamknięciu otwartych znalezisk.
+Reguła zbieżności (D-2026-08-07-16): faza jest zamknięta dopiero, gdy runda na
+konkretnym SHA kończy się ZEREM znalezisk.
+
+Historia rund (każda odnosi się do KONKRETNEGO, przeszłego SHA — takie
+identyfikatory się nie starzeją, bo nazywają zdarzenie, nie stan bieżący):
+runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15, runda 5 na
+`b2084fc` — 12, z czego 8 zamkniętych.
+
+**OTWARTE, blokujące zamknięcie F1:**
+
+1. **BLK-22** — test pozytywny „żądanie po wylogowaniu dostaje 401" jest
+   CZERWONY i ma taki zostać do naprawy. Zmierzone: unieważnienie kasuje
+   zapamiętany laravel-session-id, a żądanie posługuje się innym.
+   Hipoteza „wskrzeszenie sesji przez odświeżenie tokenu" została
+   OBALONA moim własnym pomiarem (zero żądań do punktu tokenów po
+   wylogowaniu) — nie ścigaj jej ponownie.
+2. **V-1** — kontrola CLAUDE.md §2, obalona czterokrotnie. Projekt naprawy:
+   D-2026-08-08-24 (wąskie gardło, nie piąta lista zakazów).
+3. **V-4, V-8, V-9** oraz **W-8** (rozdzielenie ról bazodanowych).
 
 **Zostało w F1:** F1.7 — seed o wiarygodnych proporcjach (111 specjalistów,
 poniżej 40 wizyt na pacjenta, limit niskopłatnych musi RÓŻNICOWAĆ pacjentów).

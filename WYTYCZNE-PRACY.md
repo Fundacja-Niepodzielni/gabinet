@@ -283,6 +283,34 @@ krok diagnostyczny CI wołał `docker compose logs` **bez** `GABINET_PREFIX`,
 który od naprawy V-6 jest wymagany — czyli milczałby dokładnie wtedy, gdy jest
 potrzebny.
 
+**Plik stanu jest przyrządem — i to najgroźniejszym.** Następna sesja startuje
+z jego treści, więc jego nieaktualność propaguje się na **wszystkie** jej
+decyzje. Trzy reguły (wkład Gabinetu i sesji `konta`, obie zmierzone):
+
+1. **Nie zapisuj identyfikatorów samozwrotnych.** SHA commita w pliku, który
+   ten commit tworzy, jest nieaktualny od chwili zapisu — dopisywanie go to
+   praca, która z definicji nie może się udać. Zapisuj to, co się NIE starzeje
+   (gałąź, co otwarte, obowiązujące decyzje) plus **skąd czytać stan zmienny**
+   (`git rev-parse`, `gh run list`). Struktura zamiast ręcznej kontroli.
+   *Rozróżnienie:* SHA nazywający PRZESZŁE ZDARZENIE („runda 5 na `b2084fc`")
+   się nie starzeje — nazywa zdarzenie, nie stan bieżący.
+2. **Ruchome liczby zapisuj Z DATĄ i ostrzeżeniem, że rosną.** Pinowanie
+   ruchomej liczby jako stałej to ta sama pułapka, tylko odroczona.
+3. **Sprostowanie oznaczaj JAWNIE** („poprzednia wersja podawała nieprawdę,
+   bo X"). Ktoś mógł już przeczytać wersję fałszywą — cicha podmiana do niego
+   nie dotrze.
+
+**Audyt obejmuje PUNKTY WEJŚCIA, nie tylko pliki akurat edytowane.** Najgorszy
+zmierzony przypadek (sesja `konta`): dokument-punkt-wejścia po przerwie
+powtarzał wyjaśnienie blokera **obalone tego samego dnia** — następna sesja
+ścigałaby nieistniejącą przyczynę, trzymając dokument brzmiący autorytatywnie.
+
+U nas przy tym audycie: sekcja „do rozstrzygnięcia w następnej sesji" nadal
+kierowała do **rundy 4**, wykonanej razem z piątą. Obalona hipoteza BLK-22
+(wskrzeszenie sesji przez odświeżenie) do dokumentów nie trafiła — ale wpisałem
+ją tam TERAZ, jawnie jako obaloną, żeby następna sesja jej nie odkrywała
+od nowa.
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
