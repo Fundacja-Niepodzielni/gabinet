@@ -878,7 +878,7 @@ p_role_zamrozone() {
 	perturbuj role-zamrozone
 
 	dowod_zniknieciem "sprawdzanie wieku access tokenu zniknęło z kodu" \
-		"if (! $this->wymagaOdswiezenia($tozsamosc)) {" "$plik"
+		'if (! $this->wymagaOdswiezenia($tozsamosc)) {' "$plik"
 
 	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
@@ -898,7 +898,7 @@ p_logout_failsafe() {
 	perturbuj logout-bez-failsafe
 
 	dowod_zniknieciem "awaryjne zakończenie sesji zniknęło z handlera" \
-		"} catch (Throwable $blad) {" "$plik"
+		'} catch (Throwable $blad) {' "$plik"
 
 	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
@@ -964,7 +964,7 @@ p_id_token_w_sesji() {
 	perturbuj id-token-jawny
 
 	dowod_zniknieciem "kontroler zapisuje ID token bez szyfrowania" \
-		"Crypt::encryptString($idToken)" "$plik"
+		'Crypt::encryptString($idToken)' "$plik"
 
 	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php

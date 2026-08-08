@@ -72,7 +72,7 @@ final class OcenaAnulacji
         // „Wcześniej niż 24 h" znaczy: zostało WIĘCEJ niż 24 h. Dokładnie
         // 24:00:00 to jeszcze bezpłatne odwołanie — pacjent widzi datę graniczną
         // co do minuty i musi móc trafić w nią bez ryzyka.
-        $wOknieBezplatnym = $sekundDoWizyty > $sekundOkna;
+        $wOknieBezplatnym = $sekundDoWizyty >= $sekundOkna;
 
         // Sytuacja pacjenta rozstrzyga się DOPIERO tutaj: wywołujący mówi
         // „pacjent odwołuje", a nie „pacjent odwołuje późno". Inaczej każdy
