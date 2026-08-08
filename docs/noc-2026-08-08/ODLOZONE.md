@@ -12,7 +12,6 @@ co zostaje do sprawdzenia · czy blokuje coś innego.
 
 ---
 
-*(pusto na starcie — wpisy dopisywane na bieżąco)*
 ## O-N1 — klucz o TTL 86400 s pojawił się w Redis db0, choć nie ma prawa
 
 **Stan.** Po rozdzieleniu przestrzeni kluczy (D-2026-08-08-28) cache ma mieszkać
@@ -55,3 +54,27 @@ niż z niej czyta, to jest to ta sama klasa awarii, tylko innym wejściem.
 logowania i wylogowania · sprawdzić, czy którykolwiek kod używa `Redis::`
 zamiast `Cache::` · powtórzyć na CZYSTYM stosie, gdzie nie ma historii
 sprzed rozdzielenia.
+
+**Uzupełnienie 00:26 — dwa dalsze pomiary zawężają, ale nie zamykają.**
+
+```
+$ grep -rn "Redis::" backend/app backend/config backend/routes
+backend/app/Console/Commands/Zdrowie.php:57:  Redis::connection()->ping();
+  → jedyne bezpośrednie użycie Redisa z pominięciem magazynu cache'u to PING.
+    PING niczego nie zapisuje, więc ścieżka „kod pisze wprost do db0" — ODPADA.
+
+$ porównanie ZBIORU kluczy db0 w odstępie ~6 minut (00:20:27 → 00:26)
+  t1 = 25 kluczy, t2 = 25 kluczy, nowych: ZERO
+  → przez sześć minut db0 nie dostał ANI JEDNEGO nowego klucza.
+```
+
+Wiodąca hipoteza przesuwa się więc na **artefakt mojego przyrządu pomiarowego**:
+migawka składa się z `redis-cli --scan` i osobnego `redis-cli ttl` na każdy klucz,
+czyli z dziesiątek niezależnych wywołań rozłożonych w czasie — to nie jest odczyt
+atomowy i nie mam dowodu, że wszystkie dotyczyły tej samej chwili.
+
+**Zostawiam wpis OTWARTY mimo to.** Różnica między „to był artefakt" a „coś
+naprawdę zapisało klucz rejestru sesji do złej bazy" jest różnicą między niczym
+a fail-open w back-channel logout (R6B-9). Przy takiej stawce „prawdopodobnie
+artefakt" nie jest rozstrzygnięciem — jest hipotezą do sprawdzenia `MONITOR`-em
+na czystym stosie.
