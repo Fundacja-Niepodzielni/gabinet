@@ -7,8 +7,11 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
 - **Faza: F1 w toku** (sesja 2, 2026-08-08). F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
-- **Gałąź robocza: `faza-1-retencja` @ `1106b34`** (D-2026-08-08-23: praca na gałęzi, merge po zielonej rundzie).
-- **`main` @ `a5a4d8b`** — zweryfikowany rundą 5 do `b2084fc`, z 12 znaleziskami (8 zamkniętych).
+- **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: praca na gałęzi, merge do `main` po zielonej rundzie).
+  ŚWIADOMIE BEZ SHA: identyfikatora commitu nie da się wpisać do pliku PRZED commitem, który go
+  tworzy — więc każdy zapisany tu SHA jest nieaktualny od chwili zapisania. Zmierzone dwa razy
+  w jednej sesji. Bieżący stan: `git rev-parse --short HEAD` i `gh run list --limit 1`.
+- **`main`** — zweryfikowany rundą 5 do `b2084fc`, z 12 znaleziskami (8 zamkniętych).
 - **Bramka na gałęzi: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: otwarty
   test pozytywny BLK-22 („żądanie po wylogowaniu dostaje 401"). Pozostałe 21 kroków zielone.
 - **Testy: 178 / 621 asercji** (177 zielonych + 1 czerwony BLK-22).
@@ -82,7 +85,7 @@ seed o wiarygodnych proporcjach; migracje w górę i w dół.
 
 **Stan bramki dziś:** `BRAMKA OK — 21 kroków, 0 nieudanych`; **151 testów**
 (479 asercji). Granica okna sprawdzona co do sekundy.
-**Perturbacje: `PERTURBACJE OK` — 28 kontroli** udowodniło, że umie zaświecić
+**Perturbacje: `PERTURBACJE OK` — 44 kontrole** udowodniły, że umieją zaświecić
 czerwono, w **20 scenariuszach** (D-2026-08-07-13, -18, -19, -20).
 **Powtarzalność perturbacji:** 3 przebiegi z rzędu, identyczny wynik, czyste
 drzewo robocze — `skrypty/perturbacje-powtarzalne.sh` (reguła 4, D-2026-08-07-21).

@@ -73,7 +73,10 @@ jobs:
 
       - name: Logi kontenerów (przy porażce)
         if: failure()
-        run: docker compose -p gabinet-bramka logs --tail=200
+        # GABINET_PREFIX jest WYMAGANY od naprawy V-6 (nazwy wolumenów biorą
+        # się stąd, nie z `-p`). Bez niego compose odmawia — czyli krok
+        # diagnostyczny milczałby dokładnie wtedy, gdy jest potrzebny.
+        run: GABINET_PREFIX=gabinet-bramka docker compose -p gabinet-bramka logs --tail=200
 
       - name: Sprzątanie
         if: always()

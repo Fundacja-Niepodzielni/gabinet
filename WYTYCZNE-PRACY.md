@@ -266,6 +266,23 @@ Pierwszy wzorzec, jaki tu powstał, brzmiał „zamrożon", a komunikat mówi
 w pierwszym przebiegu. To ta sama klasa co „allowlista wpisana z pamięci
 zamiast zmierzona".
 
+**TRZY ZIELONE NARZĘDZIA TO NIE ZIELONA BRAMKA.** Zespół hubu puścił testy
+i Pint, wypchnął dwa commity — a pełna bramka pokazała czerwone: Larastan na
+poziomie `max` widzi to, czego środowisko uruchomieniowe nie widzi (`define()`
+z wartością z wywołania funkcji nie istnieje dla analizy statycznej).
+
+Bramka jest **jednym skryptem** dokładnie po to. Nie wypychamy po częściowej
+weryfikacji — także wtedy, gdy zmiana wygląda na niegroźną („to tylko stała",
+„to tylko dokumentacja", „to tylko wyzwalacz CI").
+
+U nas natychmiast: commit `f4971ac` poszedł **bez pełnej bramki po zmianach** —
+bramka biegła na poprzednim commicie, a potem doszły zmiany w CI, `PLAN-FAZ`
+i wytycznych. Wyszło dobrze, ale „wyszło dobrze" nie jest metodą. Przy okazji
+znalazła się realna usterka, której częściowa weryfikacja nie mogła złapać:
+krok diagnostyczny CI wołał `docker compose logs` **bez** `GABINET_PREFIX`,
+który od naprawy V-6 jest wymagany — czyli milczałby dokładnie wtedy, gdy jest
+potrzebny.
+
 **Nasze instancje** (rosną — dopisuj):
 
 - **Plik stanu, od którego zaczyna następna sesja, kłamał.** `PLAN-FAZ.md`
