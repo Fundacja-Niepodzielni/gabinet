@@ -59,11 +59,13 @@ runda 5 na `b2084fc` — 12 (8 zamkniętych), **runda 6 na `49131d8` — 29**.
 świecenia czerwono, potem mierz nim cokolwiek.** Naprawianie systemu narzędziem,
 o którym wiemy, że mówi „zdaliśmy" bez względu na stan, jest pracą bez pokrycia.
 
-1. **PRZYRZĄD — dokończ to, co zaczęte w nocy.** Sprawdź pozostałe **28 z 30**
-   wzorców `perturbuj.py` pod kątem rozjazdu z kodem (w nocy sprawdzono 2, oba
-   były martwe). Metoda jest już gotowa: `python3 skrypty/perturbuj.py <nazwa>`
-   ma zwrócić `kod=0` i niepusty `git diff --stat`; `kod=1` znaczy „wzorzec
-   nieaktualny". To jest najpilniejsza luka pokrycia, nazwana przez weryfikatora.
+1. ~~Sprawdź pozostałe wzorce `perturbuj.py`~~ — **ZROBIONE w nocy (N-9):
+   16/16 mutacji TRAFIA, zero martwych.** Zamiast tego: **8 podmian robionych
+   surowym `sed`-em wprost w `perturbacje.sh`** (linie 383, 442, 466, 476, 1124,
+   1171, 1250, 1263) nie ma ani `podmien()`, które krzyczy, ani dowodu mutacji —
+   a `sed`, który nie trafił, **kończy się sukcesem**. Jedna z nich jest już
+   cichym no-opem: `p_statyka:442` (potwierdzone pomiarem, R6B-17). Przenieś je
+   do `perturbuj.py` albo obłóż `dowod_zniknieciem`.
 2. **PRZYRZĄD — `--przyczyna` tam, gdzie plik już jest czerwony** (R6A-5, R6B-13,
    R6B-15). Pięć scenariuszy celujących w `OdebranieRoliTest.php` nie może dziś
    paść. Allowlisty mają być KOMUNIKATAMI ASERCJI, nie nazwami testów ani

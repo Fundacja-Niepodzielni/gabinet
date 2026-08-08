@@ -454,3 +454,26 @@ usunięta, drzewo czyste. **Czego to NIE sprawdza:** nie przebiegłem pełnej
 bramki po tej zmianie — zmiana dotyczy wyłącznie treści komunikatu w gałęzi
 awaryjnej, a ścieżka sukcesu jest nietknięta i była zielona w przebiegu o 01:10.
 Mówię to wprost, żeby nikt nie odczytał „sprawdzone" szerzej, niż sprawdziłem.
+
+## 01:45 — przegląd WSZYSTKICH wzorców mutacji (N-9) — luka nazwana przez weryfikatora ZAMKNIĘTA
+
+Weryfikator A nazwał to najpilniejszą luką swojego pokrycia. To POMIAR na
+przyrządzie, nie naprawa przedmiotu, więc mieści się w regule nocy.
+
+Dwa niezależne sygnały na mutację (kod wyjścia ORAZ liczba zmienionych plików),
+po każdej próbie przywrócenie i **sprawdzenie, że drzewo wróciło**:
+**16/16 mutacji TRAFIA, zero martwych, drzewo na koniec czyste.**
+
+Właściwym wynikiem okazało się jednak co innego: **„30 scenariuszy" i „19 poleceń
+`perturbuj.py`" to różne zbiory.** Różnicę stanowią scenariusze mutujące
+**surowym `sed`-em** wprost w `perturbacje.sh` (8 miejsc) — a `sed`, który nie
+trafił, kończy się SUKCESEM i nie ma tam ani `podmien()`, które krzyczy, ani
+dowodu mutacji.
+
+Potwierdziłem przy tym pomiarem znalezisko R6B-17 (weryfikator wyprowadził je
+z lektury): wzorzec `p_statyka` szuka `string $domyslny = .."..`, a w kodzie jest
+`string $domyslny = ''` — `sed` nie zmienia NICZEGO. Scenariusz działa wyłącznie
+dzięki drugiej mutacji obok. Mutacja-widmo od nieznanego czasu.
+
+Pozycja 1 listy porannej zaktualizowana: zamiast „sprawdź 28 wzorców" jest teraz
+„przenieś 8 podmian `sed`-owych pod `podmien()` albo obłóż `dowod_zniknieciem`".

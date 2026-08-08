@@ -47,7 +47,7 @@ Naprawiłem je i sprawdziłem pomiarem, że wykrywa tę awarię.
 | 11 | **Bramka przebiegnięta od nowa po moich zmianach w niej** — 1 czerwony z 22, ten zamierzony | `DZIENNIK.md` 01:10 |
 | 12 | **Osiem lekcji nocy** dopisanych do `WYTYCZNE-PRACY.md`, każda z instancją zmierzoną | `WYTYCZNE-PRACY.md` |
 
-**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 8 własnych** (N-1…N-8).
+**Znaleziska łącznie: 29 z rundy 6** (12 + 17) **i 9 własnych** (N-1…N-9).
 
 **Przebieg końcowy bramki — stan, w jakim zostawiam drzewo:**
 
@@ -89,10 +89,10 @@ Kolejność wynika z jednej zasady: **najpierw przywróć zdolność przyrządu 
 świecenia czerwono, potem mierz nim cokolwiek.** Pełna lista z uzasadnieniami:
 `PLAN-FAZ.md`, sekcja „PIERWSZE ZADANIA NASTĘPNEJ SESJI".
 
-1. **Sprawdź pozostałe 28 z 30 wzorców perturbacji** — w nocy sprawdzono 2 i oba
-   były martwe. To najpilniejsza luka, nazwana przez samego weryfikatora.
-   Metoda gotowa: `python3 skrypty/perturbuj.py <nazwa>` → `kod=0` i niepusty
-   `git diff --stat`.
+1. ~~Sprawdź pozostałe wzorce perturbacji~~ — **zrobione jeszcze w nocy: 16/16
+   mutacji trafia, zero martwych** (N-9). W zamian nowa pozycja: **osiem podmian
+   robionych surowym `sed`-em** nie ma zabezpieczenia „krzyknij, gdy nie trafisz",
+   a jedna z nich jest już cichym no-opem (potwierdzone pomiarem).
 2. **Uruchom pełny `skrypty/perturbacje.sh`** — nie zdążyłem tego zrobić w nocy
    (maszyna obsługiwała weryfikatora), a zmieniałem ten skrypt.
 3. **Napraw test nogi 1** (nie system) i **zmierz ponownie** — ma zzielenieć,

@@ -745,3 +745,82 @@ i kosztowało mi drugi czerwony.
 **Lekcja szersza niż ten wpis:** raport z weryfikacji jest tekstem o wysokiej
 entropii — pełnym identyfikatorów sesji, skrótów i nazw plików. Katalog raportów
 i skaner sekretów będą się o siebie ocierać zawsze, nie ten jeden raz.
+
+---
+
+## N-9 — przegląd WSZYSTKICH wzorców mutacji: 16/16 trafia; ale to nie cała rodzina
+
+Weryfikator A nazwał to najpilniejszą luką swojego pokrycia („sprawdziłem 2 z 30,
+pozostałe 28 mogą mieć tę samą wadę"). **Sprawdziłem — bo to POMIAR na przyrządzie,
+a nie naprawa przedmiotu.**
+
+**Metoda.** Dla każdego polecenia `perturbuj.py`: uruchom, zapisz kod wyjścia
+ORAZ liczbę zmienionych plików (dwa niezależne sygnały — sam kod wyjścia mógłby
+paść z innego powodu), przywróć stan, **sprawdź, że wrócił**. Przerwanie przy
+pierwszym drzewie, które nie wróciło do stanu wyjściowego.
+
+**Wynik:**
+
+```
+NAZWA                        KOD    ZMIAN    WERDYKT
+hasla-podloz                 0      3        TRAFIA
+hasla-podloz-v2              0      3        TRAFIA
+nonce-fail-open              0      1        TRAFIA
+lockfile-rozjazd             0      1        TRAFIA
+wzmacniacz-zadan             0      1        TRAFIA
+suita-pominieta              0      1        TRAFIA
+obietnica-bez-dowodu         0      1        TRAFIA
+sesja-jawna                  0      1        TRAFIA
+id-token-jawny               0      1        TRAFIA
+retencja-bez-kasowania       0      1        TRAFIA
+id-token-zakodowany          0      1        TRAFIA
+role-zamrozone               0      1        TRAFIA   ← naprawione tej nocy (N-3)
+uniewaznienie-po-sid         0      1        TRAFIA   ← naprawione tej nocy (N-3)
+logout-bez-failsafe          0      1        TRAFIA
+role-ze-zlego-zrodla         0      1        TRAFIA
+logout-niezweryfikowany-sid  0      1        TRAFIA
+(3 procedury *-sprzataj pominięte — sprzątają po innych, nie mutują)
+
+TRAFIA: 16 · MARTWE: 0 · drzewo na koniec: CZYSTE
+```
+
+**Ale liczba „30" znaczy co innego, niż wyglądało — i to jest właściwy wynik
+tego przeglądu.** „30 scenariuszy" to funkcje `p_*` w `perturbacje.sh`.
+`perturbuj.py` ma ich tylko 19 (16 mutacji + 3 sprzątaczki). **Różnicę stanowią
+scenariusze mutujące SUROWYM `sed`-em wprost w skrypcie** — a `sed`, który nie
+trafił, **kończy się sukcesem**. Ta klasa nie ma ani `podmien()`, które krzyczy,
+ani (w większości) dowodu mutacji:
+
+```
+$ grep -n "sed -i" skrypty/perturbacje.sh    → 8 miejsc
+  383  p_testy            466  p_sekrety (KEYCLOAK)     1171  p_tozsamosc
+  442  p_statyka          476  p_sekrety (SMSAPI)       1250  p_biala_lista
+  1124 p_puls                                          1263  p_zamrozenie
+```
+
+**Potwierdziłem pomiarem znalezisko R6B-17** (weryfikator wyprowadził je
+z lektury, ja zmierzyłem):
+
+```
+wzorzec w perturbacje.sh:442 szuka:  string $domyslny = .."..): string
+rzeczywista sygnatura Typy.php:23:   string $domyslny = ''): string
+
+$ cp Typy.php /tmp/przed; sed -i '<ten sam wzorzec>' Typy.php; diff …
+WYNIK: BEZ ZMIAN — sed jest cichym no-opem
+```
+
+Czyli `p_statyka` działa **wyłącznie** dzięki drugiej mutacji (dopisanej funkcji
+tuż obok); pierwsza jest mutacją-widmem od nieznanego czasu i nikt tego nie
+widział, bo scenariusz i tak świecił na zielono.
+
+**Waga:** średnia — po naprawach z N-3 żadna mutacja `perturbuj.py` nie jest
+martwa, ale klasa „surowy `sed` bez dowodu mutacji" pozostaje niezabezpieczona
+strukturalnie: `sed` nie krzyczy, więc każdy przyszły refaktor może ją wyciszyć
+dokładnie tak, jak wyciszył `p_statyka`.
+**Czy blokuje:** nie. **Do zrobienia rano:** przenieść te 8 podmian do
+`perturbuj.py` (gdzie `podmien()` krzyczy) albo obłożyć je `dowod_zniknieciem`.
+
+**Czego ten przegląd NIE sprawdza, mówię wprost:** że mutacja jest SENSOWNA —
+tylko że TRAFIA. „Trafia" znaczy „plik się zmienił", nie „zmiana łamie regułę,
+o którą chodzi". Odpowiedź na to drugie pytanie daje wyłącznie pełny przebieg
+`perturbacje.sh`, którego tej nocy nie wykonałem.
