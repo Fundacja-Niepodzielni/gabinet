@@ -87,7 +87,10 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION'),
+    // Domyślnie `sesje`, nie `null` — bez tego sesje idą przez połączenie
+    // cache'u i `Cache::flush()` je kasuje. Wartość domyślna jest tym, co
+    // działa na środowisku, którego nikt nie skonfigurował.
+    'connection' => env('SESSION_CONNECTION', 'sesje'),
 
     /*
     |--------------------------------------------------------------------------

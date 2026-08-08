@@ -168,6 +168,37 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
+        /*
+         * SESJE MAJĄ WŁASNĄ BAZĘ REDISA — rozdzielenie przestrzeni kluczy.
+         *
+         * Sterownik `redis` sesji idzie przez magazyn CACHE'U, więc bez tego
+         * klucze sesji lądowały w tej samej przestrzeni co cache. Skutki,
+         * których nikt nie wybrał:
+         *   · `Cache::flush()` wykonuje `FLUSHDB` — czyli czyszczenie cache'u
+         *     „dla porządku" WYLOGOWYWAŁO WSZYSTKICH. Kierunek bezpieczny
+         *     (fail-closed), ale zachowanie nieprzewidziane;
+         *   · przy polityce eksmisji `allkeys-*` żywe sesje byłyby eksmitowane
+         *     pod presją pamięci — użytkownicy wylatują losowo, bez śladu
+         *     w logach aplikacji. Zmierzone u nas: `maxmemory-policy` =
+         *     `noeviction`, `maxmemory` = 0, więc dziś czyści jesteśmy —
+         *     ale to DOMYŚLNA wartość produktu, nie nasz wybór.
+         *
+         * To ta sama przyczyna, dla której znacznik unieważnienia musiał wyjść
+         * z cache'u do PostgreSQL (D-2026-08-08-26 i okolice): brak segmentacji
+         * przestrzeni kluczy. Tam naprawiono objaw, tu przyczynę.
+         *
+         * Skutek uboczny, celowy: klucze sesji są wyodrębnione STRUKTURALNIE,
+         * więc migawki magazynu tożsamości nie muszą ich zgadywać wzorcem.
+         */
+        'sesje' => [
+            'url' => env('REDIS_URL'),
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
+            'password' => env('REDIS_PASSWORD'),
+            'port' => env('REDIS_PORT', '6379'),
+            'database' => env('REDIS_SESSION_DB', '2'),
+        ],
+
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
