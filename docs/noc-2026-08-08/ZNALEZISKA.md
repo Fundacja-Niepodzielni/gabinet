@@ -180,3 +180,43 @@ i brak sprawdzenia kodu wyjścia w `perturbuj()`.
 **Zrobione:** NAPRAWA PRZYRZĄDU — opisana osobno w `DZIENNIK.md`. Naprawiam,
 bo to jawny wyjątek reguły nocy: bez sprawnych perturbacji kolejne rundy są
 bezwartościowe.
+
+---
+
+## N-4 — `PLAN-FAZ.md` sam sobie przeczył: lista „OTWARTE, blokujące" niosła stan nieprawdziwy
+
+**Skutek po ludzku:** plik, od którego zaczyna każda następna sesja, mówił
+w jednym miejscu „jedyny czerwony to noga 1", a pięćdziesiąt linii niżej —
+„test pozytywny BLK-22 jest CZERWONY i ma taki zostać". Sesja czytająca to jako
+punkt wejścia zaczęłaby dzień od naprawiania testu, który działa.
+
+**Dowód:**
+
+```
+PLAN-FAZ.md:15  „Bramka: CZERWONA — 1 nieudany krok z 22. Powód JEDEN … noga 1"
+PLAN-FAZ.md:65  „BLK-22 — test pozytywny »żądanie po wylogowaniu dostaje 401«
+                 jest CZERWONY i ma taki zostać do naprawy"
+
+$ docker exec gabinet-app ./vendor/bin/pest
+  ✓ it POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE z…  0.29s
+  ⨯ it NOGA 1 [NIEROZSTRZYGNIĘTE — patrz komentarz]: tożsamość usunięta…  2.20s
+  Tests:  1 failed, 180 passed (640 assertions)
+```
+
+Druga pozycja tej samej listy (**V-1**) mówiła „Projekt naprawy: D-2026-08-08-24",
+choć naprawa jest WDROŻONA od commita `cdc6fbb` z tego samego wieczora.
+
+**Waga:** wysoka — nie dla systemu, dla następnej sesji. To ta sama klasa co
+`PROMPT-START.md` i nagłówek `CURRENT WORK`, które już raz kazały powtarzać
+zamkniętą fazę. Plik stanu jest przyrządem: następna sesja startuje z jego
+treści, więc jego nieaktualność propaguje się na wszystkie decyzje tej sesji.
+**Czy blokuje:** nie technicznie; kosztuje czas i wiarygodność dokumentu.
+
+**Świat alternatywny:** rozważony — może chodziło o INNY test o podobnej nazwie?
+Odrzucony: w pliku jest dokładnie jeden test o tej treści i jest zielony.
+
+**Zrobione:** poprawione ze SPROSTOWANIEM (nie cichą podmianą — ktoś mógł
+przeczytać wersję nieprawdziwą). Przy pozycji 3 (V-4, V-8, V-9, W-8) wpisałem
+wprost, że stanu **nie zmierzyłem** — „otwarte, bo nikt nie sprawdzał" to inny
+stan wiedzy niż „otwarte, bo sprawdzone i czerwone", a zlanie ich w jedno jest
+dokładnie tym, co wywróciło pozycję 1.

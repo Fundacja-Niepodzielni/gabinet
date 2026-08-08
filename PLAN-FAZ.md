@@ -62,15 +62,30 @@ Pre-flight (każda wartość → dokładnie jeden świat) wykonaj PRZED uruchomi
 
 **OTWARTE, blokujące zamknięcie F1:**
 
-1. **BLK-22** — test pozytywny „żądanie po wylogowaniu dostaje 401" jest
-   CZERWONY i ma taki zostać do naprawy. Zmierzone: unieważnienie kasuje
-   zapamiętany laravel-session-id, a żądanie posługuje się innym.
-   Hipoteza „wskrzeszenie sesji przez odświeżenie tokenu" została
-   OBALONA moim własnym pomiarem (zero żądań do punktu tokenów po
-   wylogowaniu) — nie ścigaj jej ponownie.
-2. **V-1** — kontrola CLAUDE.md §2, obalona czterokrotnie. Projekt naprawy:
-   D-2026-08-08-24 (wąskie gardło, nie piąta lista zakazów).
-3. **V-4, V-8, V-9** oraz **W-8** (rozdzielenie ról bazodanowych).
+> **SPROSTOWANIE (09.08, noc).** Ta lista mówiła rzeczy nieprawdziwe wobec
+> pomiaru, i to w tym samym pliku, którego nagłówek ostrzega przed dokumentami
+> stanu kłamiącymi o kodzie. Poprawiam pozycje, które ZMIERZYŁEM; przy
+> pozostałych piszę wprost, że stanu nie zmierzyłem — zamiast przepisywać
+> dalej cudzy zapis jako fakt.
+
+1. **BLK-22 — pozycja ZAMKNIĘTA, poprzedni zapis był nieprawdziwy.**
+   Twierdził, że test pozytywny „żądanie po wylogowaniu dostaje 401" jest
+   CZERWONY. Zmierzone 09.08 (`./vendor/bin/pest`): ten test jest **ZIELONY**,
+   a jedynym czerwonym w całym pliku jest `NOGA 1`.
+   Hipoteza „wskrzeszenie sesji przez odświeżenie tokenu" pozostaje OBALONA —
+   nie ścigaj jej ponownie.
+2. **V-1** — kontrola CLAUDE.md §2. Projekt naprawy (D-2026-08-08-24, wąskie
+   gardło zamiast piątej listy zakazów) jest już **WDROŻONY** w `cdc6fbb`
+   (`SesjaKonta` + `TozsamoscSesji`); zapis „projekt naprawy" sugerował,
+   że to jeszcze przed nami.
+   **Czego NIE zmierzyłem:** czy istnieje KONTROLA, która złapie pojawienie się
+   drugiego pisarza klucza `konta`. Zmierzone tylko tyle, że dziś pisarz jest
+   jeden, a to jest zdjęcie stanu, nie zabezpieczenie. Weryfikacja tego punktu
+   jest zadaniem (c) rundy 6.
+3. **V-4, V-8, V-9** oraz **W-8** (rozdzielenie ról bazodanowych) — **stanu
+   NIE ZMIERZYŁEM tej nocy.** Zostawiam jako otwarte, ale bez dowodu w żadną
+   stronę: „otwarte, bo nikt nie sprawdzał" to inny stan niż „otwarte, bo
+   sprawdzone i czerwone", a mieszanie ich jest tym, co wywróciło pozycję 1.
 
 **Zostało w F1:** F1.7 — seed o wiarygodnych proporcjach (111 specjalistów,
 poniżej 40 wizyt na pacjenta, limit niskopłatnych musi RÓŻNICOWAĆ pacjentów).

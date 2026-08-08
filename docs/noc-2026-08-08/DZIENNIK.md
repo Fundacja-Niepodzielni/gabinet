@@ -131,3 +131,42 @@ Naprawa jest STRUKTURALNA, nie jest łataniem dwóch napisów:
 
 Naprawiam to mimo reguły „nie naprawiaj przedmiotu", bo to jawny WYJĄTEK: zepsuty
 był sam przyrząd. Bez tego runda 7 mierzyłaby własną bezczynność.
+
+## 00:50 — WERYFIKACJA naprawy przyrządu (nie deklaracja, pomiar)
+
+Naprawa przyrządu, której się nie sprawdziło, jest kolejną obietnicą bez pokrycia.
+Trzy pomiary:
+
+**1. Czy mutacje znowu wchodzą w życie** (po każdej `git checkout --`, drzewo czyste):
+
+```
+$ python3 skrypty/perturbuj.py role-zamrozone      → EXIT=0, git diff: 1 insertion(+), 3 deletions(-)
+$ python3 skrypty/perturbuj.py uniewaznienie-po-sid → EXIT=0, w pliku: 78: if (false) {
+$ git status --short                               → 0 zmian (stan przywrócony)
+```
+
+**2. Czy nowy dowód ROZRÓŻNIA światy** — wyłuskałem samą funkcję `dowod_zniknieciem`
+do osobnego pliku i podałem jej trzy spreparowane sytuacje. To kontrola ścieżką
+NIEZALEŻNĄ od perturbacji (reguła C1: kontrola nie może dzielić mechanizmu ze
+swoim przedmiotem):
+
+```
+świat I   (tekst był w kopii, znikł z pliku = mutacja weszła)   → rc=0 ZALICZONE  ✓
+świat II  (tekstu NIGDY nie było w kopii = perturbacja rozjechana) → rc=1 ODRZUCONE ✓
+          komunikat: „PERTURBACJA ROZJECHAŁA SIĘ Z KODEM: wzorca … NIE BYŁO … przed mutacją"
+świat III (tekst nadal w pliku = mutacja nie usunęła)           → rc=1 ODRZUCONE ✓
+NIEUDANE=2 (oczekiwane 2)
+```
+
+**Świat II to dokładnie dzisiejsza awaria.** Stary dowód dawał w nim „prawda",
+nowy odrzuca i nazywa przyczynę. Czyli przyrząd nie tylko został naprawiony, ale
+UMIE ZAŚWIECIĆ CZERWONO na tę konkretną awarię — a to jest jedyny sensowny
+dowód naprawy kontroli (D-0013).
+
+**3. Składnia:** `bash -n skrypty/perturbacje.sh` → OK.
+
+Czego ta weryfikacja NIE obejmuje, i mówię to wprost: nie uruchomiłem pełnego
+zestawu 30 perturbacji na żywym stosie (wymaga własnego projektu compose i
+kilkudziesięciu minut, a maszyna obsługuje teraz weryfikatora rundy 6).
+Pełny przebieg zostaje jako pierwsza rzecz do zrobienia rano — wpisane
+do `PODSUMOWANIE.md`.
