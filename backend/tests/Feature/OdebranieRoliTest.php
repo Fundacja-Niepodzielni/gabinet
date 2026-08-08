@@ -575,10 +575,23 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
         ->assertJsonPath('zalogowany', false);
 });
 
-it('NOGA 1 [NIEROZSTRZYGNIĘTE: światy 1 i 2]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
+it('NOGA 1 [POTWIERDZONY DEFEKT: wskrzeszenie]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
     // Para negatywna do BLK-22, noga pierwsza. Wymóg standardu B8:
     // odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Refresh token,
     // który przetrwał usunięcie tożsamości, nie może jej WSKRZESIĆ.
+    //
+    // ROZSTRZYGNIĘTE 08.08 migawkami magazynu tożsamości (świat 2):
+    //   zniknęło przy usunięciu: 1  → usunięcie TRAFIŁO
+    //   pojawiło się po żądaniu: 1  → wpis WRÓCIŁ
+    //   status: 200                 → i to z uwierzytelnioną tożsamością
+    // Świeża, pusta sesja nie uwierzytelniłaby żądania, więc kombinacja
+    // rozstrzyga: tożsamość jest ODTWARZANA z refresh tokenu.
+    //
+    // To jest REALNY DEFEKT, nie artefakt testu: wymóg B8 „odświeżanie jako
+    // operacja na istniejącej tożsamości" jest u mnie spełniony STRAŻNIKIEM
+    // (`stanKonta()` czyta `konta` i wychodzi przy pustce), a nie STRUKTURĄ —
+    // i strażnika da się ominąć. Naprawa: wejściem ma być tożsamość wczytana
+    // z magazynu, a brak wejścia ma czynić ścieżkę NIEWYWOŁYWALNĄ.
     //
     // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół.
     // Pierwsza wersja używała 600 s i dawała 200. Dyskryminator z ODCZYTEM

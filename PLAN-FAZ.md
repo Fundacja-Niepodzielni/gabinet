@@ -6,17 +6,16 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
-- **Faza: F1 w toku** (sesja 2, 2026-08-08). F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
-- **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: praca na gałęzi, merge do `main` po zielonej rundzie).
-  ŚWIADOMIE BEZ SHA: identyfikatora commitu nie da się wpisać do pliku PRZED commitem, który go
-  tworzy — więc każdy zapisany tu SHA jest nieaktualny od chwili zapisania. Zmierzone dwa razy
-  w jednej sesji. Bieżący stan: `git rev-parse --short HEAD` i `gh run list --limit 1`.
-- **`main`** — zweryfikowany rundą 5 do `b2084fc`, z 12 znaleziskami (8 zamkniętych).
-- **Bramka na gałęzi: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN i zamierzony: otwarty
-  test pozytywny BLK-22 („żądanie po wylogowaniu dostaje 401"). Pozostałe 21 kroków zielone.
-- **Testy: 178 / 621 asercji** (177 zielonych + 1 czerwony BLK-22) — stan na 08.08; liczby ROSNĄ, sprawdź `pest` zamiast ufać tej linii.
-- **Perturbacje: `PERTURBACJE OK` — 44 kontrole** (stan na 08.08, rośnie), ze strażnikiem przyczyny czerwieni
-  (denylista awarii pobocznych + allowlista `--przyczyna` w 7 miejscach o najwyższym koszcie).
+- **Faza: F1 w toku.** F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
+- **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
+  Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
+- **Bramka: CZERWONA — 1 nieudany krok z 22.** Powód JEDEN, zamierzony i POTWIERDZONY
+  jako realny defekt: noga 1 pary negatywnej BLK-22 (wskrzeszenie tożsamości z refresh tokenu).
+- **Testy: 180 zielonych, 1 czerwony, 640 asercji** — stan na 08.08, liczby ROSNĄ;
+  sprawdź `pest` zamiast ufać tej linii.
+- **Perturbacje: 30 scenariuszy** (stan na 08.08, rośnie) — ze strażnikiem przyczyny
+  czerwieni: denylista awarii pobocznych jako podłoga, allowlista `--przyczyna` w 7 miejscach
+  o najwyższym koszcie fałszywego zielonego.
 
 ### Do rozstrzygnięcia w następnej sesji
 
@@ -34,6 +33,17 @@ Historia rund (każda odnosi się do KONKRETNEGO, przeszłego SHA — takie
 identyfikatory się nie starzeją, bo nazywają zdarzenie, nie stan bieżący):
 runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15, runda 5 na
 `b2084fc` — 12, z czego 8 zamkniętych.
+
+**PIERWSZE ZADANIE NASTĘPNEJ SESJI — naprawa nogi 1 (wskrzeszenie tożsamości).**
+Powód: to jedyny CZERWONY w bramce, jest POTWIERDZONYM defektem (nie hipotezą),
+i blokuje domknięcie pary negatywnej BLK-22, która z kolei blokuje rundę 6
+i merge do `main`. Wszystko inne w kolejce da się robić po nim; on nie da się
+odłożyć, bo bramka zostaje czerwona.
+
+Kształt naprawy jest ustalony i NIE wymaga ponownej diagnozy: odświeżanie ma być
+OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI — wejściem tożsamość wczytana z magazynu,
+brak wejścia czyni ścieżkę NIEWYWOŁYWALNĄ. Dziś jest to strażnik (`stanKonta()`
+czyta `konta` i wychodzi przy pustce), a strażnika da się ominąć — zmierzone.
 
 **OTWARTE, blokujące zamknięcie F1:**
 
