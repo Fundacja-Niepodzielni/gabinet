@@ -407,3 +407,50 @@ odruch z rozluźniania kontroli na usuwanie przyczyny.
 
 `bash -n skrypty/bramka.sh` → OK. Komunikat jest w gałęzi `else`, czyli
 wykonuje się wyłącznie przy trafieniu — przebieg zielony wygląda jak dotąd.
+
+## 01:35 — sprawdzenie zmienionej gałęzi kroku [21] (i lekcja złapana NA SOBIE po raz czwarty)
+
+Zmieniłem `bramka.sh` po ostatnim pełnym przebiegu, więc gałąź `else` kroku
+„sekrety" była niesprawdzona. Pełna bramka dla samych `echo` byłaby
+nieproporcjonalna, więc **wyłuskałem ten krok ze skryptu** (`sed`, nie
+przepisanie ręczne — przepisany kod to już inny kod) i uruchomiłem go na
+podłożonej przynęcie.
+
+**Pierwsza próba wyszła ZIELONO przy 5 znalezionych wyciekach:**
+
+```
+WRN  leaks found: 5
+    bez wycieków            ← gałąź SUKCESU przy pięciu wyciekach
+```
+
+Przyczyna nie leżała w bramce, tylko w moim harnessie: uruchomiłem go przez
+`bash -c` **bez `set -o pipefail`**, a krok kończy się `| tail -3`, więc kod
+wyjścia należał do `tail`. Prawdziwy skrypt ma `set -uo pipefail` w linii 60
+i działa poprawnie.
+
+**To jest ta sama lekcja, którą dwie godziny wcześniej dopisałem do
+`WYTYCZNE-PRACY.md`** („kod wyjścia potoku należy do OSTATNIEGO polecenia") —
+i złapała mnie po raz czwarty tej nocy, tym razem wewnątrz narzędzia, którym
+sprawdzałem narzędzie. Zapisuję, bo to najlepszy dowód, że reguła nie działa
+przez samo zapisanie jej w dokumencie.
+
+Powtórzone z `set -uo pipefail`, czyli w warunkach prawdziwego skryptu:
+
+```
+=== [21] sekrety (gitleaks) — ten sam skan co w CI
+WRN  leaks found: 5
+    ──────────────────────────────────────────────────────────
+    Trafienie w katalogu raportowym (docs/…)? Zanim dopiszesz wyjątek:
+    · jeśli to ZACYTOWANY IDENTYFIKATOR (sesja, skrót, klucz) — SKRÓĆ GO.
+    …
+    · wyjątek w .gitleaks.toml dopisuj TYLKO dla historii, której nie da
+      się już zmienić — wąsko … i z przynętą dowodzącą …
+    ──────────────────────────────────────────────────────────
+    ^ KROK NIEUDANY
+```
+
+Gałąź `else` renderuje się poprawnie, `zle` zlicza krok jako nieudany, przynęta
+usunięta, drzewo czyste. **Czego to NIE sprawdza:** nie przebiegłem pełnej
+bramki po tej zmianie — zmiana dotyczy wyłącznie treści komunikatu w gałęzi
+awaryjnej, a ścieżka sukcesu jest nietknięta i była zielona w przebiegu o 01:10.
+Mówię to wprost, żeby nikt nie odczytał „sprawdzone" szerzej, niż sprawdziłem.
