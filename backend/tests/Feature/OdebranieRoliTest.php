@@ -575,23 +575,36 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
         ->assertJsonPath('zalogowany', false);
 });
 
-it('NOGA 1 [POTWIERDZONY DEFEKT: wskrzeszenie]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
+it('NOGA 1 [NIEROZSTRZYGNIĘTE — patrz komentarz]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
     // Para negatywna do BLK-22, noga pierwsza. Wymóg standardu B8:
     // odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Refresh token,
     // który przetrwał usunięcie tożsamości, nie może jej WSKRZESIĆ.
     //
-    // ROZSTRZYGNIĘTE 08.08 migawkami magazynu tożsamości (świat 2):
-    //   zniknęło przy usunięciu: 1  → usunięcie TRAFIŁO
-    //   pojawiło się po żądaniu: 1  → wpis WRÓCIŁ
-    //   status: 200                 → i to z uwierzytelnioną tożsamością
-    // Świeża, pusta sesja nie uwierzytelniłaby żądania, więc kombinacja
-    // rozstrzyga: tożsamość jest ODTWARZANA z refresh tokenu.
+    // STAN WIEDZY 08.08, wieczór — SPROSTOWANIE WŁASNEGO WNIOSKU.
     //
-    // To jest REALNY DEFEKT, nie artefakt testu: wymóg B8 „odświeżanie jako
-    // operacja na istniejącej tożsamości" jest u mnie spełniony STRAŻNIKIEM
-    // (`stanKonta()` czyta `konta` i wychodzi przy pustce), a nie STRUKTURĄ —
-    // i strażnika da się ominąć. Naprawa: wejściem ma być tożsamość wczytana
-    // z magazynu, a brak wejścia ma czynić ścieżkę NIEWYWOŁYWALNĄ.
+    // Migawki dały: zniknęło 1, pojawiło się 1, status 200 — i odczytałem to
+    // jako „świat 2: wskrzeszenie z refresh tokenu". Potem przebudowałem
+    // pisarza tożsamości na wąskie gardło (`SesjaKonta` + `TozsamoscSesji`),
+    // przez które odświeżanie NIE MOŻE utworzyć tożsamości — i zmierzyłem
+    // PONOWNIE: liczby IDENTYCZNE (1 / 1 / 200).
+    //
+    // Skoro naprawa ścieżki odświeżania niczego nie zmieniła, to 200 NIE
+    // pochodzi z tej ścieżki. Mój wniosek „świat 2" był przedwczesny: nie
+    // wykluczyłem świata, w którym nowy klucz to po prostu sesja zakładana
+    // przez samo żądanie, a tożsamość niesie klient testowy w pamięci procesu.
+    //
+    // Czyli: „pojawił się nowy klucz" jest zgodne z DWOMA światami, a ja
+    // odczytałem je jako jeden. Ta sama wada, którą architekt poprawiał mi
+    // dziś trzy razy — tym razem po stronie migawek, nie licznika.
+    //
+    // NIE ZMIENIAM już kodu na podstawie tego pomiaru. Odczyt rozstrzygający
+    // musi odróżnić „tożsamość odtworzona w magazynie" od „tożsamość niesiona
+    // przez klienta testowego" — np. przez sprawdzenie ZAWARTOŚCI nowego
+    // klucza, nie samego faktu jego pojawienia się.
+    //
+    // Przebudowa pisarza ZOSTAJE: jest poprawna niezależnie od tej diagnozy,
+    // bo realizuje wymóg §2 (jeden pisarz, aktualizacja wymaga istniejącego
+    // rekordu) — i to była właściwa naprawa, tylko nie tego objawu.
     //
     // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół.
     // Pierwsza wersja używała 600 s i dawała 200. Dyskryminator z ODCZYTEM

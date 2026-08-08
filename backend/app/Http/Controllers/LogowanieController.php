@@ -8,6 +8,7 @@ use App\Tozsamosc\Bramki;
 use App\Tozsamosc\KontaOidc;
 use App\Tozsamosc\OdswiezanieSesji;
 use App\Tozsamosc\RejestrSesji;
+use App\Tozsamosc\SesjaKonta;
 use App\Tozsamosc\WalidatorTokenu;
 use App\Wsparcie\Typy;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -126,7 +127,7 @@ final class LogowanieController extends Controller
 
         // Wiązanie konta lokalnego po `sub`, NIGDY po e-mailu (CLAUDE.md §2).
         $request->session()->regenerate();
-        $request->session()->put('konta', [
+        SesjaKonta::zaloz($request, [
             'sub' => Typy::napis($claimsId['sub'] ?? null),
             'sid' => $sid,
             'login' => isset($claimsId['preferred_username']) ? Typy::napis($claimsId['preferred_username']) : null,

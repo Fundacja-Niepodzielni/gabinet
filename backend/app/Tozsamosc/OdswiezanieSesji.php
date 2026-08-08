@@ -51,59 +51,56 @@ final class OdswiezanieSesji
      */
     public function stanKonta(Request $request): ?array
     {
-        $konta = Typy::mapa($request->session()->get('konta'));
+        // WEJŚCIEM JEST ISTNIEJĄCA TOŻSAMOŚĆ, albo nic.
+        //
+        // `odczytaj()` zwraca `null`, gdy w magazynie nie ma tożsamości —
+        // i wtedy nie ma czym wywołać `zaktualizuj()`, bo ta wymaga wartości
+        // typu `TozsamoscSesji`. Ścieżka „brak rekordu → utwórz" jest tu
+        // NIEWYWOŁYWALNA, a nie „zabroniona warunkiem".
+        //
+        // Poprzednia wersja czytała tablicę i sprawdzała `if` — czyli miała
+        // dostęp do zapisu niezależnie od wyniku sprawdzenia. Zmierzone:
+        // po usunięciu tożsamości z magazynu żądanie wracało z 200 i pełnymi
+        // uprawnieniami, bo odświeżanie odtwarzało ją z refresh tokenu.
+        $tozsamosc = SesjaKonta::odczytaj($request);
 
-        if (! isset($konta['sub']) || Typy::napis($konta['sub']) === '') {
+        if ($tozsamosc === null) {
             return null;
         }
 
         // BLK-22: sesja SSO mogła zostać unieważniona back-channel logoutem
-        // PO tym, jak identyfikator sesji frameworka zrotował. Pytamy więc
-        // o `sid` — tożsamość, którą zna IdP i która NIE rotuje — a nie
-        // o identyfikator sesji, którego trwałości nic nie gwarantuje.
-        //
-        // Zmierzone przed tą zmianą: `Set-Cookie` z dwóch kolejnych
-        // odpowiedzi dawał RÓŻNE identyfikatory przy zachowanej tożsamości,
-        // więc wylogowanie kasowało wpis, którego nikt już nie używał,
-        // a żądanie po wylogowaniu dostawało 200.
-        if (RejestrSesji::uniewazniona(Typy::napis($konta['sid'] ?? null))) {
-            $this->zakoncz($request);
+        // PO tym, jak identyfikator sesji frameworka zrotował. Pytamy o `sid`,
+        // czyli tożsamość, którą zna IdP i która NIE rotuje.
+        if (RejestrSesji::uniewazniona($tozsamosc->sid())) {
+            SesjaKonta::zakoncz($request);
 
             return null;
         }
 
-        if (! $this->wymagaOdswiezenia($konta)) {
-            return $konta;
+        if (! $this->wymagaOdswiezenia($tozsamosc)) {
+            return $tozsamosc->dane;
         }
 
-        $refresh = Typy::napis($konta['refresh_token'] ?? null);
-
-        if ($refresh === '') {
-            // Sesja sprzed wprowadzenia odświeżania albo IdP nie wydał
-            // refresh tokenu. Nie ma jak potwierdzić ról, więc nie udajemy,
-            // że są aktualne.
-            $this->zakoncz($request);
+        if ($tozsamosc->refreshToken() === '') {
+            SesjaKonta::zakoncz($request);
 
             return null;
         }
 
-        $odpowiedz = $this->oidc->odswiezTokeny($refresh);
+        $odpowiedz = $this->oidc->odswiezTokeny($tozsamosc->refreshToken());
 
         if ($odpowiedz['status'] !== 200) {
-            $this->zakoncz($request);
+            SesjaKonta::zakoncz($request);
 
             return null;
         }
 
-        return $this->przelicz($request, $konta, $odpowiedz['body']);
+        return $this->przelicz($request, $tozsamosc, $odpowiedz['body']);
     }
 
-    /**
-     * @param  array<string, mixed>  $konta
-     */
-    private function wymagaOdswiezenia(array $konta): bool
+    private function wymagaOdswiezenia(TozsamoscSesji $tozsamosc): bool
     {
-        $wygasa = Typy::liczba($konta['access_exp'] ?? null);
+        $wygasa = $tozsamosc->accessExp();
 
         // Brak zapisanego `exp` traktujemy jak „już wygasło": lepiej odświeżyć
         // niepotrzebnie niż autoryzować na podstawie nieznanego wieku tokenu.
@@ -117,11 +114,10 @@ final class OdswiezanieSesji
     /**
      * Nowe role z NOWEGO access tokenu — nie z sesji.
      *
-     * @param  array<string, mixed>  $konta
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>|null
      */
-    private function przelicz(Request $request, array $konta, array $body): ?array
+    private function przelicz(Request $request, TozsamoscSesji $obecna, array $body): ?array
     {
         $accessToken = Typy::napis($body['access_token'] ?? null);
 
@@ -133,7 +129,7 @@ final class OdswiezanieSesji
         ]);
 
         if (! $wynik['ok']) {
-            $this->zakoncz($request);
+            SesjaKonta::zakoncz($request);
 
             return null;
         }
@@ -142,34 +138,30 @@ final class OdswiezanieSesji
 
         // Wiązanie po `sub` (CLAUDE.md §2). Gdyby IdP zwrócił token innego
         // podmiotu, kończymy sesję zamiast po cichu podmienić tożsamość.
-        if (Typy::napis($claims['sub'] ?? null) !== Typy::napis($konta['sub'])) {
-            $this->zakoncz($request);
+        if (Typy::napis($claims['sub'] ?? null) !== $obecna->sub()) {
+            SesjaKonta::zakoncz($request);
 
             return null;
         }
 
         $surowe = Bramki::roleZAccessTokenu($claims);
 
-        $konta['role_surowe'] = $surowe;
-        $konta['role'] = Bramki::roleAutoryzujace($surowe);
-        $konta['markery'] = Bramki::markery($surowe);
-        $konta['access_exp'] = Typy::liczba($claims['exp'] ?? null);
+        $zmiany = [
+            'role_surowe' => $surowe,
+            'role' => Bramki::roleAutoryzujace($surowe),
+            'markery' => Bramki::markery($surowe),
+            'access_exp' => Typy::liczba($claims['exp'] ?? null),
+        ];
 
         if (isset($body['refresh_token'])) {
-            $konta['refresh_token'] = Typy::napis($body['refresh_token']);
+            $zmiany['refresh_token'] = Typy::napis($body['refresh_token']);
         }
 
-        $request->session()->put('konta', $konta);
+        // AKTUALIZACJA istniejącej tożsamości — `$obecna` jest dowodem, że
+        // tożsamość istniała, i bez niej ta linia nie da się napisać.
+        $nowa = $obecna->zPodmienionymi($zmiany);
+        SesjaKonta::zaktualizuj($request, $nowa);
 
-        return $konta;
-    }
-
-    private function zakoncz(Request $request): void
-    {
-        // `flush()` usuwa CAŁĄ tożsamość, w tym refresh token — a to jest
-        // wymóg, nie skutek uboczny: refresh token pozostawiony po
-        // wylogowaniu jest paliwem do wskrzeszenia sesji (standard B8).
-        $request->session()->flush();
-        $request->session()->regenerate();
+        return $nowa->dane;
     }
 }
