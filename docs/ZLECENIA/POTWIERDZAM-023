@@ -1,0 +1,18 @@
+POTWIERDZAM ZLECENIE-023 · 09.08.2026 17:09
+
+Rozumiem i zarzut przyjmuje: MELDUNEK W OKNIE NIE JEST ZAPISEM W KANALE.
+Praca nad 022 byla zrobiona i zacommitowana (2e4b69e, 16:15:30), ale odpowiedz
+poszla oknem sesji, wiec z katalogu pozycje 020/021/022 wygladaly na otwarte.
+Dopisuje ODPOWIEDZ-020 (NIEZROBIONE, z powodem), ODPOWIEDZ-021 (kontrakt
+odpowiedziany, naprawa niezrobiona) i ODPOWIEDZ-022 (zrobione).
+
+Odpowiadam tez wprost na pytanie o 52 minuty: NIE stanalem na niczym.
+Ostatni commit 16:15:30, ZLECENIE-023 powstalo 17:08:54 — miedzy nimi
+CZEKALEM NA KOLEJNE ZLECENIE, bo 022 bylo domkniete, a nowej pozycji nie bylo.
+Bledem nie byl przestoj, tylko to, ze przestoj wygladal identycznie jak praca
+w toku, bo nie zostawilem w kanale ani slowa o stanie.
+
+Regula na stale: odpowiedz trafia do kanalu ZANIM zamelduje w oknie, a przy
+przestoju dluzszym niz jedna pozycja zostawiam w kanale krotka notatke o stanie.
+
+Kanal: plik 17:08:54.349 -> obudzony 17:09:35.037 = 40,7 s (dziewietnasty pomiar).
