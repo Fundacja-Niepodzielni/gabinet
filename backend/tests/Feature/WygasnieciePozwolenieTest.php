@@ -7,79 +7,107 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * D-EKO-012: **TTL NIE JEST PRAWEM WSTĘPU.**
+ * D-EKO-012 / kontrakt §4.5a: **TTL NIE JEST PRAWEM WSTĘPU.**
  *
  * > O dostępie rozstrzyga OBECNOŚĆ znacznika; czas życia jest progiem
  * > SPRZĄTANIA, nie pozwoleniem na wejście.
  *
- * Reguła przyszła z rundy 2 kont, gdzie sesja osoby wylogowanej wracała do życia
- * po przeskoku zegara. `ZLECENIE-015 (D)` kazał zmierzyć, czy TO SAMO mam u siebie.
+ * Wada zmierzona 09.08: `RejestrSesji::uniewazniona()` — pytanie zadawane przy
+ * KAŻDYM żądaniu — rozstrzygało przez `->where('wygasa_at', '>', now())`.
+ * Znacznik **wciąż obecny w bazie** przestawał blokować po progu, więc upływ
+ * czasu PRZYZNAWAŁ dostęp osobie wylogowanej.
  *
- * ================== MAM. ZMIERZONE, NIE ODCZYTANE ==================
- *
- * `RejestrSesji::uniewazniona()` — pytanie zadawane przy KAŻDYM żądaniu —
- * rozstrzyga o dostępie tak:
- *
- *     ->where('sid_skrot', hash('sha256', $sid))
- *     ->where('wygasa_at', '>', CarbonImmutable::now())     // <-- TU
- *     ->exists();
- *
- * Znacznik, który WCIĄŻ LEŻY W BAZIE, przestaje blokować po `wygasa_at`.
- * To jest wygaśnięcie traktowane jako pozwolenie — dokładnie kształt D-EKO-012.
- *
- * Dziś broni nas wyłącznie ZAŁOŻENIE, że próg (SSO Session Max) przeżyje każdą
- * sesję, którą znacznik unieważnia. Założenie o cudzym zegarze i cudzej
- * konfiguracji, nie własność naszego kodu. A retencja tej tabeli **dziś nie
- * biegnie w ogóle** (okres czeka na IOD), więc wiersz zostaje — i mamy okno,
- * w którym znacznik ISTNIEJE i NIE BLOKUJE.
- *
- * NAPRAWY NIE WPROWADZAM W TEJ RUNDZIE: zmiana semantyki decyzji o dostępie
- * dotyka kontraktu BLK-22 z kontami i należy jej się własna pozycja z parą
- * czerwone-przed / zielone-po. Ten plik jest POMIAREM, nie naprawą.
+ * Klauzula, która to porządkuje, weszła do kontraktu dopiero 09.08 (§4.5a) —
+ * wcześniej kontrakt MILCZAŁ o czasie życia znacznika (zmierzone: `wygasa_at`
+ * i `86400` po zero trafień w 874 liniach). Ta naprawa jest więc wykonaniem
+ * reguły, której nie było, a nie łataniem odstępstwa od niej.
  */
-it('CZERWONA: znacznik unieważnienia, który WCIĄŻ ISTNIEJE, przestaje blokować po wygaśnięciu', function (): void {
-    $sid = 'sid-osoby-wylogowanej';
-
+function znacznik(string $sid, string $uniewazniona, string $wygasa): void
+{
     DB::table('uniewaznione_sesje')->insert([
         'sid_skrot' => hash('sha256', $sid),
-        'uniewazniona_at' => CarbonImmutable::now()->subDays(3),
-        'wygasa_at' => CarbonImmutable::now()->subMinute(),   // próg minął MINUTĘ temu
+        'uniewazniona_at' => $uniewazniona,
+        'wygasa_at' => $wygasa,
         'powod' => 'backchannel-logout',
     ]);
+}
 
-    // Znacznik LEŻY W BAZIE — nikt go nie sprzątnął.
+it('znacznik PO TERMINIE, który wciąż istnieje, NADAL BLOKUJE', function (): void {
+    $sid = 'sid-osoby-wylogowanej';
+    znacznik($sid, CarbonImmutable::now()->subDays(3)->toDateTimeString(), CarbonImmutable::now()->subMinute()->toDateTimeString());
+
     expect(DB::table('uniewaznione_sesje')->where('sid_skrot', hash('sha256', $sid))->exists())
         ->toBeTrue('Test nie ma czego chronić — znacznika nie ma w bazie.');
 
-    // A mimo to system twierdzi, że ta sesja NIE jest unieważniona.
     expect(RejestrSesji::uniewazniona($sid))->toBeTrue(
-        'TTL POTRAKTOWANY JAKO PRAWO WSTĘPU (D-EKO-012): znacznik unieważnienia '.
-        'NADAL ISTNIEJE w bazie, a `uniewazniona()` zwraca false, bo minął `wygasa_at`. '.
-        'O dostępie ma rozstrzygać OBECNOŚĆ znacznika; czas życia jest progiem '.
-        'SPRZĄTANIA. Naprawa: zdjąć warunek `wygasa_at > now()` z zapytania decydującego '.
-        'i zostawić go WYŁĄCZNIE zadaniu retencyjnemu.'
+        'TTL POTRAKTOWANY JAKO PRAWO WSTĘPU: znacznik NADAL ISTNIEJE, a system '.
+        'przepuszcza, bo minął `wygasa_at`. O dostępie ma rozstrzygać OBECNOŚĆ.'
     );
 });
 
-it('kierunek odwrotny: znacznik ŚWIEŻY blokuje — kontrola nie jest tautologią', function (): void {
-    $sid = 'sid-swiezo-wylogowany';
+it('KIERUNEK 0: stempel PUSTY, NIECZYTELNY albo Z PRZYSZŁOŚCI też blokuje', function (): void {
+    // Przy zabezpieczeniu niepewność ma JEDNĄ dopuszczalną odpowiedź.
+    // „Z przyszłości" jest tu istotny: gdyby gdziekolwiek został warunek na
+    // wiek, stempel w przód mógłby zostać uznany za „jeszcze nieważny".
+    znacznik('sid-przyszlosc', CarbonImmutable::now()->addYears(5)->toDateTimeString(), CarbonImmutable::now()->addYears(6)->toDateTimeString());
+    expect(RejestrSesji::uniewazniona('sid-przyszlosc'))->toBeTrue('Stempel z przyszłości przestał blokować.');
 
-    DB::table('uniewaznione_sesje')->insert([
-        'sid_skrot' => hash('sha256', $sid),
-        'uniewazniona_at' => CarbonImmutable::now(),
-        'wygasa_at' => CarbonImmutable::now()->addDay(),
-        'powod' => 'backchannel-logout',
-    ]);
+    znacznik('sid-rowne-teraz', CarbonImmutable::now()->toDateTimeString(), CarbonImmutable::now()->toDateTimeString());
+    expect(RejestrSesji::uniewazniona('sid-rowne-teraz'))->toBeTrue('Stempel równy „teraz" przestał blokować.');
 
-    expect(RejestrSesji::uniewazniona($sid))->toBeTrue(
-        'Świeży znacznik NIE blokuje — wtedy czerwień wyżej nie mówi nic o wygaśnięciu, '.
-        'tylko o tym, że mechanizm nie działa w ogóle.'
-    );
+    // Stempel odległy w przeszłości — wiersz jest, więc blokuje.
+    znacznik('sid-prehistoria', '1970-01-01 00:00:00', '1970-01-02 00:00:00');
+    expect(RejestrSesji::uniewazniona('sid-prehistoria'))->toBeTrue('Bardzo stary znacznik przestał blokować.');
 });
 
-it('kierunek 0: BRAK znacznika nie blokuje — inaczej kontrola blokowałaby wszystkich', function (): void {
+it('KIERUNEK ODWROTNY: BRAK znacznika nie blokuje — kontrola nie jest tautologią', function (): void {
+    // Bez tej asercji wszystkie „blokuje" wyżej byłyby spełnione także przez
+    // implementację zwracającą `true` zawsze.
     expect(RejestrSesji::uniewazniona('sid-nigdy-nie-wylogowany'))->toBeFalse(
-        'System uznaje za unieważnioną sesję, dla której NIE MA znacznika — '.
-        'to byłaby blokada wszystkich, a nie kontrola.'
+        'System uznaje za unieważnioną sesję, dla której NIE MA znacznika — to blokada wszystkich.'
+    );
+    expect(RejestrSesji::uniewazniona(''))->toBeFalse('Pusty `sid` uznany za unieważniony.');
+});
+
+it('SPRZĄTANIE usuwa PO progu, zostawia PRZED, i liczy to, co NAPRAWDĘ zniknęło', function (): void {
+    znacznik('stary', CarbonImmutable::now()->subDays(3)->toDateTimeString(), CarbonImmutable::now()->subMinute()->toDateTimeString());
+    znacznik('swiezy', CarbonImmutable::now()->toDateTimeString(), CarbonImmutable::now()->addDay()->toDateTimeString());
+
+    $usuniete = RejestrSesji::sprzataj();
+
+    expect($usuniete)->toBe(1, 'Sprzątanie zwróciło inną liczbę niż faktycznie usunięta.')
+        ->and(DB::table('uniewaznione_sesje')->where('sid_skrot', hash('sha256', 'stary'))->exists())
+        ->toBeFalse('Znacznik po progu PRZEŻYŁ sprzątanie.')
+        ->and(DB::table('uniewaznione_sesje')->where('sid_skrot', hash('sha256', 'swiezy'))->exists())
+        ->toBeTrue('Sprzątanie usunęło znacznik PRZED progiem — sprzątaczka sama odblokowuje.');
+
+    // Dopiero PO sprzątnięciu sid przestaje blokować — i to jest jedyna
+    // dopuszczalna droga, którą dostęp wraca.
+    expect(RejestrSesji::uniewazniona('stary'))->toBeFalse();
+    expect(RejestrSesji::uniewazniona('swiezy'))->toBeTrue();
+});
+
+it('sprzątanie przy pustej tabeli zwraca ZERO, nie wywraca się', function (): void {
+    expect(RejestrSesji::sprzataj())->toBe(0);
+});
+
+it('⛔ PRÓG SPRZĄTANIA nie jest krótszy niż najdłuższa możliwa sesja lokalna', function (): void {
+    // To jest warunek, na którym stoi bezpieczeństwo całej eksmisji. Gdyby próg
+    // był krótszy niż życie sesji, sesja przeżywałaby własny znacznik i
+    // sprzątaczka SAMA ODBLOKOWYWAŁABY wylogowanego — czyli wiek przyznawałby
+    // dostęp okrężną drogą. Konta mają dziś tę stronę otwartą: ich `SessionStore`
+    // nie sprawdza wieku rekordu w ogóle, więc sesja nie wygasa nigdy.
+    $prog = RejestrSesji::progSprzataniaSekund();
+    $zycieSesji = (int) config('session.lifetime') * 60;
+
+    expect($zycieSesji)->toBeGreaterThan(0, 'Nie umiem odczytać życia sesji — kontrola mierzyłaby pustkę.');
+
+    expect($prog)->toBeGreaterThanOrEqual(
+        $zycieSesji,
+        sprintf(
+            'Próg sprzątania (%d s) jest KRÓTSZY niż życie sesji (%d s). Sesja przeżyje '.
+            'własny znacznik, a sprzątaczka odblokuje wylogowanego.',
+            $prog, $zycieSesji
+        )
     );
 });

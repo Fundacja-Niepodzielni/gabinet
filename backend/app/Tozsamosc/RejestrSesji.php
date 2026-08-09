@@ -73,6 +73,19 @@ final class RejestrSesji
 
         Cache::forget(self::klucz($sid));
 
+        // SPRZĄTANIE NA ŚCIEŻCE MUTUJĄCEJ — tutaj, nie w odczycie.
+        //
+        // `sprzataj()` bez wywołującego byłoby R6A-11 od nowa: metoda istnieje,
+        // testy zielone, a na żywym systemie znaczniki rosną bez końca. Wołamy
+        // ją przy wylogowaniu, bo to jedyna ścieżka, która i tak mutuje tę
+        // tabelę — i jest rzadka, więc koszt jest znikomy.
+        //
+        // Wynik jest ODBIERANY (nie `sprzataj();` samo z siebie), żeby dało się
+        // go zalogować, gdy zajdzie potrzeba, i żeby nikt nie wziął ciszy za
+        // „nie było czego sprzątać".
+        $wysprzatane = self::sprzataj();
+        unset($wysprzatane);
+
         return $skasowane;
     }
 
@@ -96,10 +109,64 @@ final class RejestrSesji
             return false;
         }
 
+        // ROZSTRZYGA OBECNOŚĆ WIERSZA, NIGDY JEGO WIEK (`D-EKO-012`, kontrakt §4.5a).
+        //
+        // Do 09.08 stało tu `->where('wygasa_at', '>', now())`. Znacznik WCIĄŻ
+        // OBECNY w bazie przestawał wtedy blokować po progu — czyli upływ czasu
+        // PRZYZNAWAŁ dostęp osobie wylogowanej. Zmierzone, nie wyczytane:
+        // wiersz istniał, a metoda zwracała `false`.
+        //
+        // Czas życia jest progiem SPRZĄTANIA i mieszka wyłącznie w `sprzataj()`.
+        // Zapytanie rozstrzygające o dostępie nie ma prawa go widzieć — inaczej
+        // wystarczy jedna korekta zegara, żeby dowód wylogowania przestał
+        // działać, mimo że nikt go nie usunął.
+        //
+        // @dowod: WygasnieciePozwolenieTest — „znacznik po terminie NADAL blokuje”
         return DB::table('uniewaznione_sesje')
             ->where('sid_skrot', hash('sha256', $sid))
-            ->where('wygasa_at', '>', CarbonImmutable::now())
             ->exists();
+    }
+
+    /**
+     * Sprząta znaczniki, których próg minął. **Ścieżka MUTUJĄCA, nie odczyt.**
+     *
+     * Wiek ma ODBIERAĆ znaczenie znacznikowi, nigdy PRZYZNAWAĆ dostęp — dlatego
+     * usuwanie żyje tutaj, a nie w `uniewazniona()`. Bezpieczeństwo tej eksmisji
+     * stoi na jednym warunku i jest on **sprawdzany kontrolą**, nie zakładany:
+     * próg (`CZAS_ZYCIA_SEKUND` / SSO Session Max) musi być **nie krótszy niż
+     * najdłuższa możliwa sesja lokalna**. Inaczej sesja przeżywa własny znacznik
+     * i sprzątaczka sama odblokowuje — to jest dokładnie ta strona defektu,
+     * której brakuje kontom (`SessionStore` nie sprawdza wieku rekordu wcale).
+     *
+     * @return int liczba znaczników, które NAPRAWDĘ zniknęły
+     *
+     * @dowod: WygasnieciePozwolenieTest — „sprzątanie usuwa PO progu i mówi ILE”
+     */
+    public static function sprzataj(): int
+    {
+        $doUsuniecia = DB::table('uniewaznione_sesje')
+            ->where('wygasa_at', '<=', CarbonImmutable::now())
+            ->pluck('sid_skrot')
+            ->map(static fn (mixed $s): string => Typy::napis($s))
+            ->all();
+
+        if ($doUsuniecia === []) {
+            return 0;
+        }
+
+        DB::table('uniewaznione_sesje')->whereIn('sid_skrot', $doUsuniecia)->delete();
+
+        // „Polecenie się wykonało" ≠ „wiersz zniknął". Liczymy to, co NAPRAWDĘ
+        // zniknęło, pytając bazę drugą drogą — nie ufamy liczbie z `delete()`.
+        $pozostale = DB::table('uniewaznione_sesje')->whereIn('sid_skrot', $doUsuniecia)->count();
+
+        return count($doUsuniecia) - $pozostale;
+    }
+
+    /** Próg sprzątania w sekundach — jedno miejsce, żeby dało się go porównać z życiem sesji. */
+    public static function progSprzataniaSekund(): int
+    {
+        return self::oknoUniewaznieniaSekund();
     }
 
     /**

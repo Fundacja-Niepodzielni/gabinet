@@ -68,3 +68,11 @@ czerwień dotyczy **wygaśnięcia**, a nie zepsutego mechanizmu.
 4. **kontrola progu**: próg sprzątania ≥ maksymalny czas życia sesji — żeby wiek nie stał się
    „prawem wstępu na odwrót", w co konta wpadły po drugiej stronie;
 5. czerwień ma zniknąć **z tego samego powodu**, nie przez obejście ścieżki.
+
+---
+
+## ⬆ AKTUALIZACJA — naprawa WYKONANA
+
+Pozycja domknięta w `ZLECENIE-024`. **Stan tego pliku w części „naprawa" jest nieaktualny;
+wynik i pomiary są w `ODPOWIEDZ-024.md`.** Zostawiam pierwotną treść bez podmiany, bo ktoś
+mógł ją przeczytać, a cicha korekta do niego nie dotrze.
