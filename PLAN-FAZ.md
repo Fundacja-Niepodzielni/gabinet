@@ -215,8 +215,13 @@ raporty w `docs/noc-2026-08-08/`). „Runda 3 — w toku" stało tu jeszcze
 okno bezpłatnego odwołania 24 h · limit przełożeń 2 · najbliższy termin 2 h ·
 kalendarz pacjenta 30 dni · specjalista wystawia 7 dni · przerwa 10 min ·
 blokada koszyka 10 min · link płatności 2 dni · **limit niskopłatnych 10 wizyt**
-(D-2026-08-07-08) · limit podażowy 4 terminy/tydzień/specjalista ·
-kredyt za odsprzedany termin: włączony.
+(D-2026-08-07-08) · limit podażowy 4 terminy/tydzień/specjalista.
+
+> **Kredyt za odsprzedany termin — WYJĘTY z tej listy 09.08.** Stała tu wartość startowa
+> „włączony". Decyzja właściciela: **poza zakresem pierwszego wdrożenia**
+> (`docs/DECYZJE.md`, **D-2026-08-09-01**) — saldo kredytu jest formą historii finansowej
+> pacjenta, której `CLAUDE.md` nie przewiduje w tym wdrożeniu. Nie ma dla niego wartości
+> startowej, bo nie ma reguły do skonfigurowania.
 
 ---
 
@@ -237,7 +242,7 @@ Trzy warstwy (rytm/poprawki/urlopy) · sloty 50+10 i 90+10 (90-min zdejmuje dwa 
 
 ## F3 — Rezerwacja + płatności (L) — [spec: M1/6-14, M5/1-4]
 
-Blokada terminu 10 min (atomowo, cron zwalniający) · Stripe Checkout ×2 konta (routing po fladze usługi; karta/BLIK/GPay/APay; 0 zł omija Stripe) · webhooki z weryfikacją podpisu, idempotencją, kolejką ponowień · nocna rekoncyliacja per konto + widok rozjazdów · płatność odroczona (`/oplac/:token`, 2 dni, unieważnianie) · zwroty jako lista zadań (domykanie po `charge.refunded`) · kredyt za odsprzedany termin · odwołanie/przełożenie z egzekwowaniem okna 24 h i limitu 2 zmian · konta pacjentów przez Keycloak Admin API + action-token (konto w tle po płatności).
+Blokada terminu 10 min (atomowo, cron zwalniający) · Stripe Checkout ×2 konta (routing po fladze usługi; karta/BLIK/GPay/APay; 0 zł omija Stripe) · webhooki z weryfikacją podpisu, idempotencją, kolejką ponowień · nocna rekoncyliacja per konto + widok rozjazdów · płatność odroczona (`/oplac/:token`, 2 dni, unieważnianie) · zwroty jako lista zadań (domykanie po `charge.refunded`) · ~~kredyt za odsprzedany termin~~ (**poza zakresem, D-2026-08-09-01**) · odwołanie/przełożenie z egzekwowaniem okna 24 h i limitu 2 zmian · konta pacjentów przez Keycloak Admin API + action-token (konto w tle po płatności).
 **Bramka:** E2E w trybie testowym Stripe: rezerwacja→płatność→potwierdzenie; odwołanie przed/po granicy; „zapłacone, termin zajęty" jako osobna ścieżka; webhook zwrotu przed webhookiem płatności nie psuje stanu; token `/oplac` po zwolnieniu terminu.
 
 ## F4 — Panel specjalisty: API (M) — [spec: M2]

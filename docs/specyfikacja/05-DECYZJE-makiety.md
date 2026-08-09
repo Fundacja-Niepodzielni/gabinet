@@ -91,6 +91,8 @@ Dodatkowe reguły:
 - **Kredyt za odsprzedany termin:** jeśli po późnym odwołaniu ktoś inny wykupi ten slot,
   pierwszy pacjent dostaje równowartość jako kredyt. Specjalista i tak ma godzinę opłaconą —
   różnicę pokrywa fundacja. Włączane flagą, domyślnie włączone.
+  **[POZA ZAKRESEM pierwszego wdrożenia — decyzja właściciela 09.08, `docs/DECYZJE.md`,
+  D-2026-08-09-01. Zapis zostaje, bo oddaje specyfikację; nie budujemy tego teraz.]**
 
 **Dlaczego zmiana terminu po 24 h jest zablokowana:** jeśli zostawić furtkę, nikt nie odwołuje —
 wszyscy przekładają. Slot i tak przepada, a okno 24 h przestaje cokolwiek znaczyć.

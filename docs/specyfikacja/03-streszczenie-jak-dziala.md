@@ -38,7 +38,7 @@ Kluczowe: nad przyciskami stoi jedno z dwóch zdań — „Możesz jeszcze bezp�
 - **System w tle:** nic nie wysyła, nic nie zwraca. Godzina zostaje w rozliczeniu specjalisty.
 - Jeśli specjalista zdecyduje o wyjątku — ma osobne pole przy oznaczaniu nieobecności („odpuść tym razem"), wtedy zwrot trafia na listę do wykonania.
 - Jeśli pacjentka po prostu nie przyjdzie: specjalista zgłasza nieobecność, zapis w historii pacjentki, widoczne dla koordynatora, brak zwrotu, godzina wchodzi do rozliczenia, termin nie wraca do puli (bo minął).
-- **Zwolniony termin idzie na listę rezerwową** — propozycja mailem **i** SMS-em jednocześnie, kolejnym osobom, aż ktoś przyjmie. Jeśli uda się obsadzić — **pierwsza pacjentka dostaje kredyt** na kolejną wizytę, mimo że jej wizyta była płatna („Fundacja nie zarabia dwa razy na tej samej godzinie", s.7).
+- **Zwolniony termin idzie na listę rezerwową** — propozycja mailem **i** SMS-em jednocześnie, kolejnym osobom, aż ktoś przyjmie. Jeśli uda się obsadzić — **pierwsza pacjentka dostaje kredyt** na kolejną wizytę, mimo że jej wizyta była płatna („Fundacja nie zarabia dwa razy na tej samej godzinie", s.7). **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 
 ### 1.3 Przełożenie terminu przez pacjenta (s.8–9)
 
@@ -152,6 +152,11 @@ Koordynator może: odwołać wizytę (**pacjent dostaje pełny zwrot niezależni
 
 - **Brak progów pośrednich** i opłat częściowych: „każdy dodatkowy próg to kolejne pytanie do koordynatora" (s.7).
 - **Kredyt za odsprzedany termin**: jeśli po późnym odwołaniu ktoś inny wykupi zwolnioną godzinę, pierwsza osoba dostaje równowartość jako **kredyt na kolejną wizytę** (s.7, s.24, s.49, s.58). Różnicę pokrywa fundacja. Reguła **włączalna/wyłączalna** w ekranie reguł (s.48, s.54).
+
+> **Poza zakresem pierwszego wdrożenia — decyzja właściciela 09.08, `docs/DECYZJE.md`,
+> D-2026-08-09-01.** Zapis zostaje, bo streszczenie ma wiernie oddawać specyfikację;
+> znacznik mówi, że tego nie budujemy w pierwszym wdrożeniu.
+
 - Dokument wskazuje na **8-sytuacyjną tabelę polityki odwołań** jako jedyne miejsce decydujące o zwrocie (s.48, s.54). Wyjątki robi człowiek przyciskiem „**zwróć mimo reguły**" i zostawia ślad w dzienniku decyzji.
 
 ### Limity
@@ -221,7 +226,7 @@ Koordynator może: odwołać wizytę (**pacjent dostaje pełny zwrot niezależni
 - **Psycholodzy** (s.42): jedyne miejsce z **pełnym rozliczeniem** (wpływy + prowizja). Ostrzeżenie przy >10 odwołaniach w 30 dni; można napisać do osoby albo **wyciszyć sygnał na 30 dni**. Listy: kto ma kalendarz otwarty **krócej niż 21 dni**, które usługi wymagają zgody. Akcje: zaproszenie do zespołu, włączanie/wyłączanie usług, **nadpisanie stawki pełnopłatnej**, zawieszenie konta, **prośba** (nie polecenie) o zwolnienie terminów. „Odebranie usługi nie kasuje już umówionych wizyt".
 - **Historia decyzji** (s.45, s.51): dziennik decyzji **poza regułami systemu**: wizyta bezpłatna, podniesienie limitu, zwrot mimo 24 h, ręczna zmiana prowadzącego, zdjęcie blokady. Przy każdym wpisie: data, kogo dotyczy, przy której rezerwacji, uzasadnienie, nazwisko decydenta, skutek dla budżetu. **Dziennik ma dokładnie jedną operację: dopisanie. Wpisu nie da się zmienić ani usunąć — nie ma przycisku „edytuj" ani „usuń", także w oknie szczegółów.** Poprawka = nowy wpis z dzisiejszą datą. **Dwie osobne kwoty, nigdy sumowane: pieniądze już wydane i zobowiązania** (podniesione limity kosztują dopiero przy wykorzystaniu).
 - **Raport dla grantodawcy** (s.45, s.51): **główną liczbą jest osoba, a nie wizyta**. Wyłącznie **zamknięty kwartał albo rok** (bieżący kwartał niedostępny). „**Osób z 4 kwartałów nie wolno dodawać do roku — wizyty wolno dodawać, osób nie**". „Objęta pomocą" = **co najmniej jedna odbyta wizyta**. Bez nazwisk, bez powodów zgłoszenia, **bez informacji o efektach terapii** („system wie, ile spotkań się odbyło, i nie wie, co dały"). Tabela wskaźników z kolumną „jak dokładnie jest liczony".
-- **Reguły systemu** (s.48, s.54): centralne miejsce konfiguracji — czasy (okno bezpłatnego odwołania, limit przełożeń, najbliższy możliwy termin, dni otwarcia kalendarza, przerwa między wizytami, czas trzymania terminu), **tabela 8 sytuacji** (zwrot / termin / wynagrodzenie), pieniądze (prowizja pełnopłatna i niskopłatna, częstotliwość wypłat, **kredyt za odsprzedany termin on/off**), lista **7 powiadomień z dwoma przełącznikami każde: mail i SMS**.
+- **Reguły systemu** (s.48, s.54): centralne miejsce konfiguracji — czasy (okno bezpłatnego odwołania, limit przełożeń, najbliższy możliwy termin, dni otwarcia kalendarza, przerwa między wizytami, czas trzymania terminu), **tabela 8 sytuacji** (zwrot / termin / wynagrodzenie), pieniądze (prowizja pełnopłatna i niskopłatna, częstotliwość wypłat, **kredyt za odsprzedany termin on/off**), lista **7 powiadomień z dwoma przełącznikami każde: mail i SMS**. **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 
 **Czego koordynator NIE widzi:** treści rozmów i notatek z sesji (s.17, s.41: „Koordynator widzi organizację wizyty i pieniądze, nie to, o czym ona była").
 
@@ -243,7 +248,7 @@ Koordynator może: odwołać wizytę (**pacjent dostaje pełny zwrot niezależni
   - uzasadnienie: „automatyczne zwroty wymagałyby ciągłego uzgadniania stanu między systemem a operatorem płatności oraz obsługi zwrotów nieudanych i częściowych — czyli **najdroższego kawałka całej integracji**. Przy kilkudziesięciu zwrotach miesięcznie ręczne kliknięcie jest tańsze" (s.50)
   - pieniądze wracają **na tę samą kartę**, zwykle **3–5 dni roboczych**
 - **Przełożenie terminu: płatność przechodzi na nowy termin — bez zwrotu i bez ponownego pobrania** (s.8, s.9, s.55). Uzasadnienie: zwrot + nowa płatność = kilka dni oczekiwania i sztucznie napompowana lista zwrotów.
-- **Kredyt** zamiast zwrotu — gdy późno odwołany termin zostanie odsprzedany (s.7, s.24, s.49, s.58).
+- **Kredyt** zamiast zwrotu — gdy późno odwołany termin zostanie odsprzedany (s.7, s.24, s.49, s.58). **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 - **Wypłaty dla specjalistów**: paczki przelewów, **do 10 dnia miesiąca**, na konto z profilu; potwierdzenie księgowania mailem. Faktura z własnej księgowości specjalisty (system tylko podpowiada kwotę). **Dokument sam sygnalizuje problem: „faktura złożona ostatniego dnia nie ma kiedy zostać sprawdzona — warto rozsunąć te dwie daty"** (s.59–60).
 - **Uwaga:** wizyty umówione przez koordynatora mogą być **opłacone przelewem albo bezpłatne** — poza Stripe (s.39).
 

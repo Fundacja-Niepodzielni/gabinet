@@ -54,7 +54,7 @@ Oznaczenia: **[R]** = zadanie z jawnie wypisanym akapitem „Ryzyko:". **[R!]** 
 | 11 | Link do spotkania — generowanie pokoi wideo **[R]** | INTEGRACJA | 6 | Decyzja API (Whereby/Jitsi/Zoom) vs stały link, generowanie przy potwierdzeniu, wariant awaryjny; ryzyko kliniczne — pacjent może wejść w czyjąś sesję. |
 | 12 | Panel pacjenta: pulpit, lista wizyt, limit, prowadzący | FRONTEND | 7 | Podpięcie pod API, serwerowe liczenie limitu, automatyczne przypisanie prowadzącego chronologicznie (błąd z DECYZJE.md §15), brak historii finansowej (decyzja 17). |
 | 13 | API odwołania i przełożenia z egzekwowaniem polityki **[R]** | BACKEND | 7 | Przeniesienie `ocenaAnulacji()` na serwer, okno 24 h i limit 2 przełożeń w API, atomowe przełożenie, reguła zamrożona; dziś to tylko widoczność przycisków. |
-| 14 | Kolejka zwrotów i kredyt za odsprzedany termin | BACKEND | 7 | Zadanie „zwrot do wykonania" (bez API), wykrycie odsprzedania slotu, kredyt w checkoucie, ręczne domknięcie; usunięcie toastu „zwrot zlecony w Stripe". |
+| 14 | Kolejka zwrotów i kredyt za odsprzedany termin | BACKEND | 7 | Zadanie „zwrot do wykonania" (bez API), wykrycie odsprzedania slotu, kredyt w checkoucie, ręczne domknięcie; usunięcie toastu „zwrot zlecony w Stripe". | **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 | 15 | Wydarzenia grupowe: zapisy, lista rezerwowa, awans **[R]** | BACKEND | 8 | Model cyklu, limit miejsc → lista rezerwowa, awans z oknem 24 h, płatność dopiero po awansie, obecności do raportu grantowego; awaria crona w piątek = puste krzesła. |
 | 16 | Front wydarzeń: lista, szczegóły, zapis, moje grupy | FRONTEND | 8 | Cztery ekrany na API, 5 stanów panelu zapisu, płatność przez Stripe, .ics dla całego cyklu, poprawka kierowania „Moje zapisy". |
 | 17 | Moduł wiadomości — API, uprawnienia, powiadomienia **[R]** | BACKEND | 8 | Wątek z kontekstem wizyty/grupy, kontrola dostępu przy każdym odczycie, powiadomienie bez cytowania treści, retencja; ryzyko: treści kryzysowe wymagają procedury po stronie fundacji. |
@@ -153,7 +153,7 @@ Oznaczenia: **[R]** = zadanie z jawnie wypisanym akapitem „Ryzyko:". **[R!]** 
 | 14 | Katalog usług i wersjonowanie cennika **[R]** | BACKEND | 47 | CRUD usług, wersjonowanie cen z datą obowiązywania, walidacja widełek, skutki wyłączenia usługi, licznik przyjmujących, powiązanie z krokiem uprawnień; widełki to kwestia blokująca nr 1. |
 | 15 | Ekran Katalog usług — formularz z prawdziwym zapisem | FRONTEND | 47 | Karty usług z odznakami, formularz kontrolowany zamiast `defaultValue`, podgląd skutku zmiany przed zapisem, kontrola unikalności identyfikatora. |
 | 16 | Reguły systemu — konfiguracja z wersjonowaniem **[R]** | BACKEND | 47 | Przeniesienie stałych z `src/lib/reguly.ts` do tabeli konfiguracji, wersjonowanie z datą wejścia, `regula_anulacji_zamrozona` w rezerwacji, **jedna funkcja rozstrzygająca dla wszystkich modułów**, macierz odwołań jako dane; potrzebna wersja zerowa i migracja. |
-| 17 | Ekran Reguły systemu — formularz z prawdziwym zapisem | FRONTEND | 48 | Zamiana pól niekontrolowanych na formularz ze stanem, selecty na wartościach liczbowych zamiast etykiet („24 godziny przed"), macierz z API, przełącznik kredytu z potwierdzeniem skutku. |
+| 17 | Ekran Reguły systemu — formularz z prawdziwym zapisem | FRONTEND | 48 | Zamiana pól niekontrolowanych na formularz ze stanem, selecty na wartościach liczbowych zamiast etykiet („24 godziny przed"), macierz z API, przełącznik kredytu z potwierdzeniem skutku. | **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 | 18 | Macierz powiadomień — konfiguracja kanałów **[R]** | BACKEND | 48 | 7 zdarzeń × mail/SMS, dwa niewyłączalne także przez API, szeregowanie względem terminu w Europe/Warsaw, kolejka z rejestrem doręczeń, licznik segmentów i szacunkowy koszt, limit dzienny i alert kosztowy. |
 | 19 | Role i uprawnienia w panelu koordynatora **[R]** | BEZPIECZ. | 48 | Trzy role + pytanie o koordynatora podglądowego, kontrola API dla `/koordynacja/*`, osobne reprezentacje danych per rola, rozdzielenie obowiązków (faktury vs reguły), rejestr dostępu do danych finansowych; **prowizja wycieka najłatwiej przez ogólny endpoint rezerwacji**. |
 | 20 | Uzgadnianie stanu ze Stripe i lista zwrotów **[R!]** | INTEGRACJA | 49 | Webhooki (`payment_intent.succeeded`, `charge.refunded`, `charge.dispute.created`) z idempotencją, codzienne porównanie z saldem Stripe, lista zwrotów z odnośnikiem do panelu, oznaczenie wykonania **dopiero po webhooku**, zwroty częściowe/podwójne; uzgadnianie to najdroższy i najczęściej niedoszacowany fragment. |
@@ -169,7 +169,7 @@ Oznaczenia: **[R]** = zadanie z jawnie wypisanym akapitem „Ryzyko:". **[R!]** 
 | 1 | Stripe Checkout dla rezerwacji własnej **[R]** | INTEGRACJA | 55 | Sesja PLN z metadanymi, rezerwacja w jednej transakcji z blokadą wiersza, wygaszanie po 10 min, idempotentne domykanie, karta/BLIK/Google Pay/Apple Pay, usługi 0 zł poza Stripe; ryzyko: „zapłacone, termin zajęty" to osobna ścieżka. |
 | 2 | Webhooki Stripe i uzgadnianie stanu **[R]** | INTEGRACJA | 56 | Endpoint z weryfikacją podpisu i zapisem surowego zdarzenia, 5 typów zdarzeń, kolejka ponowień z alertem, nocne porównanie z PaymentIntentami, widok rozjazdów; **kolejność zdarzeń w Stripe nie jest gwarantowana**. |
 | 3 | Płatność odroczona (2 dni) **[R]** | BACKEND | 56 | Jednorazowy link i publiczna strona `/oplac/:token` bez logowania, trzymanie terminu, ponowna wysyłka z unieważnieniem, obsługa opłacenia po zwolnieniu, wniosek o wizytę bezpłatną; token to wektor nadużycia. |
-| 4 | Zwroty jako lista zadań + kredyt **[R]** | BACKEND | 56 | Wyliczanie wyłącznie z wartości zamrożonych, rejestr zadań ze statusami, domykanie po `charge.refunded`, kredyt za odsprzedany slot, „zwróć mimo reguły" z uzasadnieniem, usunięcie „zwrot zlecony w Stripe" z `/konto/wizyty`. |
+| 4 | Zwroty jako lista zadań + kredyt **[R]** | BACKEND | 56 | Wyliczanie wyłącznie z wartości zamrożonych, rejestr zadań ze statusami, domykanie po `charge.refunded`, kredyt za odsprzedany slot, „zwróć mimo reguły" z uzasadnieniem, usunięcie „zwrot zlecony w Stripe" z `/konto/wizyty`. | **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 | 5 | Silnik powiadomień: harmonogram, kolejka, kanały, zgody **[R!]** | BACKEND | 57 | Tabela zaplanowanych powiadomień + worker z ponowieniami wykładniczymi, planowanie przy rezerwacji, **przeplanowanie i odwoływanie przy zmianach**, zgody, cisza nocna, log dostarczeń; „najdroższy element to nie wysyłka, tylko przeplanowanie" — wpisy z trzech pokoleń. |
 | 6 | Integracja bramki SMS **[R]** | INTEGRACJA | 57 | Wybór dostawcy i rejestracja nadawcy „Niepodzielni", E.164, webhook DLR, serwerowe liczenie GSM-7/UCS-2 z twardym odcięciem, miesięczny limit kosztu, raport zasilający `/koordynacja/sms`; **rejestracja pola nadawcy trwa od kilku dni do kilku tygodni**. |
 | 7 | Poczta transakcyjna, dostarczalność, .ics **[R]** | INTEGRACJA | 57 | Dostawca + SPF/DKIM/DMARC dla `niepodzielni.com`, zwykły tekst + minimalny HTML, `.ics` (VEVENT, stały UID, alarm 24 h, SEQUENCE, METHOD:CANCEL), odbicia, test na 4 skrzynkach; aktualizacja przez .ics jest kapryśna w Google/Apple/Outlook. |
@@ -389,6 +389,11 @@ To jest **jedyne miejsce, gdzie dokument dopuszcza wyjście poza WordPressa** (�
 **KWESTIA OTWARTA nr 3 (blokująca):** przelewy miesięczne vs **Stripe Connect** z podziałem płatności przy zakupie. Connect: zdejmuje ręczną pracę, ale **wymaga weryfikacji tożsamości każdego ze 111 specjalistów w Stripe**, przebudowuje ekran Rozliczenia i cały obieg faktur (s. 20, 26–27), oraz **zmienia model danych rozliczeń, a nie tylko integrację** (s. 42).
 
 **Kredyt za odsprzedany termin:** `REGULY.kredytZaOdsprzedany = true` — po późnym odwołaniu, gdy slot kupi ktoś inny, pierwszy pacjent dostaje równowartość jako kredyt, różnicę pokrywa fundacja (s. 13, 51, 62).
+
+> **Poza zakresem pierwszego wdrożenia — decyzja właściciela 09.08, `docs/DECYZJE.md`,
+> D-2026-08-09-01.** Zapis zostaje, bo streszczenie ma wiernie oddawać specyfikację;
+> znacznik mówi, że tego nie budujemy w pierwszym wdrożeniu.
+
 
 ## SMS
 
@@ -624,7 +629,7 @@ Patrz sekcja 3. Rola integracyjna: źródło tożsamości (rola `psycholog`), ź
 | Rezerwacje sprzed wersjonowania nie mają wskazania wersji reguł — potrzebna wersja zerowa i migracja | M4/16 | 47 |
 | Zamrożona reguła musi być czytelna po latach — taniej zapisać pełny zrzut niż odwołanie do wersji | M5/16 | 60 |
 | Włączenie SMS przy codziennym przypomnieniu **wielokrotnie zwiększa rachunek**; koszt ujawni się dopiero na fakturze operatora | M4/18 | 48 |
-| Kredyt za odsprzedany slot: wykrycie „ten sam slot, inny pacjent" komplikuje się przy innej usłudze/długości wizyty | M5/4 | 56 |
+| Kredyt za odsprzedany slot: wykrycie „ten sam slot, inny pacjent" komplikuje się przy innej usłudze/długości wizyty | M5/4 | 56 | **[POZA ZAKRESEM pierwszego wdrożenia — D-2026-08-09-01]**
 | Rejestracja pola nadawcy SMS trwa kilka dni do kilku tygodni | M5/6 | 57 |
 | Aktualizacja .ics kapryśna w Google/Apple/Outlook | M5/7 | 57 |
 | Podmiana szablonu, z którego korzystają już zaplanowane wysyłki | M5/8 | 58 |

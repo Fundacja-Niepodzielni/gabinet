@@ -930,3 +930,37 @@ a nie zostawiony jako obserwacja.
 **Do kontroli konfiguracji produkcyjnej (F9, hartowanie):** magazyn sesji nie
 może podlegać eksmisji. Sprawdzenie: `CONFIG GET maxmemory` i
 `CONFIG GET maxmemory-policy` na instancji trzymającej sesje.
+
+---
+
+## D-2026-08-09-01 — kredyt za odsprzedany termin: POZA zakresem pierwszego wdrożenia
+
+**Decyzja właściciela z 09.08.2026.** „Kredyt za odsprzedany termin" **przechodzi do dalszej
+fazy** — nie budujemy go w pierwszym wdrożeniu.
+
+**Czego dotyczy.** Reguła ze specyfikacji: gdy po późnym odwołaniu ktoś inny wykupi zwolnioną
+godzinę, pierwszy pacjent dostaje równowartość jako **kredyt na kolejną wizytę**, a różnicę
+pokrywa fundacja (s. 7, 13, 24, 49, 51, 58, 62; przełącznik na ekranie reguł, s. 48, 54).
+
+**Uzasadnienie — nie jest to wyłącznie „mniej pracy".** Saldo kredytu jest **formą finansowej
+historii pacjenta**: żeby kredyt działał, system musi pamiętać, komu ile się należy, od kiedy
+i za co, oraz pokazywać to przy kolejnym zakupie. Tymczasem `CLAUDE.md` zamyka zakres
+pierwszego wdrożenia słowami: *„Brak pakietów wizyt, **brak historii finansowej pacjenta**"*.
+
+**Bez tej decyzji dwa nasze zapisy stały w sprzeczności** — zakres mówił „bez historii
+finansowej", a lista zadań zawierała mechanizm, który jej wymaga. Sprzeczność była cicha:
+oba zapisy brzmiały sensownie osobno i nikt nie czytał ich razem.
+
+**Co z tego wynika praktycznie:**
+
+1. **Streszczeń specyfikacji NIE zmieniamy** (`03-…`, `04-…`, `05-…`). Mają wiernie oddawać,
+   co mówi specyfikacja właściciela — a ona kredyt zawiera. Skasowanie rozjechałoby streszczenie
+   ze źródłem i przy następnym porównaniu ktoś „naprawiłby" je z powrotem. Zamiast tego każde
+   miejsce dostaje **znacznik odsyłający do tej decyzji**.
+2. **`PLAN-FAZ.md`** — kredyt wychodzi z listy zadań F3 i z wartości startowych reguł.
+3. **Przy przepisywaniu ekranu `/koordynacja/reguly` z makiety** wiersz o kredycie pomijamy
+   **świadomie**. Zapisane osobno w `docs/NON-DEFEKTY.md`, bo inaczej następna sesja uzna
+   celowy brak za lukę do naprawienia — i odtworzy to, co właśnie wyłączyliśmy z zakresu.
+
+**Czego ta decyzja NIE przesądza:** że kredyt jest złym pomysłem. Przechodzi do dalszej fazy
+razem z historią finansową pacjenta, do której należy — a nie jest odrzucony.
