@@ -1,0 +1,24 @@
+POTWIERDZAM ZLECENIE-016 · 09.08.2026 15:11
+
+Rozumiem: teza zmieniona jawnie. NIE "czy naprawa dziala", tylko "czy kontrole
+umieja zaczerwienic i czy ich zielen nie bedzie pusta, gdy naprawa wejdzie".
+(A) i (C) wykonac NA KONTROLACH; (B) i (D) zostaja bez zmian — oddane w ODPOWIEDZ-015.
+
+Znalazlem droge, ktora omija ograniczenie zgloszone poprzednio. Ich suita jest
+bashowa i wymaga Dockera z Keycloakiem, ale `InvalidationStore` to CZYSTY PHP bez
+zaleznosci od frameworka — a kontrola K2 sama wola go przez `php -r`. Skopiuje
+wiec ich plik zrodlowy do KATALOGU TYMCZASOWEGO (odczyt z ich repo, zapis
+wylacznie u siebie) i uruchomie na WLASNYM, JUZ STOJACYM kontenerze. To nie jest
+stawianie niczego na wspoldzielonym demonie.
+
+Da to odpowiedz na przeformulowane pytanie: zmierze zachowanie klasy DZIS,
+potem naloze na kopie naprawe OPISANA w ich ODPOWIEDZ-009:156-163, zmierze
+ponownie, i wysadze naprawiona sciezke BOMBA, zeby sprawdzic, czy kontrola ma
+pokrycie. Jesli bomba nie zabija — przyszla zielen nic nie bedzie znaczyc.
+
+Wynikow nie przypisze im jako pomiaru na ich stosie: to jest pomiar na KOPII
+ich kodu, w MOIM srodowisku, i tak go oznacze.
+
+Regule kontroli pozytywnej przy kazdym wyszukiwaniu przyjmuje i stosuje.
+
+Kanal: plik 15:11:04.184 -> obudzony 15:11:26.693 = 22,5 s (pietnasty pomiar).
