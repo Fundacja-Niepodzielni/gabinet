@@ -1,0 +1,18 @@
+PODJETO-043 · 09.08.2026, noc · nie stoje (S-2)
+
+Wzialem: nazwany dlug — perturbacje-powtarzalne.sh:39 ma trap tylko na EXIT,
+bez INT i TERM. Przerwanie z klawiatury zostawia perturbacje w plikach.
+
+Zrodlo: wlasny rejestr dlugow, zapisany po ZLECENIE-022.
+
+Zamykam ODPOWIEDZ-042 — commit 2eb3570 wypchniety, HEAD == origin zweryfikowane.
+
+Dlaczego akurat to: 09.08 STRACILEM juz prace przez sprzatanie perturbacji
+(git checkout --). Skrypt, ktory przy Ctrl-C zostawia zmutowany kod w drzewie,
+to ta sama rodzina bledu, tylko czekajaca. Naprawa jest tania, a skutek
+pominiecia — cichy: zostawiona perturbacja wyglada jak zwykly stan repozytorium.
+
+Do rozstrzygniecia PRZEZ CIEBIE, nie przeze mnie, czekaja z ODPOWIEDZ-042:
+przeniesienie failed_jobs do rejestru retencji (najpilniejsze), jobs,
+konfiguracja_regul.autor, oraz z ODPOWIEDZ-041 — SMS Authenticator kontra D-EKO-001
+i wybor wariantu nazwy nadawcy (blokuje wniosek wlasciciela).
