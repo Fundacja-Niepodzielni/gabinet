@@ -1047,3 +1047,42 @@ ma starą. Zmiana sposobu liczenia **nie działa wstecz**.
 
 **Kontrola wymagana, gdy dojdzie do implementacji okna:** kierunek 0 **na granicy** — dokładnie
 24 h, sekundę przed i sekundę po. Trzy wartości, trzy rozstrzygnięcia, żadnego „mniej więcej".
+
+## D-2026-08-09-07 — scalanie rezerwacji gościa: DOWÓD MUSI DOTYCZYĆ TEGO SAMEGO IDENTYFIKATORA
+
+**Wymaganie zapisane przed implementacją (ZLECENIE-036).** Nie jest to jeszcze kod — to warunek,
+który musi być spełniony, zanim powstanie pierwsza linia scalania.
+
+> **Dowód władania musi dotyczyć TEGO SAMEGO identyfikatora, po którym scalamy.**
+> Scalanie po telefonie z dowodem na e-mail to nie jest słabszy dowód — to **inny przedmiot
+> dowodu**: ktoś z dostępem do skrzynki przejąłby rekordy przypięte do cudzego numeru.
+
+**WYBRANY KSZTAŁT NA DZIŚ — OGRANICZONY**, do czasu rejestracji nadawcy w SMSAPI:
+
+- scalamy **wyłącznie rekordy, w których zgadza się e-mail ORAZ telefon**;
+- dowód idzie **e-mailem** na ten adres.
+
+**Dlaczego to jest spójne, a nie kompromisowe:** każdy scalany rekord **nosi e-mail, którego
+władanie zostało udowodnione**. Zgodność telefonu tylko **zawęża** zbiór — nie jest twierdzeniem,
+którego nikt nie potwierdził. Rekordy pasujące **samym telefonem czekają** na kanał SMS.
+
+**KSZTAŁT DOCELOWY — PEŁNY:** scalanie po telefonie, dowód kodem SMS na ten numer. Wymaga
+rejestracji nadawcy „Niepodzielni" w SMSAPI (warunek zewnętrzny, po stronie właściciela).
+
+**Warunki obowiązujące w OBU kształtach:**
+
+1. **Najpierw dowód, potem informacja.** System **nie ujawnia**, że coś znalazł, zanim władanie
+   identyfikatorem zostanie potwierdzone. Inaczej wpisanie cudzego numeru albo adresu mówi,
+   że ta osoba korzystała z pomocy psychologicznej — **ujawnienie danych o zdrowiu przez
+   formularz rejestracji**.
+2. **Okno czasowe scalania: 24 miesiące.** Numery i adresy bywają **ponownie przydzielane**;
+   bez okna ktoś dziedziczy numer razem z cudzą historią wizyt.
+3. **Pseudo-rekord NIE UWIERZYTELNIA NICZEGO** — jest licznikiem i kandydatem do skojarzenia.
+   Gdyby zaczął wpuszczać, byłby drugim źródłem tożsamości (`D-EKO-001`).
+4. **Skojarzenie jest jednorazowe**, a po nim kluczem zostaje `sub` z Kont Niepodzielni.
+   Nie budujemy trwałego wiązania po telefonie (`D-EKO-002` dotyczy tożsamości do logowania,
+   nie istnienia lokalnego rekordu pacjenta).
+
+**Stan zmierzony w chwili zapisu (ODPOWIEDZ-035):** rekord pacjenta powstaje przy każdej
+rezerwacji (`rezerwacje.pacjent_id NOT NULL`), jednoznaczność istnieje **wyłącznie** na
+`keycloak_sub`, a te same dane gościa dwa razy dają **dwa rekordy**.
