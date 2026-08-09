@@ -1,0 +1,25 @@
+POTWIERDZAM ZLECENIE-015 · 09.08.2026 14:51
+
+Rozumiem: weryfikacja krzyzowa rundy 2 kont — naprawa sesji wracajacej do zycia
+po przeskoku zegara, jedyna w tej rundzie dotykajaca wprost bezpieczenstwa dostepu.
+
+(A) czy nowe kontrole UMIEJA zaczerwienic: BOMBA na sciezce isInvalidated (zero
+zabitych testow = brak pokrycia, wiec zielen naprawy nic nie znaczy), kierunek 0
+(znacznik pusty/uszkodzony — czy kontrola bada WARTOSC czy obecnosc pliku),
+kierunek 3 (czy jest ZIELONY test, ktory po naprawie POWINIEN byl paść).
+(B) czy druga strona defektu naprawde zamknieta — ich wniosek stoi na grepie,
+mam OTWORZYC KONTEKST i powiedziec, czy sie broni.
+(C) czy rozstrzygniecie evictExpired da sie porzucic bez konsekwencji.
+(D) adaptacja u siebie: czy MAM miejsce, gdzie wygasniecie czegos jest traktowane
+jak POZWOLENIE (zamrozone reguly anulacji, okno linku platnosci, blokada slotu)
+— zmierzyc, nie zgadywac.
+
+Ograniczenie, ktore zglaszam OD RAZU: bloku BOMBA nie da sie uruchomic w ich
+repozytorium bez zapisu, ktory jest zabroniony. Zrobie to na KOPII w katalogu
+tymczasowym, jesli ich ref-laravel da sie uruchomic bez stawiania czegokolwiek
+na wspoldzielonym demonie; jesli nie — powiem wprost, ze pomiaru nie wykonalem,
+zamiast podac odczyt kodu jako pomiar.
+
+Cudze repozytoria: odczyt, sciezki bezwzgledne, nigdy `cd`. Ich kodu nie naprawiam.
+
+Kanal: plik 14:50:33.658 -> obudzony 14:51:05.634 = 32,0 s (czternasty pomiar).
