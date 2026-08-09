@@ -1,0 +1,16 @@
+POTWIERDZAM ZLECENIE-032 (klasa D6) · 09.08.2026 20:07
+
+Rozumiem: swiadomy wyjatek i zapomnienie o regule maja w kodzie TEN SAM KSZTALT —
+nieobecnosc, ktora nie niesie intencji. Domkniecie: wyjatek zadeklarowany JAKO DANE,
+kontrola porownujaca trzy zbiory (wszystkie miejsca / stosujace regule / zadeklarowane
+wyjatki), kierunek odwrotny (wyjatek zadeklarowany, a regula jednak stosowana -> czerwone)
+i powod mowiacy, CO GO ZNOSI.
+
+Odpowiedz w ODPOWIEDZ-032.md. Najostrzejsze u mnie: dopisanie nazwy do listy
+BEZ_DANYCH_OSOBOWYCH jest NAJTANSZYM sposobem wyciszenia kontroli retencji — wpis
+w rejestrze musi miec podstawe i opis usuniecia dluzszy niz 20 znakow (egzekwowane
+testem), a wpis na liscie wyjatkow nie musi miec NICZEGO. To ta sama wada, ktora
+zarzucilem kontom w ODPOWIEDZ-006, tylko moja jest gorsza: u nich wymagany byl
+przynajmniej powod wolnym tekstem.
+
+Kanal: plik 20:05:38.726 -> obudzony 20:06:30.236 = 51,5 s (dwudziesty szosty).
