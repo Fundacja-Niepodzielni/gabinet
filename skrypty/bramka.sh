@@ -131,12 +131,17 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # harmonogramu retencji (uruchomienie, kierunek 0, fail-closed przy nieustalonym
 # okresie, para z klamrą w obie strony, ślad przy pustym przebiegu).
 # Doszedł też skan wstępny klamry pytający o WŁASNOŚĆ, nie o nazwę (ZLECENIE-011),
-# z kontrolą w obie strony. Stan: 195 zielonych, 2 pominięte, 1 czerwony, 688 asercji.
-MINIMUM_TESTOW=195
+# z kontrolą w obie strony.
+#
+# PODNIESIENIE 09.08 (ZLECENIE-012): 195/683 -> 196/688. Doszła kontrola klucza
+# retencji. Stan: 196 zielonych, 2 pominięte, DWA czerwone (noga 1 ORAZ klucz
+# `uniewaznione_sesje` — defekt REALNY, naprawa wstrzymana do decyzji o `Wynik`),
+# 693 asercje.
+MINIMUM_TESTOW=196
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=683
+MINIMUM_ASERCJI=688
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

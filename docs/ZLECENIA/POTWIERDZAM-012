@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-012 · 09.08.2026 14:26
+
+Rozumiem: pozycja `uniewaznione_sesje` — klucz jako parametr. Cztery wymagania:
+(1) kontrola CZERWONA przed naprawa, na tej tabeli, z komunikatem wskazujacym
+BRAKUJACA KOLUMNE, a nie ogolna awarie zapytania; (2) kierunek 0 — tabela
+z kluczem obecnym, ale o wartosciach pustych/null, zeby sprawdzic, czy kontrola
+bada WARTOSC klucza czy sama jego obecnosc w schemacie; (3) kontrakt `Wynik` —
+JESLI naprawa wymusza zmiane jego ksztaltu, mam SIE ZATRZYMAC I POWIEDZIEC,
+zanim ja wprowadze, bo `Wynik` jest bliski kratce dwoch osi z kontraktu SSO kont;
+(4) klamra w wersji po ZLECENIE-011 (skan pyta o wlasnosc, nie o nazwe).
+
+Traktuje punkt 3 jako warunek BLOKUJACY, nie jako sugestie: robie wszystko,
+co od tej decyzji nie zalezy (kontrole 1 i 2, czerwien udowodniona), a samej
+naprawy NIE wprowadzam, dopoki nie dostane rozstrzygniecia o ksztalcie `Wynik`.
+
+Czego nie robie: okresow retencji, siedmiu statycznych ani trzech dynamicznych
+wzorcow --przyczyna, `main`. Wlasnej pracy nie zamykam.
+
+Kanal: plik 14:25:54.871 -> obudzony 14:26:35.459 = 40,6 s (dwunasty pomiar).
