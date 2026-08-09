@@ -14,6 +14,9 @@ use Throwable;
 /**
  * Sonda integracji z Kontami Niepodzielni — odpowiednik `smoke.sh` z repo `konta`.
  *
+ * @dowod: sonda z natury nie ma testu — jej przedmiotem jest ŻYWY IdP,
+ *         nieosiągalny w suicie. To jest jawny wyjątek, nie przeoczenie.
+ *
  * Sprawdza to, czego nie da się udowodnić testem jednostkowym: że ŻYWY IdP jest
  * osiągalny trasą wewnętrzną, że zwraca publicznego issuera i że nasza walidacja
  * przyjmuje albo odrzuca PRAWDZIWY token z właściwego powodu.

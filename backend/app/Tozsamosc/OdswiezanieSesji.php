@@ -56,7 +56,9 @@ final class OdswiezanieSesji
         // `odczytaj()` zwraca `null`, gdy w magazynie nie ma tożsamości —
         // i wtedy nie ma czym wywołać `zaktualizuj()`, bo ta wymaga wartości
         // typu `TozsamoscSesji`. Ścieżka „brak rekordu → utwórz" jest tu
-        // NIEWYWOŁYWALNA, a nie „zabroniona warunkiem".
+        // TRUDNIEJSZA, a nie „zabroniona warunkiem".
+        // @dowod: R6A-3 — „NIEWYWOŁYWALNA" obalone pomiarem; obejście prowadzi
+        //         przez publiczną fabrykę `TozsamoscSesji::zMagazynu()`.
         //
         // Poprzednia wersja czytała tablicę i sprawdzała `if` — czyli miała
         // dostęp do zapisu niezależnie od wyniku sprawdzenia. To wystarcza
@@ -162,7 +164,8 @@ final class OdswiezanieSesji
         }
 
         // AKTUALIZACJA istniejącej tożsamości — `$obecna` jest dowodem, że
-        // tożsamość istniała, i bez niej ta linia nie da się napisać.
+        // tożsamość istniała.
+        // @dowod: R6A-3 — wcześniejsze „bez niej nie da się napisać" obalone.
         $nowa = $obecna->zPodmienionymi($zmiany);
         SesjaKonta::zaktualizuj($request, $nowa);
 

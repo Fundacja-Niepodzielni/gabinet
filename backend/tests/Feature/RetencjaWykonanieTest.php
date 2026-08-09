@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Retencja\ZadanieRetencji;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Tests\Wsparcie\KlamraPerturbacji;
 
 /**
  * Retencja: czy rekord NAPRAWDĘ ZNIKA, nie czy został WYBRANY.
@@ -89,7 +90,12 @@ it('zgłasza rozbieżność, gdy rekord został WYBRANY, ale NIE ZNIKNĄŁ', fun
     $teraz = CarbonImmutable::parse('2026-08-08 12:00:00', 'UTC');
     $stara = zgodaZDaty('2020-01-01 10:00:00');
 
-    DB::statement('CREATE RULE zgody_bez_kasowania AS ON DELETE TO zgody DO INSTEAD NOTHING');
+    // KLAMRA PERTURBACJI (klasa przekrojowa P2). Blokada jest CICHA — `DELETE`
+    // kończy się sukcesem i nie robi nic — więc reguła zostawiona w bazie byłaby
+    // cichą blokadą kasowania danych osobowych. `KlamraPerturbacji` robi trzy
+    // rzeczy, których wcześniej tu nie było: skan wstępny PRZED startem, ODMOWĘ
+    // przy znalezionej pozostałości i zdjęcie w `finally`.
+    $zdejmijBlokade = KlamraPerturbacji::zablokujKasowanie('zgody');
 
     try {
         $wynik = (new ZadanieRetencji($teraz))->wykonaj('zgody', 'created_at', progDni: 365);
@@ -108,7 +114,7 @@ it('zgłasza rozbieżność, gdy rekord został WYBRANY, ale NIE ZNIKNĄŁ', fun
             'Dowód mutacji: kasowanie miało być zablokowane, a rekord zniknął.'
         );
     } finally {
-        DB::statement('DROP RULE IF EXISTS zgody_bez_kasowania ON zgody');
+        $zdejmijBlokade();
     }
 });
 
@@ -123,4 +129,64 @@ it('nie melduje sukcesu przy pustym przebiegu — zero wybranych to zero, nie �
     expect($wynik->wybrane)->toBe(0)
         ->and($wynik->usuniete)->toBe(0)
         ->and(DB::table('zgody')->count())->toBe(1);
+});
+
+it('KLAMRA: perturbacja ODMAWIA startu, gdy blokada została po poprzednim przebiegu', function (): void {
+    // PERTURBACJA NA PRZYRZĄD, nie na przedmiot. Bez niej klamra jest deklaracją.
+    //
+    // Odtwarzamy dokładnie sytuację, przed którą klamra broni: poprzedni przebieg
+    // zginął, zanim zdjął regułę, więc kasowanie w tabeli jest CICHO zablokowane.
+    // Perturbacja, która by tego nie zauważyła, uruchomiłaby się na martwej bazie
+    // i zameldowała sukces — a przy okazji zostawiła dane osobowe nieusuwalne.
+    $regula = KlamraPerturbacji::nazwaReguly('zgody');
+
+    DB::statement("CREATE RULE {$regula} AS ON DELETE TO zgody DO INSTEAD NOTHING");
+
+    try {
+        // Dowód mutacji: pozostałość NAPRAWDĘ jest w bazie, pytamy magazyn.
+        expect(KlamraPerturbacji::regulaIstnieje($regula))->toBeTrue(
+            'Pozostałość nie powstała — test nie mierzy tego, co deklaruje.'
+        );
+
+        $odmowa = null;
+
+        // PUNKT ZAPISU. PostgreSQL unieważnia CAŁĄ transakcję po błędnym
+        // zapytaniu, a suita biegnie w jednej transakcji (`RefreshDatabase`).
+        // Bez SAVEPOINT-u ten test padał na SPRZĄTANIU (`25P02`), a nie na
+        // asercji — czyli mierzył własne zanieczyszczenie zamiast tego, czy
+        // klamra odmówiła. Zmierzone: dokładnie ta pomyłka wyszła przy pierwszym
+        // przebiegu perturbacji tej kontroli.
+        try {
+            probaZerwania(static fn () => KlamraPerturbacji::zablokujKasowanie('zgody'));
+        } catch (Throwable $e) {
+            // `Throwable`, nie `RuntimeException`: gdyby klamra przestała
+            // odmawiać, `CREATE RULE` na istniejącej regule rzuci `QueryException`
+            // i test też by zczerwieniał — ale Z INNEGO POWODU niż badany.
+            // Łapiemy wszystko i rozstrzygamy TREŚCIĄ komunikatu, żeby czerwień
+            // pochodziła z braku odmowy, a nie z przypadkowego błędu bazy.
+            $odmowa = $e->getMessage();
+        }
+
+        expect($odmowa)->not->toBeNull('KLAMRA NIE ODMÓWIŁA: perturbacja ruszyła mimo pozostałości.')
+            ->and($odmowa)->toContain('ODMOWA STARTU')
+            // Komunikat ma UCZYĆ naprawy, nie tylko odmawiać — inaczej najtańszą
+            // reakcją będzie skasowanie reguły bez sprawdzenia, co jeszcze zostało.
+            ->and($odmowa)->toContain('DROP RULE')
+            ->and($odmowa)->toContain('CICHO ZABLOKOWANE');
+    } finally {
+        DB::statement("DROP RULE IF EXISTS {$regula} ON zgody");
+    }
+
+    // Kierunek odwrotny: po sprzątnięciu pozostałości klamra MA wpuścić.
+    $zdejmij = KlamraPerturbacji::zablokujKasowanie('zgody');
+
+    try {
+        expect(KlamraPerturbacji::regulaIstnieje($regula))->toBeTrue();
+    } finally {
+        $zdejmij();
+    }
+
+    expect(KlamraPerturbacji::regulaIstnieje($regula))->toBeFalse(
+        'Klamra nie zdjęła blokady — dokładnie ta awaria, przed którą broni.'
+    );
 });

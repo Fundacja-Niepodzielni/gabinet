@@ -880,8 +880,8 @@ p_role_zamrozone() {
 	dowod_zniknieciem "sprawdzanie wieku access tokenu zniknęło z kodu" \
 		'if (! $this->wymagaOdswiezenia($tozsamosc)) {' "$plik"
 
-	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" --przyczyna "odbiera dostęp" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="odbiera dostęp"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -900,8 +900,8 @@ p_logout_failsafe() {
 	dowod_zniknieciem "awaryjne zakończenie sesji zniknęło z handlera" \
 		'} catch (Throwable $blad) {' "$plik"
 
-	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" --przyczyna "niedostępnym IdP" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="niedostępnym IdP"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -920,8 +920,8 @@ p_zrodlo_rol() {
 	dowod_mutacji "wszystkie trzy odczyty ról idą teraz z ID tokenu" \
 		bash -c "[ \"\$(grep -c 'roleZAccessTokenu(\$claimsId)' '$plik')\" = '3' ]"
 
-	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" --przyczyna "ACCESS TOKENU" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ACCESS TOKENU"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -942,7 +942,7 @@ p_wymuszone_wylogowanie() {
 
 	oczekuj_czerwone "test adwersarialny wykrywa wymuszone wylogowanie ofiary" \
 		--przyczyna "WYMUSZONE WYLOGOWANIE" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ADWERSARIALNY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -966,8 +966,8 @@ p_id_token_w_sesji() {
 	dowod_zniknieciem "kontroler zapisuje ID token bez szyfrowania" \
 		'Crypt::encryptString($idToken)' "$plik"
 
-	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" --przyczyna "ZASZYFROWANY" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ZASZYFROWANY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 
@@ -976,8 +976,8 @@ p_id_token_w_sesji() {
 	dowod_mutacji "kontroler koduje ID token zamiast go szyfrować" \
 		grep -q "base64_encode(\$idToken)" "$plik"
 
-	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" --przyczyna "ZASZYFROWANY" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ZASZYFROWANY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -1042,8 +1042,8 @@ p_uniewaznienie_sid() {
 	# ALLOWLISTA przyczyny, nie podłoga: to tożsamość, więc fałszywe zielone
 	# kosztuje tu najwięcej. Fragment skopiowany DOSŁOWNIE z komunikatu Pesta.
 	oczekuj_czerwone "test pozytywny wykrywa konsumenta serwującego po wylogowaniu" \
-		--przyczyna "POZYTYWNY" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php
+		--przyczyna "Logout nie trafił w sesję tego użytkownika" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="POZYTYWNY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 

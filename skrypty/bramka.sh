@@ -106,15 +106,20 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # i był nieprawdziwy wobec własnej wartości — dokładnie ta klasa, przed którą
 # ostrzega `ObietniceKomentarzyTest`.
 #
-# Podnoszę do 180 / 635, czyli o jeden test i pięć asercji pod stanem
-# bieżącym. Zapas zostaje CELOWO minimalny: każde zniknięcie choćby jednego
-# testu ma zapalić bramkę. Gdy suita urośnie, ta liczba rośnie razem z nią —
-# w tym samym commicie, świadomie i w `git diff`.
-MINIMUM_TESTOW=180
+# Zapas zostaje CELOWO minimalny: każde zniknięcie choćby jednego testu ma
+# zapalić bramkę. Gdy suita urośnie, ta liczba rośnie razem z nią — w tym samym
+# commicie, świadomie i w `git diff`.
+#
+# PODNIESIENIE 09.08 (runda 1, przyrząd): 180/635 → 183/647. Powód: doszły trzy
+# kontrole (klamra perturbacji + dwie kontrole twierdzeń w komentarzach), więc
+# stan wynosi 184 testy / 652 asercje. Podnoszę razem z suitą, w tym samym
+# commicie — inaczej ten komentarz zacząłby kłamać o własnej wartości, czyli
+# popełniłby klasę D3, którą właśnie tą suitą zamykam.
+MINIMUM_TESTOW=183
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=635
+MINIMUM_ASERCJI=647
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

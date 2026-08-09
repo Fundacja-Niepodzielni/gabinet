@@ -154,6 +154,8 @@ final class LogowanieController extends Controller
             // czytamy, nie ma powodu leżeć w postaci czytelnej.
             'id_token' => Crypt::encryptString($idToken),
             // B8: bez refresh tokenu i bez `exp` nie da się przeliczyć ról
+            // @dowod: OdebranieRoliTest — „odbiera dostęp, gdy Keycloak odbierze
+            //         rolę — najpóźniej w oknie access tokenu".
             // przed końcem sesji — a zamrożone role to wada bezpieczeństwa.
             // Sesja jest szyfrowana (patrz `config/session.php`).
             'refresh_token' => isset($tokeny['body']['refresh_token'])

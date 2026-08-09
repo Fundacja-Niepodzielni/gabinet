@@ -15,8 +15,11 @@ use Illuminate\Http\Request;
  *   · `zaloz()`      — TWORZY tożsamość. Wołana WYŁĄCZNIE z callbacku OIDC,
  *                      po pełnej walidacji ID tokenu i access tokenu.
  *   · `zaktualizuj()` — AKTUALIZUJE. Przyjmuje `TozsamoscSesji`, czyli dowód,
- *                      że tożsamość ISTNIAŁA. Bez takiego dowodu nie da się
- *                      jej wywołać — nie „nie wolno", tylko NIE DA SIĘ.
+ *                      że tożsamość ISTNIAŁA. Bez takiego dowodu wywołanie
+ *                      wymaga obejścia typu.
+ *
+ * @dowod: R6A-3 — pierwotne „NIE DA SIĘ" obalone; obejście istnieje
+ *         (`Reflection`, `unserialize`, publiczna fabryka `zMagazynu()`).
  *
  * Dlaczego to nie jest ten sam warunek co wcześniej: poprzednio odświeżanie
  * czytało tablicę i sprawdzało `if`, więc miało dostęp do zapisu niezależnie
@@ -55,7 +58,9 @@ final class SesjaKonta
      * Aktualizacja ISTNIEJĄCEJ tożsamości.
      *
      * Pierwszy argument to nie „identyfikator, po którym znajdziemy rekord",
-     * tylko SAM REKORD. Nie da się go zdobyć, jeśli tożsamości nie było.
+     * tylko SAM REKORD — a ten pochodzi z magazynu.
+     *
+     * @dowod: R6A-3 — „nie da się zdobyć" było za mocne.
      */
     public static function zaktualizuj(Request $request, TozsamoscSesji $nowa): void
     {

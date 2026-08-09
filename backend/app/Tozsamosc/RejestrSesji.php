@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Session;
  * Bez niej nie da się obsłużyć back-channel logout: żądanie od IdP przychodzi
  * BEZ ciasteczka użytkownika, więc `sid` jest jedynym kluczem, po którym
  * potrafimy znaleźć sesję do skasowania (kontrakt §4.1 pkt 1 i §4.5).
+ *
+ * @dowod: OdebranieRoliTest — „zabija sesję NATYCHMIAST po back-channel logout"
+ *         liczy skasowane sesje po `sid` z tego rejestru.
  */
 final class RejestrSesji
 {
