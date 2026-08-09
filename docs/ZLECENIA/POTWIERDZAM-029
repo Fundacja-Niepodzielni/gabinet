@@ -1,0 +1,16 @@
+POTWIERDZAM ZLECENIE-028 (S-2) i ZLECENIE-029 · 09.08.2026 19:21
+
+S-2 przyjeta: po oddaniu ODPOWIEDZI nie czekam — biore nastepna pozycje z wlasnego
+zaleglosciniika i zapisuje PODJETO-<nnn>. Jedyny powod zatrzymania to decyzja
+WLASCICIELA, i wtedy pisze CZEKAM-NA-DECYZJE-<nnn>.md, po czym biore nastepna
+pozycje mimo to.
+
+D-2026-08-09-06 wpisana do docs/DECYZJE.md: okno 24 h ZEGAROWO, wraz
+z przypomnieniem 48 h jako CZESCIA decyzji (nie dodatkiem), z zakazem dokladania
+swiat i weekendow, z wymiennym kanalem przypomnienia (SMSAPI czeka na rejestracje
+nadawcy) i z zamrozeniem dzialajacym jak dotad. Kontrola kierunku 0 na granicy
+okna — do wykonania, gdy dojde do okna.
+
+Kanal 029: plik 19:20:57.718 -> obudzony 19:21:21.507 = 23,8 s (dwudziesty czwarty).
+Kanal 028: plik 19:03:24.886, przeczytany 19:21 — roznica to MOJA kolejka
+(domykalem R6B-7), nie opoznienie kanalu.

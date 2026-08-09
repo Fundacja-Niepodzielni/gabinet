@@ -1023,3 +1023,27 @@ o tym wprost („limit podażowy 4 terminy/tydzień/specjalista"); mylący jest 
 a nie okna czasowego. Wartość limitu nie wymaga zmiany modelu (jest w konfiguracji reguł),
 ale **mechanizm liczenia wymaga decyzji o tożsamości pacjenta**: rezerwacja jako gość, konto
 założone później. To jest praca F2 i nie została podjęta.
+
+## D-2026-08-09-06 — okno 24 h liczone ZEGAROWO, **wraz z przypomnieniem 48 h**
+
+**Decyzja właściciela (ZLECENIE-029).** Okno bezpłatnego odwołania liczy się **zegarowo**,
+nie w dniach roboczych. Wizyta w poniedziałek o 9:00 wymaga odwołania do niedzieli 9:00.
+
+**Przypomnienie na 48 h przed wizytą jest CZĘŚCIĄ tej decyzji, nie dodatkiem.** Właściciel
+zgodził się na liczenie zegarowe **pod warunkiem**, że przypomnienie istnieje: realny problem
+(„zapomniałem w weekend") rozwiązuje sygnał, a nie wydłużanie okna. **Zapisane razem celowo** —
+inaczej ktoś przeczyta za pół roku „okno zegarowe" i uzna, że to całość ustalenia.
+
+**Czego NIE wolno dokładać:** obsługi świąt ani weekendów. Gdyby miała wejść, będzie to nowa
+decyzja właściciela, nie rozszerzenie tej.
+
+**Zależność zgłoszona przez architekta:** przypomnienie SMS-em nie ruszy, dopóki nadawca
+„Niepodzielni" nie jest zarejestrowany w SMSAPI (pozycja właściciela, kilka dni). Dlatego
+**kanał przypomnienia ma być wymienny** — e-mail jako droga zastępcza — żeby mechanizm nie
+czekał na rejestrację.
+
+**Zamrożenie działa jak dotąd (zasada twarda 4):** pacjent, który kupił przy starej regule,
+ma starą. Zmiana sposobu liczenia **nie działa wstecz**.
+
+**Kontrola wymagana, gdy dojdzie do implementacji okna:** kierunek 0 **na granicy** — dokładnie
+24 h, sekundę przed i sekundę po. Trzy wartości, trzy rozstrzygnięcia, żadnego „mniej więcej".
