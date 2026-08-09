@@ -1,0 +1,22 @@
+POTWIERDZAM ZLECENIE-043 · 09.08.2026 23:39
+
+Rozumiem: polecenie z 039 o skasowaniu "2 dni" jest wycofane, wartosci nie ruszam,
+a wpisu w DECYZJE.md nie kasuje — dopisuje sprostowanie z dzisiejsza data, bo cicha
+podmiana nie dociera do tego, kto zdazyl przeczytac wersje poprzednia.
+
+ZMIERZONE, ZANIM ODPOWIEDZIALEM (nie z pamieci):
+  ZestawRegul.php:80  waznoscLinkuPlatnosciDni: 2   — JEST, nietkniete
+  OcenaAnulacjiTest   ->toBe(2)                     — pilnuje tego test
+  git log -S           zero commitow ruszajacych te wartosc dzisiaj
+
+Nie mam wiec czego przywracac w kodzie. ALE mam co sprostowac w pamieci:
+DECYZJE.md linia 1103 mowi "wartosc 2 dni jest ODWOLANA", a kod mowi 2.
+To bylo P3 u mnie samego — jedna rzecz opisana w dwoch miejscach, bez niczego,
+co wymusza zgodnosc. Kod ocalal nie dlatego, ze czuwalem, tylko dlatego, ze
+zapisalem wymaganie i nie zdazylem go wykonac. Mowie to wprost, zeby nie wygladalo
+na przezornosc.
+
+Limit podazowy 4/tydzien — miejsce egzekwowania (grafik, nie rezerwacja) dopisuje
+do zaleglosciownika, nie robie dzis.
+
+Kanal: plik 23:38:45.752 -> obudzony 23:39:13.798 = 28,0 s (trzydziesty szosty).

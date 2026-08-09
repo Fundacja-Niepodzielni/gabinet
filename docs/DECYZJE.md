@@ -1104,6 +1104,11 @@ rezerwacji (`rezerwacje.pacjent_id NOT NULL`), jednoznaczność istnieje **wył�
 bo slot puszczany po 10 minutach przy linku żyjącym 2 dni to obietnica, której nie da się
 dotrzymać: kto zapłaci po pół godzinie, zapłaci za termin, którego już nie ma.
 
+> **⛔ TEN AKAPIT JEST NIEPRAWDZIWY OD 09.08.2026 wieczorem — patrz `D-2026-08-09-15`.**
+> **„2 dni" NIE jest odwołane.** Architekt wycofał to polecenie (`ZLECENIE-043`) po przeczytaniu
+> specyfikacji. Zostawiam treść, bo ktoś mógł ją przeczytać, a cicha podmiana do niego nie dotrze.
+> **Nie kieruj się tym akapitem.**
+
 **Płatność po wygaśnięciu NIE TWORZY WIZYTY** — tworzy zwrot albo zadanie dla koordynatora.
 Musi być rozstrzygnięte, zanim ktoś napisze webhook.
 
@@ -1395,3 +1400,46 @@ dotarł"**; pełna lista statusów SMSAPI słowo w słowo; endpointy Authenticat
 krajów; limit tempa **na numer**.
 
 **Pełne studium:** `docs/ZLECENIA/ODPOWIEDZ-041.md`.
+
+## D-2026-08-09-15 — ⛔ SPROSTOWANIE: „2 dni" NIE jest odwołane. Blokada linku jest DWUSTOPNIOWA
+
+**Kto podjął:** **architekt**, wycofując własne polecenie z `ZLECENIE-039` (`ZLECENIE-043`).
+**09.08.2026, noc.** Prostuje `D-2026-08-09-08`.
+
+**Co było napisane i jest nieprawdą:** że wartość „2 dni" dla linku płatności jest odwołana
+i zastępuje ją jedna liczba na ścieżkę (10 min / 48 h). **Akapit zostaje w `D-2026-08-09-08`
+ze znacznikiem** — nie kasujemy, bo cicha podmiana nie dociera do tego, kto zdążył przeczytać.
+
+**Co mówi specyfikacja** (`01-jak-dziala-system`, linie 303–307), cytat:
+
+> **„Na opłacenie terminu umówionego przez specjalistę są 2 dni, a nie 10 minut jak przy
+> rezerwacji własnej. […] Po otwarciu linku do płatności termin jest trzymany JESZCZE 10 MINUT
+> na samo dokończenie transakcji, tak jak przy każdej innej rezerwacji."**
+
+| etap | ile | po co |
+| --- | --- | --- |
+| termin zarezerwowany dla pacjenta | **2 dni** | pacjent „wyszedł z gabinetu", nie siedzi z kartą przy komputerze |
+| **od OTWARCIA linku** do dokończenia płatności | **10 minut** | tyle samo, co przy każdej innej rezerwacji |
+
+**Dlaczego konstrukcja dwustopniowa jest lepsza od jednej liczby.** Problem „płatność dociera po
+wygaśnięciu blokady" rozwiązuje **moment startu okna**: dziesięć minut liczy się **od otwarcia
+linku**, a nie od wysłania wiadomości. Jedna liczba na ścieżkę **zlikwidowałaby ten mechanizm
+i zostawiła problem otwarty**.
+
+**Stan kodu — ZMIERZONY 09.08 wieczorem, nie odtworzony z pamięci:**
+`ZestawRegul::wersjaZerowa()` ma `waznoscLinkuPlatnosciDni: 2`, a `OcenaAnulacjiTest` pilnuje
+tej wartości asercją `->toBe(2)`. **Nic nie zostało skasowane, nie ma czego przywracać.**
+
+**Odnotowuję uczciwie:** wartość ocalała **nie dlatego, że czuwałem**, tylko dlatego, że
+zapisałem wymaganie i **nie zdążyłem go wykonać**. Przez kilkanaście godzin `docs/DECYZJE.md`
+mówiło „odwołane", a kod mówił `2` — **klasa `P3` w mojej własnej pamięci**: jedna rzecz opisana
+w dwóch miejscach, bez niczego, co wymusza zgodność. **Tu akurat rozjazd zadziałał na korzyść;
+to nie jest metoda.**
+
+**NIE JEST ZBUDOWANE:** drugi stopień („10 minut od otwarcia linku") nie istnieje w kodzie —
+`blokadaKoszykaMinut: 10` dotyczy koszyka, nie otwarcia linku. **To wymaganie dla F2**, nie stan.
+
+**Weryfikacja krzyżowa architekta:** wszystkie **12 z 12** wartości `wersjaZerowa()` zgadzają się
+ze specyfikacją co do jednej. **Jedyną rzeczą, która groziła rozjazdem, było wycofane polecenie.**
+Architekt odnotował, że dało się to sprawdzić w pięć minut, **bo komentarz przy każdej liczbie
+podaje jej źródło** — ta sama praktyka co przy pomiarach, zastosowana do konfiguracji.

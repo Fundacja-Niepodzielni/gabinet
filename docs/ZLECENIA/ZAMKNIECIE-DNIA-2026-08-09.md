@@ -68,6 +68,12 @@ przed końcem dnia, **zero pracy włożonej, zero do odzyskania**. Wolne do wzi�
 3. **Naprawa 7 wzorców allowlist, które nie rozróżniają** (runda 2) — waga wysoka (kontrola
    przyczyny czerwieni jest dziś częściowo pozorna), osiągalność średnia. Zapadka pilnuje sufitu.
 4. **Gałąź bazowa `odczyt-przyczyn.py` pokrywa 13 z 29 wywołań** — waga średnia, osiągalność wysoka.
+5. **Limit podażowy 4/tydzień — MIEJSCE egzekwowania** (`ZLECENIE-043` §5). Wartość jest zgodna
+   ze specyfikacją, ale specyfikacja mówi, że **blokada działa przy UKŁADANIU GRAFIKU, a nie przy
+   rezerwacji** — „pacjent nigdy nie powinien zobaczyć wolnego terminu i dostać odmowy przy
+   płatności, w najgorszym możliwym momencie". **Sprawdzić, gdy dojdziemy do grafiku**, nie wcześniej.
+6. **Drugi stopień blokady linku płatności NIE ISTNIEJE** (`D-2026-08-09-15`): „10 minut **od
+   otwarcia linku**" nie ma w kodzie; `blokadaKoszykaMinut` dotyczy koszyka. Wymaganie dla **F2**.
 
 ### Średni iloczyn
 
