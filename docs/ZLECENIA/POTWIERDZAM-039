@@ -1,0 +1,26 @@
+POTWIERDZAM ZLECENIE-038 i ZLECENIE-039 · 09.08.2026 21:23
+
+Zapis wymagan, nie pozycja — niczego nie zbudowalem, modelu nie tknalem.
+Wpisane jako D-2026-08-09-08 (blokada, okno platnosci, weryfikacja RAZ),
+D-2026-08-09-09 (moje znalezisko, ponizej) i D-2026-08-09-10 (logowanie
+bezhaslowe — status: czeka na decyzje wlasciciela).
+
+039 odwoluje czesc 038 i tak to zapisalem: wartosc "2 dni" dla linku NIE ZOSTAJE
+obok nowej. Zadnego punktu nie musialem naginac — wartosci zmierzone (blokada 10,
+link 2, limit 10) zgadzaja sie z Twoim opisem co do liczby.
+
+ALE ZNALAZLEM KONFLIKT, ktorego nie bylo w zleceniu i ktory zglaszam zamiast
+dopasowywac: decyzja "link = zywotnosc blokady" nie jest zmiana WARTOSCI, tylko
+zmiana KSZTALTU zamrazanego zrzutu regul. Zmierzone: zrzut bez pola
+waznosc_linku_platnosci_dni jest ODRZUCANY ("brakuje pol"), a blokada_koszyka_minut
+jest pojedynczym skalarem i NIE UMIE wyrazic dwoch wartosci na sciezke.
+Kazda rezerwacja zamrozona przed zmiana ksztaltu niesie stary zrzut — wiec usuniecie
+pola po powstaniu pierwszej prawdziwej rezerwacji znaczy albo zmiane wstecz (zakazana
+zasada 4), albo dwa ksztalty zrzutu na zawsze.
+
+DZIS TA ZMIANA JEST DARMOWA, bo sciezka rezerwacji nie istnieje. Okno zamyka sie
+w dniu, w ktorym powstanie pierwsza rezerwacja z zamrozonym zrzutem. Rekomendacja:
+przestawic ksztalt zrzutu w F2 ZANIM powstanie sciezka rezerwacji.
+
+Kanal 039: plik 21:22:07.195 -> obudzony 21:22:53.213 = 46,0 s (trzydziesty drugi).
+Kanal 038: plik 21:08:33.765, przeczytany 21:22 — roznica to MOJA kolejka.

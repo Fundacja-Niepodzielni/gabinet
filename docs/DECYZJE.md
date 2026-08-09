@@ -1086,3 +1086,142 @@ rejestracji nadawcy „Niepodzielni" w SMSAPI (warunek zewnętrzny, po stronie w
 **Stan zmierzony w chwili zapisu (ODPOWIEDZ-035):** rekord pacjenta powstaje przy każdej
 rezerwacji (`rezerwacje.pacjent_id NOT NULL`), jednoznaczność istnieje **wyłącznie** na
 `keycloak_sub`, a te same dane gościa dwa razy dają **dwa rekordy**.
+
+## D-2026-08-09-08 — blokada slotu, okno płatności, weryfikacja numeru (ZLECENIE-038 + 039)
+
+**Zapis wymagań dla F2. Nic z tego nie jest zbudowane.** `ZLECENIE-039` **odwołuje część**
+`ZLECENIE-038` — poniżej stan po odwołaniu, bez zostawiania starych wartości obok nowych.
+
+### Wartości zamknięte
+
+| co | wartość |
+|---|---|
+| blokada slotu — umawianie **samodzielne** | **10 min** |
+| blokada slotu — umawia **psycholog** | **48 h** |
+| ważność linku płatności | **RÓWNA żywotności blokady** (10 min / 48 h) |
+
+**⚠ Wartość „2 dni" dla linku płatności jest ODWOŁANA.** Jedna liczba na ścieżkę, nie dwie —
+bo slot puszczany po 10 minutach przy linku żyjącym 2 dni to obietnica, której nie da się
+dotrzymać: kto zapłaci po pół godzinie, zapłaci za termin, którego już nie ma.
+
+**Płatność po wygaśnięciu NIE TWORZY WIZYTY** — tworzy zwrot albo zadanie dla koordynatora.
+Musi być rozstrzygnięte, zanim ktoś napisze webhook.
+
+### Przypadek brzegowy — obowiązuje przy obu ścieżkach
+
+> **okno = min(okno_ścieżki, czas_do_wizyty − margines)**
+
+Przy 48 h to nie jest teoria: wizyta jutro rano, umówiona dziś wieczorem, dałaby termin
+płatności **po wizycie**. Margines rozstrzyga się razem z oknem 24 h na odwołanie — ta sama oś.
+
+### Blokada DWUSTOPNIOWA
+
+1. **krótka blokada wstępna** (10–15 min) w chwili kliknięcia, zanim cokolwiek wyślemy;
+2. **przedłużenie do pełnego okna** dopiero **po potwierdzeniu**.
+
+Bez tego niepotwierdzony klikacz trzyma slot pełne okno za darmo.
+
+### Weryfikacja numeru — RAZ, nie przy każdej rezerwacji
+
+Właściciel cofnął własną decyzję sprzed godziny. Powód merytoryczny, nie tylko kosztowy:
+**weryfikacja dowodzi WŁADANIA NUMEREM; raz udowodnione — udowodnione.**
+
+**Ale weryfikacja pełniła DWIE funkcje, a druga zostaje bez obrony:** kod przy każdej
+rezerwacji znosił zamrażanie grafiku (znalezisko `D5` — publiczny punkt rezerwacji plus krótka
+blokada pozwala zająć cały grafik). **Przy weryfikacji jednorazowej ta obrona znika.**
+
+**Obrony zastępcze, do zbudowania razem z blokadą:**
+
+1. **limit równoczesnych nieopłaconych blokad na pacjenta (1–2)** — najtańsza i najskuteczniejsza,
+   bo zamrożenie grafiku wymaga wielu blokad naraz;
+2. **ograniczenie tempa** na numer / adres / sesję;
+3. **kod wymagany PONOWNIE tylko w trzech sytuacjach:** numer nieznany · pacjent ma już aktywną
+   nieopłaconą blokadę · dane nie zgadzają się z tymi przy numerze;
+4. **powiadomienie jest MECHANIZMEM WYKRYWANIA, nie uprzejmością** — potwierdzenie rezerwacji
+   i tak idzie na zweryfikowany numer, więc rezerwacja na cudze dane ujawnia się natychmiast.
+   Nie kosztuje ani jednego SMS-a więcej.
+
+### Trzy ścieżki umawiania — równoważne
+
+Pacjent przez `niepodzielni.com` · pacjent przez panel · **psycholog umawia pacjenta**.
+**Licznik wisi na PACJENCIE, nie na tym, kto kliknął** — inaczej pominąłby większość wizyt
+niskopłatnych, skoro regułą jest, że umawia je psycholog.
+
+### ⛔ ROZRÓŻNIENIE, które musi być w kodzie od pierwszej linii
+
+> **HISTORIA obejmuje wszystkie wizyty. LIMIT liczy tylko NISKOPŁATNE.**
+
+Właściciel powiedział „dotyczy to zarówno niskopłatnych, jak i pełnopłatnych" **o historii
+i o ścieżkach umawiania**, nie o limicie. **Gdyby licznik zaczął liczyć wszystko, odciąłby od
+pomocy ludzi płacących pełną stawkę.**
+
+### Co jeszcze musi być, a nie padło
+
+- **wygaśnięcie blokady MUSI dać znać pacjentowi** — cisza znaczy „nie wiem, czy mam wizytę";
+- **psycholog musi widzieć, ile SWOICH slotów trzyma nieopłaconych** — przy 48 h dziesięciu
+  pacjentów to dziesięć zamrożonych terminów na dwie doby.
+
+---
+
+## D-2026-08-09-09 — ⚠ OKNO, W KTÓRYM ZMIANA KSZTAŁTU REGUŁ JEST DARMOWA, WŁAŚNIE SIĘ ZAMYKA
+
+**Znalezisko własne, zmierzone przy zapisie `D-2026-08-09-08`. Nie było go w żadnym zleceniu.**
+
+Decyzja „ważność linku = żywotność blokady" **nie jest zmianą wartości — jest zmianą KSZTAŁTU
+zamrażanego zrzutu reguł**, a zrzut jest zamrażany w chwili zakupu (zasada twarda 4) i **nie
+wolno mu działać wstecz**.
+
+**Zmierzone:**
+
+```
+pól w zrzucie: 14
+zrzut BEZ pola waznosc_linku_platnosci_dni -> ODRZUCONY
+   „Zrzut reguł jest niekompletny — brakuje pól: waznosc_linku_platnosci_dni"
+```
+
+Kontrakt zrzutu jest **ścisły z premedytacją** (`GranicePienidzyTest`: „odrzuca zrzut, któremu
+brakuje choćby JEDNEGO pola — zamiast dobrać je z kodu"). Wynikają z tego dwie rzeczy:
+
+1. **Pole `waznosc_linku_platnosci_dni` musi ZNIKNĄĆ, nie dostać nową wartość** — zostawienie
+   go obok żywotności blokady to jedna rzecz opisana dwa razy (`P3`), czyli dokładnie to, przed
+   czym ostrzega `ZLECENIE-039`.
+2. **`blokada_koszyka_minut` jest dziś POJEDYNCZYM skalarem i NIE UMIE wyrazić dwóch wartości
+   na ścieżkę.** Kształt musi się zmienić, nie tylko liczba.
+
+> **Każda rezerwacja zamrożona przed zmianą kształtu niesie stary zrzut. Usunięcie pola po
+> tym, jak powstanie pierwsza prawdziwa rezerwacja, znaczy albo zmianę wstecz (zakazaną
+> zasadą 4), albo utrzymywanie dwóch kształtów zrzutu na zawsze.**
+
+**Dziś ta zmiana jest DARMOWA**, bo ścieżka tworzenia rezerwacji nie istnieje (zmierzone
+w `ODPOWIEDZ-035`: zero kodu liczącego, zero kodu blokady). **Okno zamyka się w dniu, w którym
+powstanie pierwsza rezerwacja z zamrożonym zrzutem.**
+
+**Rekomendacja: kształt zrzutu przestawić w F2 ZANIM powstanie ścieżka rezerwacji** —
+nie po niej. To jest kolejność, nie preferencja.
+
+---
+
+## D-2026-08-09-10 — logowanie bezhasłowe kodem: PROPOZYCJA WŁAŚCICIELA, **czeka na jego decyzję**
+
+**Status: NIEROZSTRZYGNIĘTE. Nic nie zbudowane, modelu nie tknięto.**
+
+Właściciel zaproponował dwie rzeczy, które są **jednym rozwiązaniem opisanym dwa razy**:
+usunięcie ścieżki gościa z automatycznym zakładaniem konta oraz „numer + kod, a system uzupełni
+resztę — tak jakby ktoś miał konto, tylko bez hasła". **To jest logowanie bezhasłowe kodem
+jednorazowym.**
+
+**Co to usuwa:** całą konstrukcję pseudo-rekordów, scalania po telefonie, okna 24 miesięcy
+i dowodu władania identyfikatorem (`D-2026-08-09-07`). Licznik wisiałby na `sub` z Kont
+Niepodzielni, dokładnie jak każe `D-EKO-002`. **Znika wyjątek, a nie powstaje nowy.**
+Liczba kroków dla pacjenta się nie zmienia — i tak miał potwierdzać numer.
+
+**Co to kosztuje, i to musi być powiedziane głośno:** **guest checkout jako zasada twarda
+przestaje obowiązywać.** Bez potwierdzenia kodem nie ma rezerwacji. **To jest decyzja
+właściciela o zmianie zasady twardej**, nie architekta i nie moja.
+
+**Dług jednorazowy:** istniejące rezerwacje gościa trzeba raz skojarzyć — zbiór skończony,
+inaczej niż problem, który znika.
+
+**Warunek, bez którego to jest życzenie:** czy Keycloak w naszym realmie umie logowanie kodem
+jednorazowym bez hasła i czy wymaga rozszerzenia. **Mierzą to konta — nie sprawdzam tego
+u siebie, to nie mój przedmiot.**
