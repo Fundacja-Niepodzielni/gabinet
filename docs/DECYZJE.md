@@ -1225,3 +1225,84 @@ inaczej niż problem, który znika.
 **Warunek, bez którego to jest życzenie:** czy Keycloak w naszym realmie umie logowanie kodem
 jednorazowym bez hasła i czy wymaga rozszerzenia. **Mierzą to konta — nie sprawdzam tego
 u siebie, to nie mój przedmiot.**
+
+## D-2026-08-09-11 — przepływ rezerwacji: krok „numer + kod" TO JEST LOGOWANIE (ZLECENIE-040)
+
+**Zapis wymagań dla F2. Nic nie zbudowane. Decyzja o usunięciu ścieżki gościa NIE ZAPADŁA** —
+czeka na pomiar kont (czy Keycloak umie kod jednorazowy i czy umie go wysłać SMS-em).
+
+### Rozstrzygnięcie porządkujące
+
+> **„Weryfikacja przy rezerwacji" i „logowanie" to NIE SĄ dwa mechanizmy. Drugi przepływ
+> właściciela — numer, kod, dane uzupełniają się same — TO JEST logowanie bezhasłowe.
+> Jedna rzecz oglądana z dwóch stron.**
+
+**Konsekwencja:** wszystko wokół kodu — wysyłka, sprawdzenie, wygaszanie, limit prób — należy
+do **warstwy tożsamości**. **Gabinet nie implementuje własnego sprawdzania kodów.**
+
+**Stan zmierzony 09.08:** Gabinet **nie ma** własnego magazynu kodów jednorazowych (zero
+trafień `otp` / `kod_jednorazowy` / `jednorazow` w `app/`) i **nie ma** osobnej ścieżki
+logowania pacjenta — jest jedna para `auth/login` + `auth/callback` przez Konta. **Wymóg jest
+więc spełniony dziś i chodzi o to, żeby nie został złamany przy F2.**
+
+### Granica, której nie wolno przekroczyć
+
+Rezerwacja zaczyna się na `niepodzielni.com`, czyli w WordPressie, a WordPress **zostaje przy
+własnym logowaniu, bez SSO** (wyjątek zadeklarowany przy `D-EKO-001`).
+
+> **Gdyby krok „numer + kod" powstał w WordPressie, WP stałby się DRUGIM MIEJSCEM, GDZIE ŻYJE
+> DOWÓD TOŻSAMOŚCI PACJENTA** — złamanie `D-EKO-001` tylnymi drzwiami: nie przez hasła,
+> tylko przez kody.
+
+**Krok tożsamości obsługują Konta Niepodzielni.** Strona pokazuje kalendarz i przekazuje dalej.
+Kalendarz, wyszukiwarka i dobieranie specjalisty zostają, gdzie są — **to tożsamość ma się nie
+rozmnożyć, nie interfejs.**
+
+### ⚠ DOPRECYZOWANIE, o które proszę — „sesja jest jedna" ma granicę
+
+`ZLECENIE-040` §5 mówi „są dwie drogi, ale sesja jest jedna", a §2 mówi, że WordPress **nie jest
+klientem SSO**. Oba są prawdziwe, ale razem czyta się je mylnie, więc zapisuję wprost:
+
+> **Zalogowanie do WordPressa NIE JEST zalogowaniem do Gabinetu.** Wspólna sesja obejmuje
+> Gabinet i Konta — **nie WordPressa**. Pacjent zalogowany w WP, który zaczyna rezerwację,
+> **nadal przechodzi przez krok tożsamości**, bo jego sesja WP nie mówi Gabinetowi niczego.
+
+Bez tego zdania ktoś założy, że „zalogowany na stronie" znaczy „zalogowany do rezerwacji" —
+i albo zbuduje w WP drugi dowód tożsamości (złamanie wyżej), albo zgłosi jako defekt to, że
+pacjent „loguje się drugi raz". **To nie jest defekt, to jest granica wyjątku, który WP dostał.**
+
+### Cztery wymagania dołożone przez architekta
+
+**1 · Odpowiedź IDENTYCZNA, zanim kod zostanie potwierdzony.** Po podaniu numeru **zawsze ten
+sam komunikat**; dane pojawiają się **wyłącznie po potwierdzeniu kodu**. Różnica w komunikacie,
+czasie odpowiedzi albo wypełnionych polach znaczy, że **wpisywanie cudzych numerów mówi, kto
+korzysta z pomocy psychologicznej**. Formularz jest publiczny — to ta sama zasada „najpierw
+dowód, potem informacja", przeniesiona o krok wcześniej.
+
+**2 · Ograniczenie tempa na wysyłkę kodu — wydatek, nie tylko bezpieczeństwo.** Krok „podaj
+numer" wysyła SMS każdemu, kto kliknie: bez ograniczenia jest to **publiczny przycisk „wydaj
+pieniądze fundacji"**. Ograniczenie na numer, na adres i globalne; **lista krajów w SMSAPI
+zawężona** — wysyłka międzynarodowa jest wielokrotnie droższa.
+
+**3 · Dane uzupełnione MUSZĄ być widoczne i edytowalne.** „Uzupełnia się samo" nie może znaczyć
+„nie widać". Ludzie zmieniają nazwisko, adres i e-mail, a **te dane idą do rozliczeń**. Pola do
+potwierdzenia lub poprawienia, a poprawka **aktualizuje konto**, nie tylko tę rezerwację.
+
+**4 · Zegar blokady startuje PO potwierdzeniu kodu.** Gdyby 10 minut liczyło się od wyboru
+terminu, krok z kodem zjadłby połowę okna. Kolejność: **wybór terminu → krótka blokada
+techniczna na czas kroku z kodem → po potwierdzeniu pełne okno (10 min / 48 h)**. To jest
+blokada dwustopniowa z `D-2026-08-09-08`, teraz z konkretnym uzasadnieniem.
+
+### Jeden przepływ zamiast dwóch
+
+**numer → kod → (uzupełnienie albo puste pola) → dane → rezerwacja**, także za pierwszym razem.
+
+1. **Nie zbieramy strony danych osobowych od kogoś, kto nie potwierdził niczego** — przy
+   kolejności „najpierw dane, potem kod" każde porzucone zgłoszenie zostawia komplet danych
+   osoby niezweryfikowanej. To zbieranie danych bez potrzeby (RODO, minimalizacja).
+2. **Jedna ścieżka w kodzie zamiast dwóch** — nowy i wracający pacjent idą tą samą drogą,
+   różnią się tylko tym, czy pola są puste. Rozgałęzienie na wejściu to miejsce, w którym
+   powstają wady widoczne **tylko w jednej gałęzi**.
+
+**Zalogowany pacjent nie dostaje kodu w ogóle** — ma sesję, rezerwuje wprost. Kod pojawia się
+**tylko wtedy, gdy sesji nie ma**.

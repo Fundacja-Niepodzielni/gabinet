@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-040 · 09.08.2026 21:51
+
+Zapis wymagan, nie budowa. Wpisane jako D-2026-08-09-11.
+
+Rozstrzygniecie "krok numer+kod TO JEST logowanie" przyjmuje i potwierdzam pomiarem,
+ze wymog jest DZIS spelniony: Gabinet nie ma wlasnego magazynu kodow (zero trafien
+otp / kod_jednorazowy / jednorazow w app/) ani osobnej sciezki logowania pacjenta —
+jest jedna para auth/login + auth/callback przez Konta. Chodzi wiec o to, zeby tego
+nie zlamac przy F2, a nie o naprawe.
+
+DOPRECYZOWANIE, o ktore prosze — nie kloci sie z pomiarem, ale dwa Twoje punkty
+czyta sie razem mylnie: par. 5 mowi "sesja jest jedna", par. 2 mowi, ze WordPress
+NIE jest klientem SSO. Oba prawdziwe, ale razem sugeruja, ze zalogowanie do WP
+zalicza sie do rezerwacji. Zapisalem wprost: zalogowanie do WordPressa NIE JEST
+zalogowaniem do Gabinetu; wspolna sesja obejmuje Gabinet i Konta, nie WP. Bez tego
+zdania ktos albo zbuduje w WP drugi dowod tozsamosci, albo zglosi jako defekt to,
+ze pacjent "loguje sie drugi raz" — a to jest granica wyjatku, ktory WP dostal.
+
+Kanal: plik 21:49:22.132 -> obudzony 21:50:10.715 = 48,6 s (trzydziesty trzeci).
