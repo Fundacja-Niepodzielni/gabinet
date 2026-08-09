@@ -11,6 +11,71 @@ oznaczona jako NAPRAWA PRZYRZĄDU.
 
 Numeracja: `N-1`, `N-2`, … dla znalezisk własnych; `R6A-*` / `R6B-*` zachowują
 numerację nadaną przez weryfikatorów.
+---
+
+# ⚠ WERDYKTY WERYFIKACJI KRZYŻOWEJ (zespół Kont, 09.08.2026) — CZYTAJ PRZED REJESTREM
+
+Ten rejestr został sprawdzony przez **zewnętrznego weryfikatora spoza mojego repozytorium**
+(sesja `niepodzielni-konta`). Część moich zapisów okazała się nieprawdziwa albo źle
+zdiagnozowana. **Werdykty naniesiono przy pozycjach**, a poniżej jest ich skrót — bo
+rejestr czytany bez nich prowadzi do napraw, które szkodzą.
+
+Pełny raport weryfikatora, skopiowany do mojego repo, żeby odsyłacze prowadziły do czegoś,
+co tu jest: [`WERYFIKACJA-KRZYZOWA-konta-o-mnie.md`](WERYFIKACJA-KRZYZOWA-konta-o-mnie.md).
+
+| pozycja | werdykt | co się zmieniło w tym rejestrze |
+|---|---|---|
+| **R6A-2 / „noga 1 = wada przyrządu"** | **POTWIERDZONE + ZŁA DIAGNOZA POWODU** | wynik się broni (sprawdzili 4/4 twierdzenia o frameworku u źródła); **powód poprawiony**: system nie *broni się* przed wskrzeszeniem, tylko **nie ma z czego** wskrzesić |
+| **R6A-4** (własne hasła przechodzą §2) | **POTWIERDZONE + ZŁA DIAGNOZA** | **zalecenie naprawy USUNIĘTE** (przekreślone), nowego nie wpisano |
+| **R6A-3** (§2 nie jest strukturalne) | **POTWIERDZONE** | zalecenie naprawy **zostaje w mocy** |
+| **R6A-1** (test POZYTYWNY) | **POTWIERDZONE** | bez zmian |
+| **R6B-9** (`RejestrSesji` w cache'u) | **POTWIERDZONE + ESKALACJA** | **waga podniesiona**; część przyczyny leży w kontrakcie Kont, nie u mnie |
+| **R6B §7.1** („gardło §2 zrealizowane") | **OBALONE** | **ERRATUM** wstawione w `RUNDA-6-B-RAPORT.md` przy tej pozycji |
+| **`PODSUMOWANIE.md`: „dwaj kontrolerzy zmierzyli"** | **ZŁA WAGA (zawyżona)** | zdanie poprawione — **zmierzył jeden** |
+
+## Jedna rzecz USUNIĘTA, i to jest najważniejsza zmiana w tym pliku
+
+Przy **R6A-4** stało zalecenie: *„kontrola obiecana w D-2026-08-08-24 (liczność zbioru
+pisarzy = 1) nie powstała"* — czytane jako „zbuduj ten test i dziura zniknie".
+**Jest przekreślone.** Weryfikator wykazał, że **ten test przepuściłby tę samą mutację**:
+szła przez zadeklarowaną trasę, zadeklarowaną kolumnę i przez jedynego pisarza, więc
+licznik pisarzy pokazałby jeden i zaświecił zielono. Zbudowanie go jako naprawy R6A-4
+dałoby **zieloną kontrolę nad otwartą dziurą** — czyli dokładnie to, przed czym cała
+ta noc ostrzega.
+
+**Nowego zalecenia nie wpisałem.** Kierunek jest znany (allowlista zamiast denylisty), ale
+nie mam dla niego dowodu ani projektu, a **lepsze jest puste miejsce niż zalecenie, które
+szkodzi**.
+
+## Pozycja SPORNA — rozstrzygnięcie należy do właściciela
+
+**S-1 · „Pisarzy klucza `konta` jest DWÓCH, nie jeden" (raport Kont, sekcja 3, punkt 3).**
+
+Weryfikator liczy dwa miejsca `put()` wewnątrz `SesjaKonta` (w. 45 w `zaloz()` i w. 62
+w `zaktualizuj()`) i stwierdza, że wymaganie D-2026-08-08-24 („zbiór miejsc zapisujących
+TE KONKRETNE klucze ma **liczność 1**") jest złamane, bo liczność wynosi 2.
+
+**Nie usuwam tego werdyktu. Dopisuję kontrargument:**
+
+1. **Ta sama analiza używa dwóch różnych konwencji liczenia.** W sekcji 1 weryfikator
+   argumentuje, że test liczący pisarzy *„policzyłby jednego i zaświecił zielono"* —
+   czyli tam `SesjaKonta` jest **jednym** pisarzem. W sekcji 3 to samo `SesjaKonta` jest
+   **dwoma**. Obie tezy są potrzebne do dwóch różnych wniosków i nie mogą być prawdziwe
+   pod jedną definicją.
+2. **Pod literalną wykładnią wymóg jest niespełnialny.** Fasada, która ma tworzyć
+   I aktualizować, musi mieć dwie instrukcje zapisu. Wymaganie „liczność 1" rozumiane
+   jako „jedna instrukcja `put()`" zakazywałoby rozróżnienia utworzenia od aktualizacji —
+   a to rozróżnienie jest **treścią** D-24, nie jego naruszeniem.
+3. **Intencja D-24 jest o KOMPONENCIE, nie o instrukcji**: jeden byt, przez który
+   przechodzą wszystkie zapisy klucza, żeby dało się je policzyć i kontrolować.
+
+**Czego NIE kwestionuję:** że `zaloz(Request, array $dane)` przyjmuje surową tablicę
+i nie ma typowanego wąskiego gardła. **To jest trafione i pokrywa się z R6A-3** —
+i to jest właściwy zarzut wobec §2, mocniejszy niż liczenie instrukcji.
+
+**Do rozstrzygnięcia:** czy D-2026-08-08-24 mówi o liczbie komponentów, czy o liczbie
+instrukcji zapisu. Od tego zależy, czy §2 jest złamane dwoma sposobami, czy jednym.
+
 
 ---
 
@@ -275,6 +340,15 @@ za zamknięte.
    JEDYNY test adwersarialny (wymuszone wylogowanie).
 
 6. **R6B-9 — `RejestrSesji` łamie nasze własne cztery wymagania trwałości.**
+   **[WERDYKT-KONTA R6B-9: POTWIERDZONE + ESKALACJA — waga PODNIESIONA.]** Potwierdzone
+   odczytem kodu. Eskalacja idzie w stronę, której nie przewidziałem: **część przyczyny
+   leży po stronie KONTRAKTU Kont**, nie po mojej. Ich §4.5 mówi konsumentowi *skasuj
+   sesje o tym `sid`* i **milczy o tym, że trzeba je najpierw UMIEĆ ZNALEŹĆ**; `grep`
+   po ich kontrakcie za mapą `sid → sesje` nie daje trafień. Ich wzorzec `ref-laravel`
+   mapy nie potrzebuje (skanuje pliki rekordów), a konsument na Redisie skanować nie
+   może i musi ją zbudować — **mechanizm, którego kontrakt nie nazywa, więc i nie
+   obejmuje wymaganiami**. Cztery wymagania trwałości nałożono na znacznik, a mapę
+   zostawiono poza nimi. Zapisali to jako znalezisko **przeciwko sobie**.
    Zastosowaliśmy je do znacznika unieważnienia (baza), a mapa `sid → sesje`,
    bez której back-channel logout nie znajdzie ŻADNEJ sesji, została w cache'u
    z TTL 86400 s — podatna na `cache:clear`, restart i eksmisję. Utrata rejestru
@@ -483,7 +557,28 @@ i zmierzył OBIE gałęzie:
 ```
 
 **Wniosek: system NIE wskrzesza tożsamości z refresh tokenu. Wymóg nogi 1
-standardu B8 jest SPEŁNIONY.** Test jest czerwony, bo jego symulacja granicy
+standardu B8 jest SPEŁNIONY.**
+
+> ### ⟵ WERDYKT WERYFIKACJI KRZYŻOWEJ (konta): **POTWIERDZONE + ZŁA DIAGNOZA POWODU**
+> Mechanizm sprawdzili u źródła — **cztery twierdzenia o frameworku z czterech**,
+> w przypiętej wersji `v13.24.0` — i wszystkie się bronią. Wyniku nie podważają.
+>
+> **Ale powód, dla którego system przechodzi, jest inny, niż napisałem.** Zdanie
+> „system NIE wskrzesza” sugeruje OBRONĘ. Zmierzone: `refresh_token` mieszka
+> WEWNĄTRZ tożsamości (`TozsamoscSesji:71-73`), a tożsamość wewnątrz sesji
+> (`SesjaKonta:45,62`). Skasowanie sesji zabiera refresh token razem z nią —
+> **odświeżanie nie ma z czego wskrzesić, a nie odmawia wskrzeszenia.**
+>
+> **Dlaczego to nie kosmetyka:** ta własność jest SKUTKIEM UBOCZNYM miejsca
+> przechowywania, nie decyzją. Pierwszy człowiek, który przeniesie refresh token
+> poza sesję (odświeżanie w tle, odświeżanie z kolejki — powody naturalne),
+> **skasuje ją, nie tknąwszy ani jednej linii w kodzie logowania**. Nic tego nie
+> złapie, bo jedynym testem tej własności jest noga 1, dziś czerwona z przyrządu.
+>
+> **PRZYJMUJĘ w całości.** Postać, którą należy odtąd cytować zamiast mojej:
+> *wskrzeszenie jest dziś NIEMOŻLIWE KONSTRUKCYJNIE, bo refresh token nie przeżywa
+> skasowania sesji — własność zniknie, gdy token zamieszka gdziekolwiek indziej.*
+> Źródło: `WERYFIKACJA-KRZYZOWA-konta-o-mnie.md`, sekcja 2. Test jest czerwony, bo jego symulacja granicy
 procesu jest niekompletna: `app()->forgetInstance('session')` tworzy NOWY
 menedżer, ale middleware `StartSession` — sam będąc singletonem — trzyma STARY,
 a z nim wczytany w pamięci `Store` z tożsamością:
@@ -512,6 +607,12 @@ zamieniłaby jedyny uczciwy czerwony na zielony bez pokrycia.
 
 ## Znaleziska podważające twierdzenia uznane u nas za zamknięte
 
+> **WERDYKT (konta): POTWIERDZONE.** Sygnatury sprawdzone u źródła. Tym samym
+> pomiarem obalili twierdzenie z raportu B §7.1 — patrz **ERRATUM** wstawione
+> w tamtym pliku. Moje zastrzeżenie o niewykorzystywalności z zewnątrz uznali za
+> *wzorowy uczciwy negatyw*. **Zalecenie naprawy (`zMagazynu()` prywatne) zostaje
+> w mocy** — nie zostało podważone.
+
 **R6A-3 — wąskie gardło §2 NIE jest strukturalne.** `TozsamoscSesji::zMagazynu()`
 jest **publiczną statyczną fabryką przyjmującą DOWOLNĄ tablicę** — z magazynem
 wiąże ją wyłącznie nazwa. Weryfikator wytworzył tożsamość trzema drogami (dane
@@ -539,7 +640,35 @@ zapala 8 testów, w tym ten pilnujący legalnego odświeżenia).
 Logowanie hasłem na zadeklarowanej trasie, skrót w zadeklarowanej kolumnie,
 prymityw spoza zamkniętej listy, zapis tożsamości przez `SesjaKonta::zaloz()` —
 `BrakWlasnychHaselTest`: **7 passed**. Waga: **krytyczna** (CLAUDE.md §2).
-Kontrola obiecana w D-2026-08-08-24 (liczność zbioru pisarzy = 1) **nie powstała**.
+~~Kontrola obiecana w D-2026-08-08-24 (liczność zbioru pisarzy = 1) **nie powstała**.~~
+
+> ### ⟵ WERDYKT (konta): **POTWIERDZONE co do faktu + ZŁA DIAGNOZA co do przyczyny**
+> **ZALECENIE NAPRAWY POWYŻEJ JEST WYCOFANE** (przekreślone). Powód: nawet gdyby ta
+> kontrola istniała, **mutacja i tak by przeszła** — szła PRZEZ zadeklarowaną trasę,
+> PRZEZ zadeklarowaną kolumnę i PRZEZ `SesjaKonta::zaloz()`. Test liczący pisarzy
+> policzyłby jednego i zaświecił zielono. Zbudowanie go jako naprawy R6A-4 dałoby
+> **zieloną kontrolę nad otwartą dziurą**.
+>
+> **Przyczyną pierwotną jest KSZTAŁT kontroli: `PRYMITYWY_POSWIADCZEN` to DENYLISTA.**
+> Wylicza zakazane zamiast dopuszczać znane, więc `hash('sha256', …)`, `hash_hmac`,
+> `md5`, `openssl_*` przechodzą — nie przez przeoczenie pozycji, tylko przez
+> konstrukcję. Klasa nazwana we wspólnych wytycznych ekosystemu: *kontrole
+> bezpieczeństwa to ALLOWLISTY, nie denylisty*.
+>
+> **ESKALACJA, której sam nie postawiłem:** w środku tej kontroli stoi komentarz
+> deklarujący jej zupełność — *„Lista jest ZAMKNIĘTA — nie da się zweryfikować hasła
+> bez jednego z nich”*. **To zdanie jest nieprawdziwe**, obalone jedną linijką
+> `hash()`, i **samo przewiduje dziurę** (*„albo bez własnej kryptografii”*), po czym
+> oddaje ją człowiekowi (*„czerwona flaga przy przeglądzie”*). Kontrola zawiera więc
+> **pisemne zapewnienie, że dziury nie ma** — a to uczy czytelnika przestać szukać
+> i jest cięższe niż sama luka.
+>
+> **NOWEGO ZALECENIA NIE WPISUJĘ.** Kierunek (allowlista) jest wskazany, ale
+> allowlista prymitywów kryptograficznych to projekt na własną rundę, nie jedna
+> linia. Lepiej puste miejsce niż zalecenie bez pokrycia.
+> Źródło: `WERYFIKACJA-KRZYZOWA-konta-o-mnie.md`, sekcja 1.
+
+> **WERDYKT-KONTA R6A-1: POTWIERDZONE** — *nie znalazłem podstaw do podważenia*.
 
 **R6A-1 — test „POZYTYWNY … logout REALNIE zabija sesję" przechodzi, gdy logout
 NIE kasuje żadnej sesji.** Mutacja: `destroy()` usunięte, licznik podbijany mimo

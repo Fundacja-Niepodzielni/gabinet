@@ -21,7 +21,13 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   jak go dosięgnąć, a klient testowy Pesta nie odsyła ciasteczka sesji. Po dołożeniu
   `forgetInstance(StartSession::class)` **i** jawnego ciasteczka: baza (tożsamość
   nietknięta) = 200, po usunięciu tożsamości = **401**, jedno żądanie do punktu tokenów.
-  **System NIE wskrzesza tożsamości — wymóg nogi 1 standardu B8 jest SPEŁNIONY.**
+  **Wskrzeszenie jest dziś NIEMOŻLIWE KONSTRUKCYJNIE — wymóg nogi 1 standardu B8
+  jest SPEŁNIONY.** Sprostowane 09.08 po weryfikacji krzyżowej Kont: pisałem wcześniej
+  „system NIE wskrzesza", co sugeruje OBRONĘ. Powód jest inny: **refresh token mieszka
+  wewnątrz tożsamości, a tożsamość wewnątrz sesji** — skasowanie sesji zabiera token
+  razem z nią, więc odświeżanie **nie ma z czego** wskrzesić. **Ta własność zniknie,
+  gdy ktokolwiek przeniesie refresh token poza sesję** (odświeżanie w tle, z kolejki),
+  nie tykając kodu logowania — i nic tego nie złapie.
   Dowody: `docs/noc-2026-08-08/ZNALEZISKA.md` (R6A-2, R6B-1).
   **Test zostaje CZERWONY do naprawy z rundą** — nie naprawiałem go w nocy jako autor.
 - **Perturbacje: 30 scenariuszy, ale POKRYCIE JEST MNIEJSZE, NIŻ TA LICZBA SUGERUJE.**
@@ -90,10 +96,15 @@ o którym wiemy, że mówi „zdaliśmy" bez względu na stan, jest pracą bez p
    i `unserialize`). Moje twierdzenie „NIEWYWOŁYWALNE" było za mocne — warunek
    przeniósł się o poziom wyżej. Naprawa: `zMagazynu()` prywatne, jedyne wejście
    przez `SesjaKonta::odczytaj(Request)`.
-5. **V-1 — kontrola, która nie powstała (R6A-4, waga KRYTYCZNA).** Mechanizm
-   własnych haseł nadal przechodzi `BrakWlasnychHaselTest` (7 passed), zapisując
-   tożsamość PRZEZ wąskie gardło. D-2026-08-08-24 obiecuje kontrolę „liczność
-   zbioru pisarzy = 1" — nie istnieje.
+5. **R6A-4 (waga KRYTYCZNA) — mechanizm własnych haseł przechodzi `BrakWlasnychHaselTest`
+   (7 passed), zapisując tożsamość PRZEZ wąskie gardło.**
+   ~~Naprawa: zbudować kontrolę „liczność zbioru pisarzy = 1" z D-2026-08-08-24.~~
+   **ZALECENIE WYCOFANE 09.08** (weryfikacja krzyżowa Kont): ten test **przepuściłby
+   tę samą mutację** — szła przez zadeklarowaną trasę, zadeklarowaną kolumnę i przez
+   jedynego pisarza, więc licznik pokazałby jeden i zaświecił zielono. Przyczyną
+   pierwotną jest to, że `PRYMITYWY_POSWIADCZEN` to **DENYLISTA** (`hash('sha256', …)`
+   ją omija). **Nowego zalecenia nie wpisuję** — kierunek to allowlista, ale to projekt
+   na własną rundę, a nie jedna linia. Szczegóły: `ZNALEZISKA.md`, blok werdyktów.
 6. **`RejestrSesji` — fail-open (R6B-9).** Mapa `sid → sesje`, bez której
    back-channel logout nie znajdzie ŻADNEJ sesji, mieszka w cache'u z TTL 86400 s.
    Zastosowaliśmy cztery wymagania trwałości do znacznika unieważnienia i NIE

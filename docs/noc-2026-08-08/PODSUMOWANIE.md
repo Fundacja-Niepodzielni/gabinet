@@ -15,10 +15,17 @@ Od kilku dni jeden test świecił na czerwono i wyglądało to na poważną dziu
 w bezpieczeństwie: podejrzenie, że po usunięciu danych logowania użytkownika
 system i tak wpuszcza go dalej. Wieczorem 8 sierpnia sam obaliłem swoją pierwszą
 diagnozę, ale nowej nie miałem. **Tej nocy dwaj niezależni kontrolerzy ustalili
-przyczynę i zmierzyli, że system zachowuje się PRAWIDŁOWO** — po usunięciu
+przyczynę, a jeden z nich ZMIERZYŁ, że system zachowuje się PRAWIDŁOWO** — po usunięciu
 tożsamości odmawia dostępu (kod 401), tak jak powinien. Czerwony był test,
 nie produkt: test próbował udawać „nowe żądanie przeglądarki" w sposób, który
 nie działa w tym frameworku.
+
+> **Sprostowanie 09.08 (weryfikacja krzyżowa Kont).** Pierwotnie napisałem tu
+> „**zmierzyli**" w liczbie mnogiej. **Zmierzył jeden.** Drugi weryfikator otwiera
+> swoją sekcję ograniczeń zdaniem „Nic nie uruchomiłem" i sam oznacza część wniosków
+> jako wyprowadzone z lektury. Liczba mnoga zamieniała **jeden pomiar plus jedną
+> zgodną analizę** w „dwa pomiary" — czyli robiłem w raporcie dokładnie to, co ta noc
+> tropiła w kodzie. Wniosek się broni; zawyżona była MOC DOWODU, nie wynik.
 
 **Czerwony zostawiłem czerwonym.** Naprawa testu bezpieczeństwa przez tę samą
 osobę, która go pisała, w nocy i bez niezależnej kontroli, dałaby rano zielone

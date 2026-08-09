@@ -646,6 +646,27 @@ funkcji dopisanej w `:367`.
 
 ## 7. Twierdzenia, których NIE UDAŁO SIĘ obalić
 
+> ## ⚠ ERRATUM — dopisane 09.08.2026 przez wykonawcę, NIE przez weryfikatora B
+>
+> **Punkt 1 poniżej („Wąskie gardło §2 jest zrealizowane… ścieżka NIEWYWOŁYWALNA")
+> ZOSTAŁ OBALONY** — w tej samej rundzie, przez weryfikatora A (R6A-3), pomiarem na
+> żywym stosie: tożsamość koordynatora wytworzono bez logowania trzema wektorami.
+> Potwierdził to niezależnie weryfikator krzyżowy Kont, odczytem sygnatur:
+> `TozsamoscSesji::zMagazynu(array)` jest **publiczną** fabryką przyjmującą dowolną
+> tablicę, a `SesjaKonta::zaloz(Request, array $dane)` **nie ma typowanego wąskiego
+> gardła** — B analizował `zaktualizuj()` (które faktycznie przyjmuje obiekt)
+> i uogólnił na całą klasę.
+>
+> **Słów weryfikatora B nie zmieniam** — raport jest zapisem tego, co napisał, i tak
+> ma zostać. Dopisuję erratum, bo **sekcja „czego nie udało się obalić" jest
+> najniebezpieczniejszym miejscem w raporcie**: czytelnik bierze ją za pozytywne
+> potwierdzenie. `PODSUMOWANIE.md` przyjęło wersję A, ale ten plik ma 719 wierszy
+> i wygląda autorytatywnie — kto sięgnie po niego samego, wyszedłby z przekonaniem,
+> że §2 jest domknięte strukturalnie. **Nie jest.**
+>
+> Zdanie obalone, zostawione w dokumencie bez adnotacji, wraca po miesiącach jako
+> „przecież było sprawdzone".
+
 1. **Wąskie gardło §2 jest zrealizowane.** `SesjaKonta::KLUCZ = 'konta'` ma dokładnie
    jednego pisarza; `zaktualizuj()` przyjmuje `TozsamoscSesji`, którego konstruktor jest
    prywatny, a jedyna droga do instancji (`TozsamoscSesji::zMagazynu()`, `:39-49`) zwraca
