@@ -111,3 +111,53 @@ it('⛔ PRÓG SPRZĄTANIA nie jest krótszy niż najdłuższa możliwa sesja lok
         )
     );
 });
+
+it('PRÓG POCHODZI Z KONTRAKTU, nie z wartości domyślnej aplikacji', function (): void {
+    // Wartość kontraktowa, przepisana świadomie: `ssoSessionMaxLifespan` realmu
+    // `niepodzielni`, odczyt Admin API 09.08.2026 20:22:16 (sesja kont).
+    // Zastrzeżenie ich, przepisane bez łagodzenia: instancji PRODUKCYJNEJ nie ma
+    // — to „to samo, co w pliku, z którego produkcja powstanie".
+    expect(RejestrSesji::progSprzataniaSekund())->toBe(86400);
+    expect(config('konta.sso_session_max_s'))->toBe(86400, 'Kontrakt i konfiguracja się rozjechały.');
+});
+
+it('KONTROLA NEGATYWNA: brak wartości kontraktowej kończy się WYJĄTKIEM, nie cichym 86400', function (): void {
+    // Reguła helpdesku, przyjęta dziś: kontrola POZYTYWNA łapie przyrząd MARTWY,
+    // ale nie łapie przyrządu mierzącego COŚ INNEGO. Na to potrzebna jest
+    // kontrola NEGATYWNA — coś, co MUSI wyjść odmową.
+    //
+    // Tu odmową jest wyjątek: gdyby próg miał cichą wartość domyślną, ta asercja
+    // przeszłaby na wartości zastępczej i nikt by się nie dowiedział, że
+    // konfiguracji nie ma.
+    config(['konta.sso_session_max_s' => null]);
+
+    $blad = null;
+
+    try {
+        RejestrSesji::progSprzataniaSekund();
+    } catch (Throwable $e) {
+        $blad = $e->getMessage();
+    }
+
+    expect($blad)->not->toBeNull(
+        'Brak wartości kontraktowej NIE dał wyjątku — próg ma cichą wartość domyślną, '.
+        'czyli drugi opis konfiguracji realmu (klasa P3).'
+    );
+    expect((string) $blad)->toContain('sso_session_max_s');
+});
+
+it('KONTROLA NEGATYWNA: wartość MNIEJSZA jest STOSOWANA, a nie po cichu podnoszona', function (): void {
+    // Zmierzone przed naprawą: `max(86400, config)` sprawiał, że config=3600
+    // dawał próg 86400 — ustawienie było PRZYJMOWANE I IGNOROWANE, czyli
+    // wyglądało na zastosowane. To jest gałąź zdegenerowana w konfiguracji.
+    //
+    // Ta kontrola pilnuje, żeby wartość mniejsza miała SKUTEK. Nie znaczy to,
+    // że wolno ją ustawić — od tego jest kontrola „próg >= życie sesji", która
+    // wtedy zapali. Znaczy: ma być WIDAĆ, że ustawiono ją źle.
+    config(['konta.sso_session_max_s' => 3600]);
+
+    expect(RejestrSesji::progSprzataniaSekund())->toBe(
+        3600,
+        'Mniejsza wartość została po cichu podniesiona — konfiguracja jest przyjmowana i ignorowana.'
+    );
+});

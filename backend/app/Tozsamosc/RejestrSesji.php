@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use RuntimeException;
 
 /**
  * Mapa `sid` (identyfikator sesji SSO w IdP) → identyfikatory sesji lokalnych.
@@ -197,7 +198,31 @@ final class RejestrSesji
      */
     private static function oknoUniewaznieniaSekund(): int
     {
-        return max(self::CZAS_ZYCIA_SEKUND, Typy::liczba(config('konta.sso_session_max_s'), self::CZAS_ZYCIA_SEKUND));
+        // BEZ WARTOŚCI DOMYŚLNEJ — brak konfiguracji kończy się WYJĄTKIEM.
+        //
+        // Do 09.08 stało tu `max(self::CZAS_ZYCIA_SEKUND, config(...) ?? 86400)`,
+        // czyli dwie wady naraz:
+        //
+        //  1. CICHY DEFAULT z własnej stałej — drugi opis wartości realmu
+        //     (klasa P3). Dwa opisy tej samej rzeczy rozjeżdżają się po cichu.
+        //  2. `max()` sprawiał, że konfiguracja MNIEJSZA nie miała ŻADNEGO
+        //     skutku. Zmierzone: config=3600 → próg 86400. Ustawienie było
+        //     przyjmowane i ignorowane — czyli wyglądało na zastosowane.
+        //
+        // Wartość jest KONTRAKTOWA (patrz `config/konta.php`), nie domyślna:
+        // ma być przepisana świadomie, a jej brak ma krzyczeć.
+        $prog = config('konta.sso_session_max_s');
+
+        if (! is_int($prog) || $prog <= 0) {
+            throw new RuntimeException(
+                'Brak kontraktowej wartości `konta.sso_session_max_s` (jest: '.var_export($prog, true).'). '.
+                'Próg sprzątania znaczników unieważnienia NIE MA wartości domyślnej — cicha '.
+                'wartość zastępcza byłaby drugim opisem konfiguracji realmu i rozjechałaby się '.
+                'z nią bez śladu. Przepisz wartość z kontraktu.'
+            );
+        }
+
+        return $prog;
     }
 
     private static function klucz(string $sid): string

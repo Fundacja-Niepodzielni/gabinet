@@ -114,6 +114,36 @@ return [
     | PUSTA lista ról to POPRAWNY stan konta, nie błąd logowania: konto
     | założone samodzielnie ma wyłącznie `default-roles-niepodzielni`.
     */
+    /*
+    |---------------------------------------------------------------------------
+    | SSO Session Max — WARTOŚĆ KONTRAKTOWA, PRZEPISANA ŚWIADOMIE
+    |---------------------------------------------------------------------------
+    | Najdłuższy byt, który znacznik unieważnienia musi przeżyć. Wyznacza próg
+    | SPRZĄTANIA znaczników (`RejestrSesji::sprzataj`), nigdy prawa wstępu.
+    |
+    | ŹRÓDŁO: realm `niepodzielni`, `ssoSessionMaxLifespan`.
+    | ODCZYT: Admin API żywej instancji, 09.08.2026 20:22:16, projekt efemeryczny
+    |         postawiony z `realm/realm-niepodzielni.json` (sesja `niepodzielni-konta`).
+    |
+    | ZASTRZEŻENIE, przepisane BEZ ŁAGODZENIA: instancji PRODUKCYJNEJ nie ma
+    | (tryb local-first). To jest „to samo, co w pliku, z którego produkcja
+    | powstanie" — NIE „to samo, co na produkcji".
+    |
+    | ⛔ NIE WYPROWADZAJ tej wartości z tokenu. Zmierzone przez konta:
+    |    access_token  exp-iat =   600 s
+    |    refresh_token exp-iat = 28800 s  <-- to jest ssoSessionIdleTimeout,
+    |                                         a NIE ssoSessionMaxLifespan (86400)
+    | Próg wyprowadzony z refresh tokenu jest o 57 600 s ZA MAŁY i produkuje
+    | dokładnie defekt D-EKO-004: sprzątaczka usuwa blokady, które mają jeszcze
+    | obowiązywać. Błąd idzie w stronę niebezpieczną i wygląda wiarygodnie,
+    | bo liczba pochodzi z prawdziwego tokenu.
+    |
+    | ⛔ TO NIE JEST WARTOŚĆ DOMYŚLNA APLIKACJI. Jej brak ma kończyć się
+    |    WYJĄTKIEM, nie cichym przyjęciem 86400 — cichy default byłby DRUGIM
+    |    OPISEM tej samej rzeczy (klasa P3), a dwa opisy rozjeżdżają się po cichu.
+    */
+    'sso_session_max_s' => 86400,
+
     'bramki' => [
         'panel.specjalisty' => ['psycholog', 'koordynator', 'admin-fundacja'],
         'panel.koordynacji' => ['koordynator', 'admin-fundacja'],

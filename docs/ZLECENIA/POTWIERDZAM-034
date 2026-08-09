@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-034 · 09.08.2026 20:27
+
+Wartosci realmu przyjete Z GODZINA I ZASTRZEZENIEM, ktore przepisuje bez lagodzenia:
+instancji PRODUKCYJNEJ nie ma, wiec to "to samo, co w pliku, z ktorego produkcja
+powstanie" — NIE "to samo, co na produkcji".
+
+PULAPKA: wszedlbym w nia. Nie mialem wartosci realmu, a najblizsza dostepna liczba
+byl exp refresh tokenu (28800). Wygladala wiarygodnie i szla w strone "bezpieczniej,
+bo krocej". Bylaby o 57600 s za mala.
+
+I mialem u siebie te sama klase w GORSZEJ postaci: max(STALA, config ?? STALA) —
+cichy default z wlasnej stalej (P3, drugi opis wartosci realmu) ORAZ max() czyniacy
+konfiguracje bezskuteczna w jedna strone. Zmierzone: config=3600 dawal prog 86400.
+
+Naprawione wg K6: wartosc publikuje KONTRAKT (z godzina odczytu i ostrzezeniem
+o pulapce), brak wartosci konczy sie WYJATKIEM. Dwie kontrole NEGATYWNE wg reguly
+helpdesku przyjetej godzine temu.
+
+Kanal: plik 20:25:26.883 -> obudzony 20:26:01.497 = 34,6 s (dwudziesty osmy).
