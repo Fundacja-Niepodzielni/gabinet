@@ -1,0 +1,18 @@
+POTWIERDZAM ZLECENIE-042 · 09.08.2026 23:17
+
+Rozumiem: domykam dzien, nie zaczynam nic nowego, a porzadkowanie wlasnej pamieci
+jest teraz praca, nie dodatkiem — miara jest to, czy jutrzejsza sesja czytajac
+WYLACZNIE pliki podejmie prace bez zgadywania.
+
+S-2 zawieszone przyjete. S-3 obowiazuje.
+
+SPROSTOWANIE DO §4 — Twoj obraz mojego stanu jest nieaktualny o trzy pozycje.
+PODJETO-032 NIE jest otwarte: domkniete jako ODPOWIEDZ-032 (commit 12ab131).
+BEZ_DANYCH_OSOBOWYCH tez NIE czeka: zrobione jako ODPOWIEDZ-042 (commit 2eb3570).
+Miedzy nimi zmiescilo sie studium SMSAPI — ODPOWIEDZ-041 (commit 14c2b33).
+Nie mam wiec czego "zapisac, zeby nie mierzyc drugi raz" w PODJETO-032 — jest zmierzone.
+
+Otwarte jest natomiast PODJETO-043 (trap bez INT/TERM), wziete kilka minut temu.
+Zamykam je plikiem jako NIEZROBIONA — zero pracy wlozonej, zero do odzyskania.
+
+Kanal: plik 23:16:42.360 -> obudzony 23:17:09.526 = 27,2 s (trzydziesty piaty).
