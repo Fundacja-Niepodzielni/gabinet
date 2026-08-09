@@ -141,7 +141,7 @@ MINIMUM_TESTOW=220
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=1905
+MINIMUM_ASERCJI=1907
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

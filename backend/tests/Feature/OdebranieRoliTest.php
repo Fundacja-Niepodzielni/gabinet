@@ -546,13 +546,35 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
 
     $sid = zalogujKoordynatora(waznoscTokenuS: 600);
 
+    // Identyfikator sesji LOKALNEJ — potrzebny, żeby zapytać magazyn wprost.
+    $idSesji = RejestrSesji::odczytaj($sid)[0];
+
     // Stan wyjściowy: sesja ŻYJE i otwiera bramkę koordynatora.
     expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
+    expect(sesjaWMagazynie($idSesji))->not->toBe('', 'Sesji nie ma w magazynie PRZED wylogowaniem — test nie ma czego zabijać.');
 
     $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)])
         ->assertOk();
 
     expect($odp->json('skasowane_sesje'))->toBe(1, 'Logout nie trafił w sesję tego użytkownika.');
+
+    // ⛔ DWA TWIERDZENIA, DWA NIEZALEŻNE SYGNAŁY (R6B-2).
+    //
+    // Nazwa tego testu mówi „logout REALNIE zabija sesję". Do 09.08 dowodził
+    // czego innego: 401 niżej przychodzi przez ZNACZNIK unieważnienia po `sid`,
+    // więc sesja mogła zostać w magazynie nietknięta, a test i tak świecił.
+    //
+    // Zmierzone perturbacją — kasowanie wyłączone, LICZNIK nienaruszony
+    // (`if (true) { $skasowane++; }`): test PRZESZEDŁ (1 passed, 6 assertions).
+    // Czyli jedna wartość (401) była zgodna z dwoma światami: „sesja skasowana"
+    // i „sesja żyje, ale znacznik blokuje".
+    //
+    // Ta asercja pyta MAGAZYN, czyli inną drogą niż mechanizm, który bada.
+    expect(sesjaWMagazynie($idSesji))->toBe(
+        '',
+        'Sesja PRZEŻYŁA wylogowanie w magazynie. 401 niżej pochodzi wtedy ze ZNACZNIKA, '.
+        'nie z kasowania — a nazwa tego testu obiecuje kasowanie.'
+    );
 
     // GRANICA PROCESU. Produkcja obsługuje każde żądanie w osobnym procesie
     // PHP, więc sesja jest za każdym razem czytana z magazynu od nowa.
