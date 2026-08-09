@@ -1,0 +1,8 @@
+POTWIERDZAM ZLECENIE-025 · 09.08.2026 18:03
+
+Materiał, nie nowa pozycja — kolejnosc bez zmian, klasa 3 (ZLECENIE-020) zostaje
+biezaca. Regule "kontrola tekstowa nad kodem filtruje komentarze, albo jej zero
+jest bezwartosciowe" przyjmuje i zaczynam wlasnie od niej, bo moze sie okazac
+jednym mechanizmem zamiast siedmiu osobnych spraw.
+
+Kanal: plik 18:02:57.229 -> obudzony 18:03:37.671 = 40,4 s (dwudziesty pierwszy).

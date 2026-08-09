@@ -143,9 +143,24 @@ it('ma szyfrowanie sesji włączone DOMYŚLNIE — czytane z TREŚCI pliku, nie 
     // wartość w `.env` nie zmieni tego, co jest zapisane w kodzie.
     $tresc = (string) file_get_contents(base_path('config/session.php'));
 
+    // KOMENTARZE ODFILTROWANE — inaczej kontrola ma gałąź zdegenerowaną (klasa 3).
+    //
+    // Zmierzone 09.08: po zmianie wartości domyślnej na `false` i zostawieniu
+    // starej linii W KOMENTARZU („// BYLO: 'encrypt' => env(…, true),”)
+    // ta asercja **PRZESZŁA przy WYŁĄCZONYM szyfrowaniu**. Trafienie w kodzie
+    // i trafienie w cytacie były nieodróżnialne — jedna wartość, dwa światy.
+    //
+    // Czerwień przyniosła wtedy dopiero DRUGA, niezależna asercja
+    // (`config('session.encrypt')`) — czyli test ocalał, ale nie dzięki tej
+    // kontroli. Dwa niezależne sygnały zrobiły robotę, którą miał zrobić jeden.
+    //
+    // Reguła ekosystemu: kontrola tekstowa nad kodem filtruje komentarze,
+    // albo jej zero jest bezwartościowe.
+    $kod = (string) preg_replace('~^\s*//.*$~m', '', $tresc);
+
     // `toContain()` w Pest traktuje kolejne argumenty jako KOLEJNE IGŁY,
     // nie jako komunikat — dlatego jawne `str_contains` z opisem błędu.
-    expect(str_contains($tresc, "'encrypt' => env('SESSION_ENCRYPT', true)"))->toBeTrue(
+    expect(str_contains($kod, "'encrypt' => env('SESSION_ENCRYPT', true)"))->toBeTrue(
         'Wartość DOMYŚLNA szyfrowania sesji nie jest `true` w kodzie — środowisko bez tej zmiennej zapisuje sesję jawnie.'
     );
 
