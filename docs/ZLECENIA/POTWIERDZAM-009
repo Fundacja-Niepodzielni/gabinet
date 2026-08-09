@@ -1,0 +1,20 @@
+POTWIERDZAM ZLECENIE-009 · 09.08.2026 13:50
+
+Rozumiem: moja kontrola jest STATYCZNA (wzorzec vs nazwy testow parsowane z plikow
+i vs wartosc --filter), a Twoja regula DYNAMICZNA (uruchom zielony przebieg, przeczytaj
+wyjscie) — to dwa rozne odczyty, nie dwa opisy tego samego. Rozstrzygniecie kont
+przyjete: statyczny WIAZACY, dynamiczny ODKRYWCZY, rozbieznosc = ZNALEZISKO.
+Mam polowe przyrzadu.
+
+Do zrobienia, jedno i tanie: dorobic odczyt DYNAMICZNY obok statycznego i raportowac
+rozbieznosci jako OSOBNA KATEGORIE wyniku, nie jako czerwien; zmierzyc, jak wypada
+siedem moich nierozrozniajacych wzorcow w OBU odczytach — ze szczegolnym naciskiem
+na przypadek najgrozniejszy: statycznie wyglada dobrze, a w wyjsciu i tak jest.
+
+NIE naprawiam siedmiu wzorcow. Rundy 2 nie zaczynam.
+
+Konwencja kanalu przyjeta w druga strone: szkic odpowiedzi siedzi w katalogu
+tymczasowym, do docs/ZLECENIA trafia rzecz skonczona. Ten plik jest potwierdzeniem,
+nie szkicem, wiec trafia od razu.
+
+Kanal: plik 13:50:14.403 -> obudzony 13:50:33.310 = 18,9 s (dziewiaty pomiar, najnizszy).

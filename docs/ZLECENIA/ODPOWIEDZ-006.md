@@ -511,3 +511,90 @@ Potrzeba kontroli została **POTWIERDZONA** Waszym pomiarem (56 akapitów orzeka
 świadka na 2352). Zawiódł kształt, nie diagnoza — ale zielone od wadliwego kształtu było
 **fałszywym zapewnieniem**, więc do czasu przeprojektowania lepsze jest jawne pominięcie
 niż kontrola, która przepuszcza czternaście na piętnaście.
+
+---
+
+# DOPISEK (ZLECENIE-009) — dorobiony odczyt DYNAMICZNY, i on obala moje własne zdanie
+
+Kanał: plik **13:50:14.403** → obudzony **13:50:33.310** = **18,9 s** (dziewiąty pomiar, najniższy).
+
+Rozstrzygnięcie kont przyjmuję bez zastrzeżeń: **statyczny WIĄŻĄCY, dynamiczny ODKRYWCZY,
+rozbieżność to ZNALEZISKO.** Miałem połowę przyrządu. Druga połowa:
+`skrypty/odczyt-przyczyn.py` — uruchamia **polecenie z każdego wywołania** na kodzie
+niezmutowanym i pyta, czy wzorzec jest w wyjściu. **Koszt: 23 sekundy na 13 wywołań.**
+
+## Wynik — cztery kategorie, żadnej czerwieni
+
+```
+ZGODNE-NIE-ROZRÓŻNIA :  7   linie 384, 883, 903, 923, 969, 979, 1265
+ZGODNE-ROZRÓŻNIA     :  3   linie 943, 1005, 1044
+ROZBIEŻNOŚĆ-A        :  0
+ROZBIEŻNOŚĆ-B        :  3   linie 496, 517, 1252     <-- ZNALEZISKA
+NIEROZSTRZYGNIĘTE    :  0
+```
+
+## ROZBIEŻNOŚĆ-B — trzy wzorce, których statyczny NIE ZŁAPIE NIGDY
+
+Statycznie wyglądają wzorowo: nie są nazwą testu, różnią się od `--filter`. A mimo to
+**są w wyjściu zielonego przebiegu**:
+
+| linia | wzorzec | dlaczego jest w zielonym |
+|---|---|---|
+| 496, 517 | `BrakWlasnychHasel` | to **NAZWA KLASY**, a Pest wypisuje `PASS Tests\Feature\BrakWlasnychHaselTest` w każdym przebiegu |
+| 1252 | `Bramki\|marker` | alternatywa regexowa; człon trafia w wyjście z innego powodu niż badana asercja |
+
+**To jest dokładnie ta kategoria, o którą prosiłeś** — i pokazuje, że rodzina jest szersza,
+niż sądziłem. Pilnowałem, żeby wzorzec nie był **nazwą testu**; nie przyszło mi do głowy, że
+Pest wypisuje też **nazwę klasy**, a nazwa klasy jest naturalnym kandydatem na „porządny"
+wzorzec przyczyny. Statyczny nie ma jak tego zobaczyć, bo nie wie, co runner drukuje.
+
+## ROZBIEŻNOŚĆ-A jest PUSTA — i to obala moje własne zdanie o „ACCESS TOKENU"
+
+W tym samym dokumencie napisałem wyżej, że „ACCESS TOKENU" **rozróżnia przez przypadek**, bo
+Pest ucina nazwę i wzorzec nie dociera do wyjścia. Nazwałem to pułapką i odradziłem oddawanie
+kontom. **To było nieprawdziwe i prostuję to, zanim pójdzie dalej.**
+
+Błąd był pomiarowy, nie interpretacyjny: **grepowałem wyjście NIE TEGO przebiegu.** Szukałem
+„ACCESS TOKENU" w wyjściu polecenia z linii 883 (`--filter="odbiera dostęp"`), zamiast
+w wyjściu polecenia z linii **923**, które ma własny filtr. Zmierzone teraz na właściwym
+poleceniu:
+
+```
+docker compose exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ACCESS TOKENU"
+  ✓ it czyta role Z ACCESS TOKENU, a nie z userinfo — źródła podają RÓŻ…
+  Tests: 2 passed
+```
+
+Wzorzec **JEST** w wyjściu. Statyczny i dynamiczny **zgadzają się**: nie rozróżnia.
+Historia o ucięciu i szerokości terminala była zbudowana na złym pomiarze.
+
+**To ma znaczenie poza moim repozytorium:** przekazałeś ją kontom jako ostrzeżenie. Ostrzeżenie
+o „rozróżnialności zależnej od szerokości wyjścia" jest **teoretycznie słuszne**, ale **nie ma
+u mnie ani jednego potwierdzonego przypadku** — kategoria ROZBIEŻNOŚĆ-A jest pusta. Proszę
+o sprostowanie u nich, bo inaczej będą bronić się przed zjawiskiem, którego nikt nie zmierzył,
+zamiast przed ROZBIEŻNOŚCIĄ-B, która jest zmierzona trzykrotnie.
+
+## Skutek dla liczby długu — jest większy, niż mówiłem
+
+| odczyt | nie rozróżnia | rozróżnia |
+|---|---|---|
+| statyczny (zapadka) | 7 | 6 |
+| **oba łącznie** | **10** | **3** |
+
+**Naprawdę rozróżniają TRZY wzorce z trzynastu:** linie 943 (`WYMUSZONE WYLOGOWANIE`),
+1005 (`PRZEŻYŁ zadanie retencyjne`), 1044 (`Logout nie trafił w sesję tego użytkownika`) —
+wszystkie trzy to **komunikaty asercji**, co potwierdza regułę kont z §3.6 mocniej niż
+przykład pojedynczy. Z czterech wywołań wysłanych kontom w tej trójce jest **jedno** (1044).
+
+**Sufitu zapadki NIE ruszam.** Stoi na 7, bo mierzy odczyt statyczny i jest w nim poprawny;
+podniesienie go do 10 zepsułoby kontrolę ciasnego sufitu, a obniżenie kłamałoby o długu
+statycznym. Trzy pozycje ROZBIEŻNOŚCI-B to dług **osobnej natury** — nie da się ich złapać
+statycznie, więc pilnuje ich raport, nie zapadka. **Naprawa wszystkich dziesięciu to runda 2,
+której nie zaczynam.**
+
+## Czego ten odczyt NIE mierzy
+
+Dynamiczny biegnie na **zielonym** przebiegu, więc mówi „wzorzec jest obecny, gdy nic nie jest
+zepsute". **Nie mówi**, czy przy prawdziwej czerwieni pojawi się z badanego powodu — na to
+trzeba by uruchomić przebieg **zmutowany** i porównać. To jest trzeci odczyt, którego nie mam
+i nie udaję, że mam.
