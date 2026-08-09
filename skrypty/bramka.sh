@@ -115,11 +115,16 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # stan wynosi 184 testy / 652 asercje. Podnoszę razem z suitą, w tym samym
 # commicie — inaczej ten komentarz zacząłby kłamać o własnej wartości, czyli
 # popełniłby klasę D3, którą właśnie tą suitą zamykam.
-MINIMUM_TESTOW=183
+#
+# PODNIESIENIE 09.08 (weryfikacja krzyżowa rundy 1): 183/647 → 186/656. Powód:
+# doszła ZAPADKA POKRYCIA dla allowlist przyczyny czerwieni
+# (`PrzyczynyPerturbacjiTest`, 3 kontrole), więc stan wynosi 187 testów
+# (186 zielonych + noga 1) i 661 asercji.
+MINIMUM_TESTOW=186
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=647
+MINIMUM_ASERCJI=656
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

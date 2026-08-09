@@ -1,0 +1,94 @@
+# DEKLARACJE POPRAW dla PERTURBACJI ODWROTNEJ (gabinet)
+#
+# Wzorzec przejęty z `hub/scripts/perturbacje-odwrotne/POPRAWKI.txt`. Format
+# rozszerzony o DWA pola, których u hubu nie ma, i oba są tu skutkiem
+# weryfikacji krzyżowej, nie ozdobą:
+#
+#   ### <ID> | <ścieżka od korzenia repo> | <ZACIESNIA|DODAJE> | <co poprawka naprawia>
+#   --- SZUKAJ
+#   <dokładny fragment do zastąpienia>
+#   --- ZASTAP
+#   <fragment docelowy — POPRAWA zachowania>
+#   --- BOMBA
+#   <ten sam fragment, ale WYSADZONY: ma wywalić każdy test, który tę ścieżkę wykonuje>
+#   --- KONIEC
+#
+# POLE `ZACIESNIA|DODAJE` — hub zapisał tę lekcję jako komentarz dla czytającego
+# („co najmniej połowa deklaracji musi ODMAWIAĆ czegoś, co dziś przechodzi").
+# Komentarz nie ma jak zadziałać. Tutaj rodzaj jest DANĄ, którą narzędzie liczy
+# i przy zestawie słabszym niż połowa ZACIESNIA — ODMAWIA STARTU.
+#
+# BLOK `--- BOMBA` — to jest „towarzysz", którego hub nazwał jako brakujący:
+# pomiar, czy poprawiana ścieżka jest w ogóle WYKONYWANA przez suitę. Bez niego
+# „zero kandydatów" (zdrowie) i „zero pokrycia" (nikt tam nie zagląda) wyglądają
+# identycznie. Bomba rozdziela te dwa światy: jeśli po wysadzeniu linii NIC nie
+# pada, to znaczy, że tej linii nie wykonuje żaden test — i wynik poprawy jest
+# NIEROZSTRZYGNIĘTY, a nie „zdrowy".
+
+### R-1 | backend/app/Retencja/ZadanieRetencji.php | ZACIESNIA | odmawia progu retencji <= 0, który zamiast czyścić stare dane skasowałby CAŁĄ tabelę
+--- SZUKAJ
+        $granica = $this->teraz->subDays($progDni);
+--- ZASTAP
+        if ($progDni <= 0) {
+            throw new \InvalidArgumentException('Prog retencji <= 0 skasowalby cala tabele.');
+        }
+
+        $granica = $this->teraz->subDays($progDni);
+--- BOMBA
+        throw new \RuntimeException('BOMBA R-1: ta linia zostala wykonana.');
+        $granica = $this->teraz->subDays($progDni);
+--- KONIEC
+
+### R-2 | backend/app/Wsparcie/Typy.php | ZACIESNIA | `liczba()` przestaje po cichu zwracać domyślną wartość dla wejścia, którego nie rozumie — nieznane ma być ODMOWĄ, nie zerem
+--- SZUKAJ
+        if (is_string($wartosc) && preg_match('/^-?\d+$/', $wartosc) === 1) {
+            return (int) $wartosc;
+        }
+
+        return $domyslna;
+--- ZASTAP
+        if (is_string($wartosc) && preg_match('/^-?\d+$/', $wartosc) === 1) {
+            return (int) $wartosc;
+        }
+
+        if ($wartosc !== null) {
+            throw new \InvalidArgumentException('Typy::liczba — wejscie nieprzeliczalne, odmawiam cichej wartosci domyslnej.');
+        }
+
+        return $domyslna;
+--- BOMBA
+        if (is_string($wartosc) && preg_match('/^-?\d+$/', $wartosc) === 1) {
+            return (int) $wartosc;
+        }
+
+        throw new \RuntimeException('BOMBA R-2: ta linia zostala wykonana.');
+
+        return $domyslna;
+--- KONIEC
+
+### R-3 | backend/app/Tozsamosc/SesjaKonta.php | ZACIESNIA | odmawia założenia tożsamości bez `sub` — wiązanie po `sub` jest wymogiem CLAUDE.md §2, a dziś `zaloz()` przyjmuje dowolną tablicę
+--- SZUKAJ
+        $request->session()->put(self::KLUCZ, $dane);
+--- ZASTAP
+        if (Typy::napis($dane['sub'] ?? null) === '') {
+            throw new \InvalidArgumentException('Tozsamosc bez `sub` — wiazanie po sub jest wymogiem §2.');
+        }
+
+        $request->session()->put(self::KLUCZ, $dane);
+--- BOMBA
+        throw new \RuntimeException('BOMBA R-3: ta linia zostala wykonana.');
+        $request->session()->put(self::KLUCZ, $dane);
+--- KONIEC
+
+### R-4 | backend/app/Retencja/ZadanieRetencji.php | DODAJE | pusta selekcja retencji przestaje być niema — zostawia sygnał, że zadanie biegło i nie miało co usuwać
+--- SZUKAJ
+            return new Wynik(wybrane: 0, usuniete: 0, pozostale: []);
+--- ZASTAP
+            \Illuminate\Support\Facades\Log::info('retencja.nic-do-usuniecia', ['tabela' => $tabela]);
+
+            return new Wynik(wybrane: 0, usuniete: 0, pozostale: []);
+--- BOMBA
+            throw new \RuntimeException('BOMBA R-4: ta linia zostala wykonana.');
+
+            return new Wynik(wybrane: 0, usuniete: 0, pozostale: []);
+--- KONIEC
