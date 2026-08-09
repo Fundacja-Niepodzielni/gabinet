@@ -4,7 +4,7 @@ Kontekst stały. Przeczytaj w całości przed pierwszą zmianą. Nie relityguj p
 
 ## Co budujemy
 
-System rezerwacji wizyt psychologicznych: **osobna aplikacja Laravel** będąca **źródłem prawdy** o specjalistach (opisy, specjalizacje, obszary pomocy, terminy), rezerwacjach, rozliczeniach i wydarzeniach grupowych. WordPress (niepodzielni.com) **tylko wyświetla** te dane po API. Zastępuje SaaS Bookero. Frontend = gotowa makieta React (61 ekranów) do podpięcia pod nasze API.
+System rezerwacji wizyt psychologicznych: **osobna aplikacja Laravel** będąca **źródłem prawdy** o specjalistach (opisy, specjalizacje, obszary pomocy, terminy), rezerwacjach, rozliczeniach i wydarzeniach grupowych. WordPress (niepodzielni.com) **tylko wyświetla** te dane po API. Zastępuje SaaS Bookero. Frontend: istnieje **makieta React** (`Fundacja-Niepodzielni/gabinet-makieta`) — **zmierzone 39 unikalnych tras**, nie 61; liczba 61 stała tu bezpodstawnie, a commit autora makiety mówi 47 (trzy różne liczby, żadna uzgodniona). **Repozytorium makiety zawiera WYŁĄCZNIE plik zbudowany** (jeden `index.html` ~1,7 MB z wbudowanym Reactem); jego README mówi „Kod źródłowy jest osobno". **Nie jest to więc „gotowa makieta do podpięcia"** — dopóki nie ma źródeł, jest wzorcem wyglądu i zachowania, nie kodem do rozwijania. Ustalenie miejsca źródeł czeka na właściciela.
 
 **Specyfikacja nadrzędna:** `docs/specyfikacja/` — dwa dokumenty („Jak działa system" 60 s. — zachowanie; „Zakres wdrożenia" 70 s. — 6 modułów / 150 zadań / 916 podzadań) + streszczenia. Wszystko, czego nie rozstrzyga CLAUDE.md, rozstrzyga specyfikacja.
 
@@ -28,7 +28,7 @@ System rezerwacji wizyt psychologicznych: **osobna aplikacja Laravel** będąca 
 9. **Dziennik decyzji uznaniowych: tylko INSERT** — odebranie UPDATE/DELETE roli bazodanowej aplikacji, łańcuch skrótów, sprostowanie = nowy wpis. Test na poziomie bazy.
 10. **RODO art. 9:** DPIA-checklista PRZED modelem danych (Faza 1 planu). Szyfrowanie kolumn wrażliwych, log dostępu do kartotek, retencje jako zadania czyszczące w kodzie, anonimizacja danych na dev/staging, twarda blokada wysyłki mail/SMS ze środowisk nieprodukcyjnych.
 11. **Raport grantowy liczy OSOBY, nie wizyty** — suma osób z 4 kwartałów MUSI być większa niż liczba osób w roku (test kluczowy). Zamknięte okresy = niezmienny snapshot.
-12. **Endpoint `GET /api/hub-summary`** (kontrakt: repo `hub`, `docs/KONTRAKT-HUB-SUMMARY.md`) — dane operacyjne bez danych osobowych.
+12. **Endpoint `GET /api/hub-summary`** — dane operacyjne bez danych osobowych. Kontrakt `hub/docs/KONTRAKT-HUB-SUMMARY.md` **na 09.08.2026 NIE ISTNIEJE** (zmierzone; wcześniej ta zasada twierdziła, że istnieje). Do czasu jego powstania **nie implementuj endpointu wg domysłu** — kształt pola i zakres danych rozstrzyga hub, nie my.
 13. **Zgłoszenia problemów → Zammad** (repo `helpdesk`), nie własny rejestr.
 14. Limity i okna czasowe = **konfiguracja w bazie z wersjonowaniem** (limit niskopłatnych — wartość startową wskaże zarząd; okno linku płatności 2 dni + 10 min trzymania slotu po otwarciu płatności).
 15. Testy **liczą wartości, nie obecność elementów** (3 z 32 błędów makiety wyglądały poprawnie na ekranie).
