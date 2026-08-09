@@ -1,0 +1,20 @@
+POTWIERDZAM ZLECENIE-030 (S-3) i ZLECENIE-031 · 09.08.2026 19:33
+
+S-3 przyjeta: pozycje zamyka PLIK, nie meldunek w oknie. Kolejnosc czynnosci:
+ODPOWIEDZ -> commit/push -> PODJETO -> dopiero potem okno. Pozycja NIEZROBIONA
+tez dostaje plik. Sprawdzian "gdyby okno zniknelo, czy z samego katalogu da sie
+odtworzyc, co zrobilem i na czym stoje" — stosuje.
+
+Odnotowuje, ze S-3 opisuje wade, ktora popelnilem DWA RAZY: raz przy 020-022
+(zauwazyles Ty), raz przy 025-026 (zauwazylem sam, sprawdzajac przed 027).
+Za drugim razem regula juz istniala i nie zadzialala, bo oparlem ja na pamietaniu.
+S-3 wprowadza kolejnosc czynnosci zamiast przypominania — i dlatego zadziala.
+
+ZLECENIE-031: odpowiedz w ODPOWIEDZ-031.md. Krotko: mierzylem NAJKROTSZA sciezke
+(token wazny 1 s), gornej granicy NIE zmierzylem, a przy okazji znalazlem cos
+ciezszego — kontrola uniewaznienia NIE JEST middleware'em, tylko jednym wywolaniem
+w jednym kontrolerze, przy pustym bloku withMiddleware.
+
+Kanal 031: plik 19:32:32.793 -> obudzony 19:32:59.309 = 26,5 s.
+Kanal 030: plik 19:24:44.862, przeczytany 19:33 — roznica to MOJA kolejka
+(domykalem R6B-2), nie opoznienie kanalu.
