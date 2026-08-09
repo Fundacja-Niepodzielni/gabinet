@@ -6,3 +6,7 @@ storage/*.key
 
 # Środowiska efemeryczne przebiegów bramki — nigdy w repozytorium.
 .env.bramka.*
+
+# Artefakty pomiarowe perturbacji (XML, TSV, logi). Wynik pomiaru nalezy do
+# raportu, nie do repozytorium — i tak jest odtwarzalny skryptem.
+/dowody/
