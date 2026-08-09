@@ -16,12 +16,20 @@ Pracujesz samodzielnie, sesjami, aż do dowiezienia całości wg planu faz.
 
 ## Zacznij tak
 
-1. Przeczytaj w całości: `CLAUDE.md`, `WYTYCZNE-PRACY.md`, `PLAN-FAZ.md` oraz
+1. **NAJPIERW USTAL STAN BIEŻĄCY U ŹRÓDŁA — nie z tego pliku, nie z `PLAN-FAZ.md`
+   i nie z pamięci.** Kolejność jest częścią reguły: **każdy dokument opisujący
+   stan jest starszy od stanu.**
+   - **Zmierz, nie cytuj:** `git log --oneline -10`, `git status`,
+     `docker compose exec -T app ./vendor/bin/pest`. Liczby testów w plikach
+     są **zapisem z konkretnej godziny**, nie stałą — 09.08 zmieniły się trzykrotnie
+     w ciągu jednego wieczoru.
+   - **Przeczytaj najnowszy `docs/ZLECENIA/ZAMKNIECIE-DNIA-*.md`** — mówi, co jest
+     otwarte, co czeka i na kogo.
+   - Dopiero potem tabela stanu niżej.
+2. Przeczytaj w całości: `CLAUDE.md`, `WYTYCZNE-PRACY.md`, `PLAN-FAZ.md` oraz
    `docs/specyfikacja/00-analiza-architekta-i-decyzje.md`. Streszczenia
    specyfikacji (03/04) czytaj przed pełnymi tekstami (01/02); pełne teksty
    traktuj jako źródło prawdy przy szczegółach.
-2. **Ustal STAN BIEŻĄCY z tabeli niżej** — nie z tego pliku i nie z pamięci.
-   Dopiero potem planuj pracę.
 3. Wykonuj bieżącą fazę do zielonej bramki, zweryfikowanej niezależnie.
 4. Na koniec sesji: raport dla właściciela (co zrobione z dowodami, co
    czerwone, następny krok, **jakie polecenia były sprzeczne i ile kosztuje

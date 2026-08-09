@@ -11,9 +11,10 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
 - **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
   na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
-- **Testy: 223 zielone, 1 czerwony (noga 1), 2 POMINIĘTE, 1917 asercji** (zmierzone
-  09.08 wieczorem, `docker compose exec -T app ./vendor/bin/pest`). Podłogi bramki:
-  223/1912. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Testy — LICZBA Z DATĄ, NIE STAŁA: 236 zielonych, 1 czerwony (noga 1), 2 POMINIĘTE,
+  1936 asercji — zmierzone 09.08 o 23:0x**, `docker compose exec -T app ./vendor/bin/pest`.
+  Podłogi bramki tego samego wieczoru: **236/1936**. **Nie cytuj tych liczb jako stanu
+  bieżącego — zmierz je.** Tego dnia rosły trzykrotnie (223 → 232 → 236).
 - **Klasa 3 (wynik zgodny z więcej niż jednym światem) — zamknięte 09.08:** `R6B-11`
   (sonda portów pytała HTTP-em o Postgresa), `R6B-7` (sześć `sed -i` bez odczytu zwrotnego),
   `R6B-2`/`R6A-1` (test „POZYTYWNY" dowodził znacznika, nie kasowania sesji) oraz członek
@@ -22,9 +23,31 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **`D-EKO-012` domknięte u siebie:** `RejestrSesji::uniewazniona()` rozstrzyga OBECNOŚCIĄ
   wiersza, wiek jest wyłącznie progiem sprzątania, a próg pochodzi z KONTRAKTU
   (`konta.sso_session_max_s`) — **bez wartości domyślnej**, brak konfiguracji rzuca wyjątek.
-- **⚠ OTWARTE, wysoki iloczyn:** kontrola unieważnienia **nie jest middlewarem** — blok
-  `withMiddleware` jest pusty, więc sprawdza ją **jedna trasa z 34** (`ODPOWIEDZ-031`).
-  Wyjątki **nie są zadeklarowane** (`D6`). To jest bieżąca pozycja `PODJETO-032`.
+- **ZAMKNIĘTE 09.08 w nocy (`ODPOWIEDZ-032`): kontrola unieważnienia JEST middlewarem.**
+  Było: pusty `withMiddleware`, **jedna trasa z 34**. Jest: `SprawdzUniewaznienie`
+  w grupach `web` i `api`, wyjątki jako DANE (`App\Tozsamosc\WyjatkiUniewaznienia`,
+  8 wpisów z powodem i warunkiem znoszącym). Okno dla trasy nieobjętej było
+  **nieograniczone**; dziś to jedno żądanie.
+  **Niezmierzone, odnotowane jako dług:** `up` i `storage/{path}` rejestrują się POZA
+  grupami (**zero** middleware'ów) — są wyjątkami WYMUSZONYMI przez framework, nie
+  wybranymi; `horizon` i `docs/api` są **NIEZMIERZONE, nie czyste**; nie sprawdzone,
+  czy `web` i `api` to jedyne grupy.
+- **ZWOLNIENIA Z RETENCJI PRZEPISANE 09.08 (`ODPOWIEDZ-042`) — pomiar obalił 4 z 10.**
+  `sessions` ma `ip_address` (dana osobowa), `failed_jobs` ma `payload` **i** `exception`
+  bezterminowo, `jobs` ma `payload`, `konfiguracja_regul` ma `autor` (identyfikuje
+  pracownika). **Zwolnienia zostały, ale z warunkiem znoszącym mówiącym prawdę.**
+  **Przeniesienie ich do rejestru retencji CZEKA NA WŁAŚCICIELA** — najpilniej `failed_jobs`.
+- **Domyślka `SESSION_DRIVER` zmieniona 09.08 z `database` na `redis`** (`config/session.php`).
+  Brak jednej linijki w `.env` wystarczał, żeby aplikacja **cicho** zaczęła zapisywać adresy IP
+  do tabeli zwolnionej z retencji. Pilnuje tego `ZwolnieniaRetencjiTest`.
+- **SMSAPI — studium wykonalności gotowe 09.08 (`ODPOWIEDZ-041`), nic nie zbudowane.**
+  Twarde: nazwa **„Niepodzielni" (12 znaków) NIE PRZEJDZIE** (limit 11, bez polskich liter) —
+  **blokuje wniosek właściciela**; `ERROR:103` (brak środków) wraca **synchronicznie**, więc
+  wysyłka nie umiera po cichu, ale alarm musi być nasz; `ERROR:53` odrzuca powtórzony `idx`
+  w 24 h, więc `idx` **nie może** nieść tożsamości rezerwacji; **`test=1` nie wysyła, więc
+  NIE POWSTAJE raport doręczenia** — jedyna rzecz krytyczna dla logowania jest jedyną,
+  której tryb testowy nie obejmuje. **SMS Authenticator generuje, przechowuje i sprawdza kod
+  po stronie operatora — łamie `D-EKO-001`; rozstrzygnięcie czeka na architekta.**
 - **Pominięte to kontrola D3 (`TwierdzeniaKomentarzyTest`)** — zdjęta z bramki 09.08 po
   weryfikacji helpdesku: 14 obejść na 15 prób. Zielone z niej było FAŁSZYWYM ZAPEWNIENIEM.
   Przeprojektowanie (wymóg świadka wiązany z ROLĄ TEKSTU, nie ze słowami) czeka.

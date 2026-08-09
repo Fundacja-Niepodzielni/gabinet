@@ -1306,3 +1306,92 @@ blokada dwustopniowa z `D-2026-08-09-08`, teraz z konkretnym uzasadnieniem.
 
 **Zalogowany pacjent nie dostaje kodu w ogóle** — ma sesję, rezerwuje wprost. Kod pojawia się
 **tylko wtedy, gdy sesji nie ma**.
+
+## D-2026-08-09-12 — zasięg reguły wyznacza KONSTRUKCJA; odstępstwa są DANYMI
+
+**Kto podjął:** ja (Claude), z własnego pomiaru; wymóg deklarowania wyjątków **dołożył
+architekt** w `ZLECENIE-032`/`033`. **09.08.2026, noc.**
+
+**Treść.** Reguła obowiązująca „wszędzie" ma być wpięta tam, gdzie **konstrukcja** wymusza jej
+wykonanie (grupa middleware, klasa bazowa, ograniczenie bazy) — **nie wołana ręcznie przez
+każdego autora**. Odstępstwa zapisuje się **jako dane, z powodem i warunkiem znoszącym**,
+i pilnuje kontrolą porównującą trzy zbiory: wszystko · objęte · zadeklarowane wyjątki.
+
+**Dlaczego.** Zmierzone: kontrolę unieważnienia sesji stosowała **1 trasa z 34** przy pustym
+bloku `withMiddleware`, a 33 pozostałe nie były nigdzie zadeklarowane jako wyjątki.
+**Świadomy wyjątek i przeoczenie mają w kodzie ten sam kształt — nieobecność. Nieobecność
+nie niesie intencji, więc nie da się jej ani zweryfikować, ani odróżnić od błędu** (klasa `D6`).
+
+**Warunek konieczny, wyprowadzony z pomiaru u siebie:** **koszt wyjątku musi równać się kosztowi
+zgodności.** Gdy wpis do rejestru wymagał podstawy i opisu, a wpis na listę wyjątków nie wymagał
+niczego, **lista wyjątków stała się najtańszą drogą wyciszenia kontroli** — nie przez złą wolę,
+przez pośpiech.
+
+**Kontrola pozytywna nie wystarcza.** Trasa, o której wiadomo, że regułę stosuje, musi wyjść jako
+objęta — **ale trasa publiczna musi wyjść jako NIEobjęta**. Pierwsza łapie przyrząd martwy, druga
+przyrząd mierzący co innego. **Tego samego dnia druga wersja złapała mój błąd:** skaner czytał
+nierozwiniętą nazwę grupy i meldowałby zerowe pokrycie przy pełnym.
+
+**Dowody:** `ZasiegUniewaznieniaTest`, `NowaTrasaJestChronionaTest`.
+
+## D-2026-08-09-13 — tabela zwolniona z retencji niesie POWÓD i WARUNEK ZNOSZĄCY
+
+**Kto podjął:** ja (Claude); pozycję **zatwierdził architekt** przed pisaniem okresów retencji.
+**09.08.2026, noc.**
+
+**Treść.** `RejestrRetencji::bezDanychOsobowych()` to **mapa**, nie lista nazw. Każde zwolnienie
+niesie **powód** i **warunek znoszący** (co przestanie czynić je słusznym), oba wymuszone testem.
+
+**Dlaczego to szło PRZED okresami.** Wymóg napisania powodu **obalił 4 z 10 zwolnień**, bo kolumny
+odczytane z bazy przeczyły liście: `sessions` ma `ip_address` (**adres IP jest daną osobową**),
+`failed_jobs` ma `payload` **oraz** `exception` i trzyma je **bezterminowo**, `jobs` ma `payload`,
+`konfiguracja_regul` ma `autor` (**identyfikuje pracownika**). Gdyby okresy pisano wcześniej,
+byłyby to okresy dla tabel, o których nikt nie sprawdził, czy w ogóle mają być zwolnione.
+
+**Powiązana zmiana konfiguracji:** domyślka `SESSION_DRIVER` w `config/session.php` zmieniona
+z `database` na `redis`. **Brak jednej linijki w `.env` wystarczał, żeby aplikacja cicho zaczęła
+zapisywać adresy IP do tabeli zwolnionej z retencji.** Awaria Redisa jest głośna i naprawialna;
+ciche zbieranie danych osobowych nie jest ani jednym, ani drugim.
+
+**CZEKA NA WŁAŚCICIELA:** przeniesienie czterech warunkowych zwolnień do rejestru retencji.
+Najpilniejsze `failed_jobs` — przy wysyłce SMS i e-maili zadanie z natury niesie numer albo adres,
+więc to **kwestia czasu, nie możliwości**.
+
+**Dowód:** `ZwolnieniaRetencjiTest`.
+
+## D-2026-08-09-14 — SMSAPI: co jest niemożliwe (studium, nic nie zbudowane)
+
+**Kto podjął:** studium zlecił **właściciel** przez architekta (`ZLECENIE-041`); ustalenia moje.
+**Data odczytu dokumentacji: 09.08.2026.** Dokumentacja SMSAPI **nie ma numeru wersji ani daty
+aktualizacji** — jedyne, co da się podać, to data odczytu.
+
+**Wymaga decyzji WŁAŚCICIELA:** **nazwa nadawcy „Niepodzielni" (12 znaków) NIE PRZEJDZIE.**
+Limit **11 znaków**, bez polskich liter, co najmniej jedna litera, bez trzech cyfr pod rząd.
+Akceptacja „zależy w całości od swobodnego uznania" operatora (regulamin 1.4(24)), weryfikacja
+do 1 dnia roboczego. **To blokuje wniosek** — wariant trzeba wybrać przed złożeniem.
+
+**Wymaga decyzji ARCHITEKTA:** SMS Authenticator **generuje, przechowuje i sprawdza kod po stronie
+operatora**, więc dowód tożsamości pacjenta zacząłby żyć u dostawcy SMS — **złamanie `D-EKO-001`
+tylnymi drzwiami**, to samo, co odrzucono przy WordPressie. Droga bez konfliktu: zwykła wysyłka,
+kod generują i sprawdzają Konta. **Nie kosztuje więcej.**
+
+**Wiążące dla budowy, niezależnie od powyższych:**
+1. `ERROR:103` (brak środków) wraca **synchronicznie** i **żaden** SMS nie idzie — wysyłka **nie
+   umiera po cichu**. Ale operator nie zadzwoni: `ERROR:103` musi mieć **własną, głośną ścieżkę
+   alarmową**, bo to nie błąd pacjenta, tylko **awaria fundacji**.
+2. `ERROR:53` odrzuca powtórzony `idx` w ciągu 24 h. **`idx` nie może nieść tożsamości
+   rezerwacji** — inaczej „wyślij kod ponownie" umrze **cicho**.
+3. **`test=1` w ogóle nie wysyła, więc nie powstaje raport doręczenia.** Budowa nie czeka na
+   wniosek właściciela (domyślne pole nadawcy to „Test"), **ale domknięcie ścieżki raportów
+   czeka na pierwszą prawdziwą wysyłkę.**
+4. Operator **nie kwalifikuje** wiadomości jako transakcyjnych — przerzuca ocenę na klienta
+   (regulamin 6.1.2, 6.7). **To nie jest „nie dotyczy nas"** — to pytanie do IOD.
+5. `skip_foreign=1` to **przełącznik „tylko polskie", nie lista krajów**; SMS zagraniczny 0,35 zł
+   wobec 0,11–0,17 zł krajowego.
+
+**Czego NIE znalazłem w dokumentacji** (brak informacji ≠ informacja o braku): domyślny czas
+ważności wiadomości i moment `EXPIRED` — **bez tej liczby nie napiszemy komunikatu „SMS nie
+dotarł"**; pełna lista statusów SMSAPI słowo w słowo; endpointy Authenticatora; lista dozwolonych
+krajów; limit tempa **na numer**.
+
+**Pełne studium:** `docs/ZLECENIA/ODPOWIEDZ-041.md`.
