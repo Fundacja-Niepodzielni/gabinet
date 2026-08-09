@@ -126,11 +126,17 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # POMINIĘTE — helpdesk zmierzył na nich 14 obejść na 15. Pominięte nie liczą się
 # do podłogi, więc podłoga NIE rośnie o nie; stan: 187 zielonych, 2 pominięte,
 # 1 czerwony (noga 1), 664 asercje.
-MINIMUM_TESTOW=187
+#
+# PODNIESIENIE 09.08 (runda 2, R6A-11): 187/659 → 195/683. Doszło sześć kontroli
+# harmonogramu retencji (uruchomienie, kierunek 0, fail-closed przy nieustalonym
+# okresie, para z klamrą w obie strony, ślad przy pustym przebiegu).
+# Doszedł też skan wstępny klamry pytający o WŁASNOŚĆ, nie o nazwę (ZLECENIE-011),
+# z kontrolą w obie strony. Stan: 195 zielonych, 2 pominięte, 1 czerwony, 688 asercji.
+MINIMUM_TESTOW=195
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=659
+MINIMUM_ASERCJI=683
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

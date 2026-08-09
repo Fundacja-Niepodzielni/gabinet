@@ -1,0 +1,23 @@
+POTWIERDZAM ZLECENIE-010 · 09.08.2026 14:02
+
+Rozumiem: RUNDA 2, PRZEDMIOT. Regula rundy: naprawa bez kontroli CZERWONEJ przed
+i ZIELONEJ po nie liczy sie jako wykonana; czerwien z badanej przyczyny sprawdzona
+OBYDWOMA odczytami (statycznym i dynamicznym), rozbieznosc = znalezisko.
+
+P-1 (R6A-11, ZadanieRetencji bez wywolujacego) — pozycja o najwyzszym iloczynie WAGI
+i OSIAGALNOSCI, bo to nie ryzyko tylko STAN BIEZACY: dzis nic sie nie kasuje. Trzy
+kontrole: (1) zadanie zaplanowane i chodzi — asercja na HARMONOGRAMIE, nie na kodzie
+zadania; (2) kierunek 0 — pusty harmonogram MUSI zaczerwienic, nie przejsc; (3) para
+z klamra — przy zablokowanym kasowaniu kontrola URUCHOMIENIA zielona, kontrola
+KASOWANIA czerwona, bo to dwa rozne twierdzenia i maja zawodzic osobno.
+Klamra obowiazuje bezwzglednie: skan wstepny, twarda odmowa przy pozostalosci,
+zdjecie na sciezce biegnacej przy awarii.
+
+P-2 i P-3 zglaszam jako JUZ WYKONANE w ZLECENIE-008 (commit 70fb80c), nie robie
+drugi raz — sprawdzam stan i przedstawiam dowod zamiast powtarzac prace.
+
+Czego nie robie: siedmiu statycznych ani trzech dynamicznych wzorcow --przyczyna,
+pozostalych siedmiu czlonkow klasy 3, trzeciego odczytu (przebieg zmutowany).
+Wlasnej pracy nie zamykam.
+
+Kanal: plik 14:01:39.188 -> obudzony 14:01:57.607 = 18,4 s (dziesiaty, najnizszy).

@@ -190,3 +190,46 @@ it('KLAMRA: perturbacja ODMAWIA startu, gdy blokada została po poprzednim przeb
         'Klamra nie zdjęła blokady — dokładnie ta awaria, przed którą broni.'
     );
 });
+
+it('KLAMRA: skan wstępny łapie pozostałość pod INNĄ NAZWĄ — pyta o własność, nie o nazwę', function (): void {
+    // Poprawka wymuszona przez weryfikację krzyżową hubu (ZLECENIE-011): skan
+    // pytający `pg_rules` o regułę o ZNANEJ nazwie ma martwe pole — pozostałość
+    // pod inną nazwą przechodzi i zostaje na żywej instancji, cicho blokując
+    // kasowanie danych osobowych.
+    $obca = 'pozostalosc_po_kims_innym';
+    DB::statement("CREATE RULE {$obca} AS ON DELETE TO zgody DO INSTEAD NOTHING");
+
+    try {
+        // Reguła NIE ma nazwy, której szuka stary skan — to jest sedno próby.
+        expect(KlamraPerturbacji::regulaIstnieje(KlamraPerturbacji::nazwaReguly('zgody')))->toBeFalse(
+            'Nazwa kolizyjna — próba nie bada tego, co deklaruje.'
+        );
+
+        $powod = null;
+        expect(KlamraPerturbacji::kasowanieDziala('zgody', $powod))->toBeFalse(
+            'Skan NIE WIDZI cudzej blokady kasowania — ma nadal martwe pole.'
+        );
+        expect((string) $powod)->toContain($obca);
+
+        $blad = null;
+
+        try {
+            KlamraPerturbacji::zablokujKasowanie('zgody');
+        } catch (Throwable $e) {
+            $blad = $e->getMessage();
+        }
+
+        expect((string) $blad)->toContain('ODMOWA STARTU PERTURBACJI');
+    } finally {
+        DB::statement("DROP RULE IF EXISTS {$obca} ON zgody");
+    }
+});
+
+it('KIERUNEK ODWROTNY: przy sprawnym kasowaniu skan wpuszcza', function (): void {
+    $powod = null;
+
+    expect(KlamraPerturbacji::kasowanieDziala('zgody', $powod))->toBeTrue(
+        'Skan odmawia przy sprawnej bazie — fałszywie blokowałby każdą perturbację.'
+    );
+    expect($powod)->toBeNull();
+});

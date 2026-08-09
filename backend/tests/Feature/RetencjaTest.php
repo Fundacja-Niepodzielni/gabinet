@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Retencja\RejestrRetencji;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -26,56 +27,16 @@ use Illuminate\Support\Facades\Schema;
  * retencji — a nie odwrotnie.
  */
 
-/**
- * Rejestr retencji: tabela → po czym liczymy termin i dlaczego.
+/*
+ * Rejestr NIE MIESZKA JUZ W TYM PLIKU.
  *
- * `kolumna_pochodzenia` MUSI wskazywać moment POWSTANIA rekordu albo inne
- * pole niezmienne po utworzeniu. Nigdy kolumnę stanu (`status`, `etap`), bo
- * wtedy zmiana stanu przesuwa termin usunięcia.
+ * Do 09.08 lista tabel i podstaw retencji byla stala w PLIKU TESTU. Skutek
+ * zmierzony w rundzie 2: komenda produkcyjna nie mogla jej przeczytac, wiec
+ * zadanie czyszczace musialoby niesc WLASNA liste — a wtedy rejestr
+ * i sprzataczka rozjezdzaja sie po cichu i obie sa zielone.
+ *
+ * Zrodlo prawdy: App\Retencja\RejestrRetencji (CLAUDE.md, zasada 1).
  */
-const REJESTR_RETENCJI = [
-    'pacjenci' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'RODO art. 9 — dane o zdrowiu; okres do ustalenia z IOD (P-3 w DPIA).',
-        'sposob_usuniecia' => 'anonimizacja (zanonimizowany_at), nie DELETE — rezerwacje muszą zostać do rozliczeń.',
-    ],
-    'uniewaznione_sesje' => [
-        'kolumna_pochodzenia' => 'uniewazniona_at',
-        'podstawa' => 'Znacznik unieważnienia sesji SSO — negatywna asercja bezpieczeństwa. Skrót sid, bez danych osobowych.',
-        'sposob_usuniecia' => 'DELETE po `wygasa_at` — próg zapisany W WIERSZU, żeby sprzątaczka nie odblokowała wcześniej niż SSO Session Max.',
-    ],
-    'zgody' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'Dowód zgody przechowywany tak długo, jak długo może być potrzebny do obrony roszczeń.',
-        'sposob_usuniecia' => 'DELETE po ustaniu podstawy — wpis dopisywany, nigdy modyfikowany.',
-    ],
-    'rezerwacje' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'Dokument księgowy — 5 lat od końca roku podatkowego (ustawa o rachunkowości).',
-        'sposob_usuniecia' => 'odpięcie od pacjenta (anonimizacja pacjenta), rekord finansowy zostaje.',
-    ],
-    'zdarzenia_rezerwacji' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'Dziennik tylko-do-dopisywania; retencja równa retencji rezerwacji.',
-        'sposob_usuniecia' => 'kasowanie całych partii po wygaśnięciu rezerwacji nadrzędnej.',
-    ],
-    'users' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'Konto personelu — usuwane po ustaniu współpracy (sygnał z Kont Niepodzielni).',
-        'sposob_usuniecia' => 'DELETE po potwierdzeniu, że nie ma powiązanych decyzji uznaniowych.',
-    ],
-    'specjalisci' => [
-        'kolumna_pochodzenia' => 'created_at',
-        'podstawa' => 'Dane współpracownika — okres rozliczeniowy + roszczenia.',
-        'sposob_usuniecia' => 'oznaczenie nieaktywności; usunięcie danych kontaktowych po okresie roszczeń.',
-    ],
-];
-
-/** Tabele bez danych osobowych — świadomie POZA rejestrem retencji. */
-const BEZ_DANYCH_OSOBOWYCH = [
-    'migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs',
-    'konfiguracja_regul', 'uslugi', 'specjalista_usluga',
-];
 
 it('każda tabela w bazie jest albo w rejestrze retencji, albo jawnie uznana za wolną od danych osobowych', function (): void {
     // Sedno kontroli: nowa tabela nie może POWSTAĆ bez decyzji o retencji.
@@ -88,7 +49,7 @@ it('każda tabela w bazie jest albo w rejestrze retencji, albo jawnie uznana za 
         $wBazie[] = $wiersz->tablename;
     }
 
-    $opisane = [...array_keys(REJESTR_RETENCJI), ...BEZ_DANYCH_OSOBOWYCH];
+    $opisane = [...array_keys(RejestrRetencji::wpisy()), ...RejestrRetencji::BEZ_DANYCH_OSOBOWYCH];
     sort($wBazie);
 
     $nieopisane = array_values(array_diff($wBazie, $opisane));
@@ -100,7 +61,7 @@ it('każdy rekord z retencją MA po czym być wybrany — kolumna pochodzenia is
     // Awaria retencji „w drugą stronę": jeśli kolumna, po której filtruje
     // zadanie czyszczące, nie istnieje, zadanie nie wybierze NIGDY ani jednego
     // rekordu. Nic nie padnie — dane po prostu zostaną na zawsze.
-    foreach (REJESTR_RETENCJI as $tabela => $wpis) {
+    foreach (RejestrRetencji::wpisy() as $tabela => $wpis) {
         $kolumna = $wpis['kolumna_pochodzenia'];
 
         expect(Schema::hasTable($tabela))->toBeTrue("Rejestr retencji wymienia nieistniejącą tabelę {$tabela}.")
@@ -114,7 +75,7 @@ it('retencja liczy się od POCHODZENIA rekordu, nie od jego bieżącego stanu', 
     // usunięcia przy każdej zmianie statusu — po cichu i bez śladu.
     $kolumnyStanu = ['status', 'etap', 'kolejka', 'przypisany_do', 'updated_at', 'zanonimizowany_at'];
 
-    foreach (REJESTR_RETENCJI as $tabela => $wpis) {
+    foreach (RejestrRetencji::wpisy() as $tabela => $wpis) {
         expect($kolumnyStanu)->not->toContain(
             $wpis['kolumna_pochodzenia'],
             "Retencja {$tabela} liczona od kolumny zmiennej w czasie życia rekordu."
@@ -125,7 +86,7 @@ it('retencja liczy się od POCHODZENIA rekordu, nie od jego bieżącego stanu', 
 it('każdy wpis rejestru mówi, JAK rekord znika — nie tylko kiedy', function (): void {
     // „Próg bez ścieżki" to dokładnie ten sam błąd co brak kolumny: termin
     // mija, a nikt nie wie, co ma się wykonać.
-    foreach (REJESTR_RETENCJI as $tabela => $wpis) {
+    foreach (RejestrRetencji::wpisy() as $tabela => $wpis) {
         expect($wpis['podstawa'])->not->toBe('', "Brak podstawy retencji dla {$tabela}.")
             ->and(mb_strlen($wpis['sposob_usuniecia']))->toBeGreaterThan(20, "Brak opisu usunięcia dla {$tabela}.");
     }

@@ -86,6 +86,31 @@ final class KlamraPerturbacji
             );
         }
 
+        // 1b. SKAN WSTĘPNY PYTA O WŁASNOŚĆ, NIE O NAZWĘ ARTEFAKTU.
+        //
+        // Poprawka do mojego własnego wymogu przenośności nr 2, wymuszona przez
+        // weryfikację krzyżową hubu (ZLECENIE-011). Sprawdzenie wyżej pyta
+        // `pg_rules` o regułę O KONKRETNEJ NAZWIE — więc pozostałość powstała
+        // pod INNĄ nazwą, na innej tabeli albo zrobiona WYZWALACZEM zamiast
+        // regułą przechodzi przez skan i zostaje na żywej instancji. A jest to
+        // dokładnie ta pozostałość, która cicho blokuje kasowanie danych
+        // osobowych.
+        //
+        //   BYŁO:  „czy istnieje reguła X"        → pytanie o NAZWĘ
+        //   JEST:  „czy kasowanie tu działa"      → pytanie o STAN ŚWIATA
+        //
+        // Tylko drugie wyklucza pozostałość, o której nie wiem.
+        $powod = null;
+
+        if (! self::kasowanieDziala($tabela, $powod)) {
+            throw new RuntimeException(
+                "ODMOWA STARTU PERTURBACJI: kasowanie w tabeli `{$tabela}` NIE DZIAŁA jeszcze ".
+                "przed założeniem blokady ({$powod}). Perturbacja mierzyłaby cudzą pozostałość ".
+                'jako własny skutek — czyli dałaby zielone z niewłaściwego powodu. '.
+                'Znajdź, co blokuje kasowanie, i zdejmij to ręcznie.'
+            );
+        }
+
         DB::statement("CREATE RULE {$regula} AS ON DELETE TO {$tabela} DO INSTEAD NOTHING");
 
         // 3. KLAMRA. Wołający wykonuje to w `finally`.
@@ -98,6 +123,81 @@ final class KlamraPerturbacji
     public static function regulaIstnieje(string $regula): bool
     {
         return DB::table('pg_rules')->where('rulename', $regula)->exists();
+    }
+
+    /**
+     * Czy kasowanie w tabeli FAKTYCZNIE DZIAŁA — pytanie o własność, nie o nazwę.
+     *
+     * Dwie drogi, świadomie o różnej mocy, bo jedna z nich ma gałąź zdegenerowaną:
+     *
+     *   · ZACHOWANIOWA (mocna) — gdy tabela ma wiersze: kasujemy je w PUNKCIE
+     *     ZAPISU i sprawdzamy, czy zniknęły, po czym wycofujemy. To rozstrzyga
+     *     niezależnie od tego, CZYM kasowanie zablokowano: regułą, wyzwalaczem,
+     *     uprawnieniem czy czymkolwiek, o czym nie wiem.
+     *
+     *   · STRUKTURALNA (słabsza) — gdy tabela jest PUSTA, kasowanie zera wierszy
+     *     daje zero i przed, i po, więc pomiar niczego nie odróżnia. Wtedy pytamy
+     *     o reguły `DO INSTEAD` na DELETE i o wyzwalacze DELETE — POD DOWOLNĄ
+     *     NAZWĄ. Mówimy wprost, że próba była strukturalna: kontrola, która nie
+     *     przyznaje się do słabszego trybu, kłamie o własnej mocy.
+     *
+     * @param  string|null  $powod  wypełniany, gdy kasowanie NIE działa
+     */
+    public static function kasowanieDziala(string $tabela, ?string &$powod = null): bool
+    {
+        // Reguły `DO INSTEAD NOTHING`/`DO INSTEAD` na DELETE — pod DOWOLNĄ nazwą.
+        // `ev_type = '4'` to DELETE w `pg_rewrite`.
+        $reguly = DB::select(
+            "select r.rulename from pg_rewrite r
+               join pg_class c on c.oid = r.ev_class
+              where c.relname = ? and r.ev_type = '4' and r.is_instead",
+            [$tabela]
+        );
+
+        if ($reguly !== []) {
+            $nazwy = implode(', ', array_map(static fn (object $w): string => (string) $w->rulename, $reguly));
+            $powod = "reguła DO INSTEAD na DELETE: {$nazwy}";
+
+            return false;
+        }
+
+        $wyzwalacze = DB::select(
+            'select t.tgname from pg_trigger t
+               join pg_class c on c.oid = t.tgrelid
+              where c.relname = ? and not t.tgisinternal and (t.tgtype & 8) <> 0',
+            [$tabela]
+        );
+
+        if ($wyzwalacze !== []) {
+            $nazwy = implode(', ', array_map(static fn (object $w): string => (string) $w->tgname, $wyzwalacze));
+            $powod = "wyzwalacz na DELETE: {$nazwy}";
+
+            return false;
+        }
+
+        // Próba ZACHOWANIOWA — tylko gdy jest co kasować.
+        if (DB::table($tabela)->count() === 0) {
+            $powod = null;
+
+            return true;   // strukturalnie czysto; mocniej dziś nie sprawdzę
+        }
+
+        DB::statement('SAVEPOINT proba_kasowania');
+
+        try {
+            DB::table($tabela)->delete();
+            $zostalo = DB::table($tabela)->count();
+        } finally {
+            DB::statement('ROLLBACK TO SAVEPOINT proba_kasowania');
+        }
+
+        if ($zostalo !== 0) {
+            $powod = "próba zachowaniowa: po DELETE zostało {$zostalo} wierszy";
+
+            return false;
+        }
+
+        return true;
     }
 
     public static function nazwaReguly(string $tabela): string
