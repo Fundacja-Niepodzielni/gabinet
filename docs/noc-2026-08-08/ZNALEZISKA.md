@@ -413,6 +413,43 @@ Wpis o R6B-12 jest tu celowo, choć mnie obciąża: naprawa jednej kontroli
 powiększyła lukę w drugiej, a raport, który to przemilcza, jest raportem
 nieprawdziwym.
 
+## SPROSTOWANIE 09.08 (weryfikacja krzyżowa rundy 1) — R6B-15 **POGORSZONE MOJĄ RĘKĄ**
+
+W `ODPOWIEDZ-005.md` napisałem, że runda 1 zamknęła **mechanizm dwóch** członków klasy 3:
+R6B-13 i R6B-15. **Co do R6B-15 to jest nieprawda i prostuję to pomiarem, a nie opinią.**
+
+```
+git diff bcf6fa5~1 bcf6fa5 -- skrypty/perturbacje.sh
+
+USUNIĘTE wzorce --przyczyna : 1   („POZYTYWNY" → komunikat asercji)      ← naprawa
+DODANE   wzorce --przyczyna : 5   (wszystkie równe NAZWIE TESTU)         ← ta sama wada ×5
+```
+
+Mój skrypt zawężający ustawiał `--przyczyna` **równe wartości `--filter`**, czyli nazwie
+testu. Pest wypisuje nazwy w każdym przebiegu, także zielonym, więc taki wzorzec spełnia się
+przez sam fakt **uruchomienia** testu. Odczyt rozróżniający (wzorzec w wyjściu przebiegu
+ZIELONEGO) na niezmutowanym kodzie:
+
+```
+odbiera dostęp · niedostępnym IdP · ZASZYFROWANY · granicę okna · ZAMROŻONĄ   → OBECNE
+ACCESS TOKENU                     → nieobecny, ale WYŁĄCZNIE przez ucięcie nazwy przez Pest
+Logout nie trafił w sesję…        → nieobecny (jedyny wzorzec udowodniony jako rozróżniający)
+```
+
+**Stan zmierzony: 13 wywołań `--przyczyna` poza komentarzem, 7 nie rozróżnia.** Liczba
+„sześć z ośmiu" z raportu B (w. 374) była zbliżona, ale nie jest już aktualna — mierzyłem
+inaczej i na innym stanie pliku.
+
+**Dlaczego tego nie zauważyłem:** mierzyłem **liczbę wywołań zawężonych** (7 → 0 na całym
+pliku), a nie **zdolność wzorca do rozróżniania**. Licznik rósł prawidłowo przy wadzie
+rosnącej równolegle. To jest ta sama klasa, którą sam nazwałem: wynik zgodny z więcej niż
+jednym światem.
+
+**Zapadka, nie naprawa:** `backend/tests/Feature/PrzyczynyPerturbacjiTest.php` liczy dług
+i pilnuje, żeby **nie urósł** (sufit 7, z kontrolą zabraniającą zostawiania zapasu).
+Naprawa siedmiu wzorców wymaga dopisania komunikatów asercji do konkretnych testów
+i należy do **rundy 2**, której sam nie zaczynam.
+
 ---
 
 # Z3 — DOMYŚLNE ustawienia produktów, których nikt świadomie nie wybrał

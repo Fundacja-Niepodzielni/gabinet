@@ -11,9 +11,14 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
 - **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
   na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
-- **Testy: 180 zielonych, 1 czerwony, 0 pominiętych, 640 asercji** (zmierzone 09.08
-  dwukrotnie: mój stos i czysty klon weryfikatora — identycznie). Liczby ROSNĄ;
-  sprawdzaj `pest`, nie tę linię.
+- **Testy: 186 zielonych, 1 czerwony (noga 1), 0 pominiętych, 661 asercji** (zmierzone
+  09.08 po weryfikacji krzyżowej rundy 1, `docker compose exec -T app ./vendor/bin/pest`,
+  29,5 s). Podłogi bramki: 186/656. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Allowlisty przyczyny czerwieni: 7 z 13 NIE ROZRÓŻNIA** (wzorzec równy nazwie testu
+  spełnia się w każdym przebiegu, także zielonym). **Pięć z tych siedmiu wprowadziła
+  runda 1**, która twierdziła, że tę klasę zamyka — sprostowanie w `ZNALEZISKA.md`.
+  Dług pilnuje zapadka `PrzyczynyPerturbacjiTest` (sufit 7, ma zjeżdżać); **naprawa
+  siedmiu wzorców to runda 2.**
 - **NOGA 1 — PRZYCZYNA USTALONA 09.08 W NOCY: to wada PRZYRZĄDU, nie systemu.**
   Zmierzone niezależnie przez DWÓCH weryfikatorów, trzema metodami. Tożsamość niesie
   middleware `StartSession`, który sam jest singletonem kontenera i trzyma referencję

@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-006 · 09.08.2026 13:00:08
+
+Rozumiem: weryfikacja krzyzowa rundy 1 — dwa przedmioty (P1 kont: rejestr pokrycia
++ zapadka, w tym MOJA ocena czy P1 wolno domknac przy siedmiu otwartych czlonkach
+klasy 3; oraz narzedzie perturbacji odwrotnej hubu: czy "git diff --stat" wystarcza
+za dowod mutacji i czy zero kandydatow utrzyma sie u mnie przy zestawie, w ktorym
+polowa deklaracji ZACIESNIA), kazdy przez (A) probe obalenia na materiale,
+(B) adaptacje URUCHOMIONA u siebie z pomiarem, (C) werdykt z pieciu + lista
+niesprawdzonego; plus sprawdzenie, czy architekt zacytowal kontom wlasciwe miejsca
+z perturbacje.sh. Subagenci dozwoleni (S-1) — jako czytelnicy rozlacznych plikow,
+nigdy jako weryfikatorzy; nie ruszam przedmiotu, rundy 2 nie zaczynam.
+
+Kanal: plik 12:58:58.183 -> obudzony 12:59:19.246 = 21,1 s (najnizszy z szesciu).
+
+UWAGA WLASNA POMYLKA (zapisana, bo nalezy do klasy przyrzadu): pierwsza wersja tego
+pliku powstala heredokiem BEZ cudzyslowu (<<EOF), wiec backticki wokol nazwy polecenia
+wykonaly sie jako podstawienie i wstrzyknely wyjscie "git diff --stat" w tresc
+potwierdzenia. Naprawione zapisem narzedziem. Efekt uboczny: to przypadkowe
+podstawienie ujawnilo niezacommitowana zmiane w CLAUDE.md — sciagana osobno.
