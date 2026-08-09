@@ -66,6 +66,11 @@ w którym mogłaby przejść nieprawdziwie.
 (albo podmień jeden sterownik w pierścieniu produkcyjnym) → **bramka musi zaświecić czerwono
 i NAZWAĆ kontrolę oraz własność**, na której ta kontrola stoi. Dziś taki ruch jest niewidzialny.
 
+**WAGA klasy:** **wysoka** — kontrole bezpieczeństwa i RODO uchodzą za dowiedzione, nie będąc.
+**OSIĄGALNOŚĆ:** to nie jest droga wejścia dla napastnika, tylko **ślepota kontroli**: „wchodzi"
+tędy **każdy commit, który zepsuje własność mierzoną atrapą** — czyli zwykła praca, bez złej woli.
+**WARUNEK UTRZYMUJĄCY:** żaden. Ta klasa działa już dziś, biernie.
+
 **Czy występuje gdzie indziej: TAK, we wszystkich trzech.**
 - **helpdesk** — ich D-2026-08-08-27 jest dokładnym odpowiednikiem mojego przeglądu sterowników,
   a ich E-3 (moje ustalenie z weryfikacji krzyżowej) pokazuje, że **zdanie z tego przeglądu jest
@@ -103,6 +108,12 @@ Osiem podmian robionych surowym `sed`-em przenieść pod `podmien()`, które **k
 (np. `$tozsamosc` → `$x`) i uruchom zestaw → **każdy dowód tekstowy musi zaświecić czerwono
 z komunikatem „rozjechał się z kodem"**, a nie przejść. To dokładnie zdarzenie z tej nocy,
 odtworzone na żądanie.
+
+**WAGA klasy:** **wysoka dla przyrządu**, zerowa dla produktu — nic tu nie psuje systemu,
+wszystko psuje dowód, że system jest sprawdzony.
+**OSIĄGALNOŚĆ:** **pełna i bierna** — wyzwalaczem jest **dowolne przemianowanie symbolu**.
+Zmierzone: mój własny commit `cdc6fbb` unieważnił dwie perturbacje, nie tykając ich plików.
+**WARUNEK UTRZYMUJĄCY:** żaden — nie da się „nie refaktorować".
 
 **Czy występuje gdzie indziej: TAK.**
 - **helpdesk** — ich `p_statyka`-odpowiedniki: osiem podmian `sed`-em bez dowodu mutacji;
@@ -147,6 +158,12 @@ werdyktu bez odczytu bazowego **nie da się wyprodukować**, a nie „nie wolno"
 nazwie testu) → musi zwrócić `NIEROZSTRZYGNIĘTE` i **zaświecić czerwono**, zamiast zaliczyć.
 Drugi kierunek: podaj dwa różne światy dające tę samą wartość → pre-flight musi odmówić startu.
 
+**WAGA klasy:** **krytyczna dla wiarygodności KAŻDEGO wyniku** — dotyczy tak samo zieleni
+(przechodzi z niewłaściwego powodu) jak czerwieni (pochodzi z niepowiązanej przyczyny).
+**OSIĄGALNOŚĆ:** **pełna** — obejmuje każdy przyszły pomiar, nie tylko dziewięciu wymienionych
+członków. Nie trzeba nic robić, żeby klasa działała; trzeba coś zrobić, żeby przestała.
+**WARUNEK UTRZYMUJĄCY:** żaden.
+
 **Czy występuje gdzie indziej: TAK, u wszystkich trzech i jest najpowszechniejsza.**
 - **helpdesk** — ich R6 jest tego wzorcowym przykładem: „zielone" pochodzi z ogniw, które
   kontrola **wykonuje sama**; ich `p_sesja_jawna` zalicza się z innej przyczyny niż badana.
@@ -181,6 +198,15 @@ Zastosowaliśmy te cztery wymagania do znacznika unieważnienia i **nie zastosow
 **Perturbacja falsyfikująca:** odbierz prawo zapisu do magazynu śladu/mapy (albo wyczyść cache
 w połowie przebiegu) → kontrola musi **zaświecić czerwono i nazwać brak rozstrzygnięcia**;
 dziś zwraca liczbę i przechodzi. Drugi kierunek: przy sprawnym magazynie ma świecić zielono.
+
+**WAGA klasy:** **krytyczna** — fail-open w wylogowaniu (`skasowane_sesje = 0` bez komunikatu)
+oraz utrata sygnału zdrowia; u sąsiadów ta sama klasa zostawia **żywą sesję po wylogowaniu**.
+**OSIĄGALNOŚĆ:** **częściowo JUŻ ZACHODZI, zmierzone** — N-14: w procesie `www-data` zapis śladu
+nie dochodzi, a odczyt oddaje nieświeżą liczbę. Dla mapy `sid → sesje` wymaga awarii cache'u
+(`cache:clear`, restart, eksmisja) — zdarzeń operacyjnie prozaicznych.
+**WARUNEK UTRZYMUJĄCY (dwa, oba łatwe do złamania nieświadomie):** (1) `maxmemory` Redisa
+pozostaje `0`, bo ustawienie limitu **włącza** eksmisję, której dziś nie ma; (2) katalog śladu
+jest zapisywalny dla użytkownika procesu — dziś **nie jest**, i właśnie dlatego N-14 istnieje.
 
 **Czy występuje gdzie indziej: TAK, i to jest najgorsza wspólna klasa ekosystemu.**
 - **hub** — ich **Z-A-1** to ta sama rodzina po drugiej stronie: u nich zapis **rzuca**
@@ -217,6 +243,15 @@ lista funkcji **dozwolonych** w tym repozytorium (dziś: żadnych) i czerwień p
 **Perturbacja falsyfikująca:** wprowadź prymityw poświadczeń **spoza wszystkich list**
 (np. `sodium_crypto_generichash`, własna pętla PBKDF2) → kontrola musi zaświecić czerwono.
 Dziś to jest dokładnie ten ruch, którym weryfikator ją przeszedł.
+
+**WAGA klasy:** **krytyczna** — przepuszcza kompletny mechanizm własnych haseł, czyli
+złamanie CLAUDE.md §2 („ŻADNYCH własnych haseł w tym systemie").
+**OSIĄGALNOŚĆ:** **wewnętrzna, nie zewnętrzna** — wymaga, żeby ktoś z zespołu *napisał*
+uwierzytelnianie. Napastnik z zewnątrz tędy nie wchodzi.
+**WARUNEK UTRZYMUJĄCY:** nikt nie dopisuje kodu dotykającego haseł, a jedynym filtrem jest
+**przegląd ludzki** — czyli dokładnie to, co ta kontrola miała zastąpić. Komentarz w kodzie
+mówi to wprost („czerwona flaga przy przeglądzie"), więc warunek jest zapisany, ale w miejscu,
+które wygląda na zabezpieczenie, a jest jego brakiem.
 
 **Czy występuje gdzie indziej: TAK.**
 - **konta** — sami zmierzyli u siebie coś gorszego: regułę mają ostrzejszą („STOP, jeśli piszesz
@@ -255,6 +290,13 @@ nazywającego `B9` → czerwone; (b) dodaj drugą sekcję `CURRENT WORK` → cze
 (c) rozszerz zakres znaczników i sprawdź, że `B7`, `BLK-22`, `D-2026-…` wchodzą w sieć,
 której dziś unikają.
 
+**WAGA klasy:** **niska dla kodu, wysoka dla następnej sesji** — nie zmienia zachowania
+systemu, zmienia decyzje czytelnika. Zmierzone dwa razy: obalony wniosek w trzech docblokach
+i dwie sprzeczne sekcje stanu w jednym pliku.
+**OSIĄGALNOŚĆ:** **pełna i bierna** — „wchodzi" tędy każdy, kto przeczyta dokument, w tym
+agent startujący sesję z `PLAN-FAZ.md`.
+**WARUNEK UTRZYMUJĄCY:** żaden.
+
 **Czy występuje gdzie indziej: TAK, u wszystkich.**
 - **helpdesk** — ich Z-01 (liczby bez warunku pomiaru w dokumencie idącym na zewnątrz) i Z-02
   (pamięć podana jako pomiar); ich komentarz `# Selekcja — ta sama droga, którą idzie Job#run`
@@ -288,6 +330,15 @@ bez wyjścia.
 nietknięte; (b) spróbuj commita z katalogu cudzego repozytorium → **odmowa**. Bez obu strażnik
 jest deklaracją — czyli dokładnie tym, czym była reguła, która zawiodła dwa razy w ciągu doby.
 
+**WAGA klasy:** **wysoka** — jedna z dwóch instancji wprowadziła **żywą perturbację reguły
+24 h** do repozytorium, druga zapisała i zacommitowała w **cudzym** repozytorium.
+**OSIĄGALNOŚĆ:** **pełna** — egzekutorem jest pamięć wykonawcy, a obie reguły były znane
+i cytowane tego samego dnia, w którym je złamałem.
+**WARUNEK UTRZYMUJĄCY, i to jest najgorszy zapis w tym dokumencie:** przy N-13 przed wypchnięciem
+do cudzego repozytorium uchroniła mnie **wyłącznie różnica nazw gałęzi** (`faza-1-retencja`
+vs `f1/naprawy-rundy-2`). To nie jest zabezpieczenie, to jest szczęście — i przestanie działać
+w dniu, w którym dwa repozytoria będą miały gałąź o tej samej nazwie.
+
 **Czy występuje gdzie indziej: TAK.**
 - **hub** — ich Z-B-1 i Z-B-2 (zamek przebiegu pilnował katalogu, a chronił zasobu globalnego
   dla demona; nieudany zapis zamka przechodził w ciszy) to ta sama rodzina: ochrona zależna od
@@ -300,7 +351,8 @@ jest deklaracją — czyli dokładnie tym, czym była reguła, która zawiodła 
 
 # Instancje — naprawa punktowa, NIE klasa
 
-Nazywam je wprost, żeby nikt nie udawał, że wszystko jest klasą. Każda z nich ma własny
+**Każda pozycja poniżej to: instancja, naprawa punktowa.** Nazywam to wprost i tymi słowami,
+żeby nikt nie udawał, że wszystko jest klasą. Każda z nich ma własny
 mechanizm i **jedna zmiana nie zamyka żadnej innej**.
 
 | # | Znalezisko | Dlaczego to instancja | WAGA | OSIĄGALNOŚĆ |
