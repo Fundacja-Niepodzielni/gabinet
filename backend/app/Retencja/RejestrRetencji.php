@@ -149,11 +149,87 @@ final class RejestrRetencji
         ];
     }
 
-    /** Tabele bez danych osobowych — świadomie POZA rejestrem retencji. */
-    public const BEZ_DANYCH_OSOBOWYCH = [
-        'migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs',
-        'konfiguracja_regul', 'uslugi', 'specjalista_usluga',
-    ];
+    /**
+     * Tabele świadomie POZA rejestrem retencji — **z powodem i warunkiem znoszącym**.
+     *
+     * Do 09.08 była to **płaska lista dziesięciu nazw**. Dokładnie ten sam kształt `D6`,
+     * co pusty `withMiddleware`: **zwolnienie przemyślane i zwolnienie z rozpędu wyglądały
+     * identycznie**, bo jedno i drugie było samą nazwą w tablicy. Dopisanie tabeli tutaj
+     * było **najtańszym sposobem usunięcia jej z rejestru retencji** — tam wpis kosztował
+     * podstawę i opis, tutaj nie kosztował nic.
+     *
+     * **Pisanie powodów NIE było formalnością — pomiar obalił trzy zwolnienia.** Co znalazłem
+     * przy 10 tabelach (kolumny odczytane z bazy 09.08):
+     *
+     * - `sessions` ma `ip_address` i `user_agent`. **Adres IP jest daną osobową.** Zwolnienie
+     *   jest prawdziwe **wyłącznie dlatego, że sterownik sesji to `redis`** — czyli zależy od
+     *   wartości konfiguracji, której **nic nie pilnowało**. Teraz pilnuje test.
+     * - `jobs` i `failed_jobs` mają `payload`, a `failed_jobs` dodatkowo `exception`.
+     *   **Zadanie niosące e-mail pacjenta zapisuje go tam jawnie i zostawia bezterminowo.**
+     * - `konfiguracja_regul` ma kolumnę `autor` — **to identyfikuje pracownika**. Dane
+     *   personelu to nadal dane osobowe, choć nie pacjenta.
+     *
+     * **Nie przenoszę ich samowolnie do rejestru retencji** — to zmiana modelu i decyzja
+     * właściciela. Zwolnienia zostają, ale **z warunkiem znoszącym, który mówi prawdę**,
+     * i są zgłoszone jako dług w `ODPOWIEDZ-042`.
+     *
+     * @return array<string, array{powod: string, warunek_znoszacy: string}>
+     */
+    public static function bezDanychOsobowych(): array
+    {
+        return [
+            'migrations' => [
+                'powod' => 'Dziennik zastosowanych migracji: nazwa pliku, numer partii. Opisuje KSZTAŁT bazy, nie jej zawartość.',
+                'warunek_znoszacy' => 'Gdyby ktoś zaczął umieszczać w nazwach migracji cokolwiek poza opisem zmiany schematu.',
+            ],
+            'sessions' => [
+                'powod' => 'ZWOLNIENIE WARUNKOWE. Tabela ma `ip_address` i `user_agent` — adres IP JEST daną osobową. Pusta wyłącznie dlatego, że sterownik sesji to `redis`.',
+                'warunek_znoszacy' => 'Gdy `session.driver` przestanie być `redis` — wtedy tabela natychmiast zaczyna zbierać adresy IP. Pilnuje tego test, nie ten komentarz.',
+            ],
+            'cache' => [
+                'powod' => 'Magazyn pamięci podręcznej. Klucz i wartość są tym, co włoży wywołujący — dziś nic z danych pacjenta tam nie trafia.',
+                'warunek_znoszacy' => 'Gdy zaczniemy zapamiętywać cokolwiek wyliczonego z danych pacjenta — wtedy retencja pamięci podręcznej przestaje być kwestią wydajności.',
+            ],
+            'cache_locks' => [
+                'powod' => 'Zamki pamięci podręcznej: klucz, właściciel zamka, czas wygaśnięcia. Właściciel to identyfikator procesu, nie człowieka.',
+                'warunek_znoszacy' => 'Gdyby klucz zamka zaczął być budowany z identyfikatora pacjenta zamiast z identyfikatora zasobu.',
+            ],
+            'jobs' => [
+                'powod' => 'ZWOLNIENIE WARUNKOWE. Kolejka ma kolumnę `payload` — zadanie niosące dane pacjenta zapisuje je tam jawnie. Dziś takich zadań nie ma, ale nic tego nie wymusza.',
+                'warunek_znoszacy' => 'Gdy powstanie zadanie niosące w ładunku cokolwiek osobowego — a przy wysyłce SMS i e-maili to kwestia czasu, nie możliwości.',
+            ],
+            'job_batches' => [
+                'powod' => 'Metryki partii zadań: nazwa, liczniki, czasy. Sam ładunek zadań leży w `jobs`, nie tutaj.',
+                'warunek_znoszacy' => 'Gdyby nazwa partii zaczęła być budowana z danych pacjenta, np. z jego adresu e-mail.',
+            ],
+            'failed_jobs' => [
+                'powod' => 'ZWOLNIENIE WARUNKOWE I NAJSŁABSZE Z CAŁEJ LISTY. Ma `payload` ORAZ `exception` — nieudane zadanie zapisuje jedno i drugie jawnie i zostawia BEZTERMINOWO.',
+                'warunek_znoszacy' => 'Gdy jakiekolwiek zadanie zacznie nieść dane osobowe — wtedy ta tabela staje się archiwum danych pacjentów utworzonym przez awarie, którego nikt nie zaplanował.',
+            ],
+            'konfiguracja_regul' => [
+                'powod' => 'ZWOLNIENIE WARUNKOWE. Wersjonowane reguły i limity — ale kolumna `autor` IDENTYFIKUJE PRACOWNIKA. Dane personelu to nadal dane osobowe.',
+                'warunek_znoszacy' => 'Warunek już jest spełniony w części: `autor` to człowiek. Zwolnienie broni się tylko tym, że to dane personelu przy dokumencie, który musi być niezmienny.',
+            ],
+            'uslugi' => [
+                'powod' => 'Katalog usług: kod, nazwa, czas, cena, konto Stripe, prowizja. Opisuje OFERTĘ, nie osobę.',
+                'warunek_znoszacy' => 'Gdyby usługa zaczęła być definiowana pod konkretnego pacjenta zamiast pod rodzaj pomocy.',
+            ],
+            'specjalista_usluga' => [
+                'powod' => 'Powiązanie: który specjalista prowadzi którą usługę. Niesie WYŁĄCZNIE dwa odnośniki i przełącznik — żadnej cechy człowieka.',
+                'warunek_znoszacy' => 'Gdyby powiązanie zaczęło nieść cokolwiek własnego o specjaliście, np. jego stawkę albo notatkę.',
+            ],
+        ];
+    }
+
+    /**
+     * Same nazwy tabel — dla miejsc, które pytają „czy ta tabela jest opisana".
+     *
+     * @return list<string>
+     */
+    public static function nazwyBezDanychOsobowych(): array
+    {
+        return array_keys(self::bezDanychOsobowych());
+    }
 
     public const DO_WYKONANIA = 'do-wykonania';
 

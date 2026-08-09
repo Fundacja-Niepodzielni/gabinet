@@ -20,7 +20,20 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    // DOMYŚLKA ZMIENIONA 09.08 z `database` na `redis` — to NIE jest kosmetyka.
+    //
+    // Tabela `sessions` ma kolumny `ip_address` i `user_agent`, a ADRES IP JEST
+    // DANĄ OSOBOWĄ. Figuruje przy tym w rejestrze retencji jako tabela BEZ danych
+    // osobowych — i to zwolnienie jest prawdziwe wyłącznie dlatego, że sesje
+    // trzyma Redis.
+    //
+    // Przy domyślce `database` wystarczyło, żeby `SESSION_DRIVER` zniknęło z `.env`,
+    // i aplikacja CICHO zaczynała zapisywać adresy IP do tabeli, o której rejestr
+    // retencji twierdzi, że danych osobowych nie ma. Awaria Redisa jest głośna
+    // i naprawialna; ciche zbieranie danych osobowych nie jest ani jednym, ani drugim.
+    //
+    // @dowod: ZwolnieniaRetencjiTest — „warunek znoszący `sessions` JEST egzekwowany”
+    'driver' => env('SESSION_DRIVER', 'redis'),
 
     /*
     |--------------------------------------------------------------------------

@@ -49,7 +49,7 @@ it('każda tabela w bazie jest albo w rejestrze retencji, albo jawnie uznana za 
         $wBazie[] = $wiersz->tablename;
     }
 
-    $opisane = [...array_keys(RejestrRetencji::wpisy()), ...RejestrRetencji::BEZ_DANYCH_OSOBOWYCH];
+    $opisane = [...array_keys(RejestrRetencji::wpisy()), ...RejestrRetencji::nazwyBezDanychOsobowych()];
     sort($wBazie);
 
     $nieopisane = array_values(array_diff($wBazie, $opisane));
