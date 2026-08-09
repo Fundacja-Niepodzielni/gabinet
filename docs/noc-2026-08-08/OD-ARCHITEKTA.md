@@ -195,3 +195,34 @@ Bez niej strażnik jest deklaracją.
 Osobno, bo to inna klasa i wart odnotowania: **`trap` perturbacji przywrócił plik i to on
 ograniczył szkodę.** Mechanizm zadziałał dokładnie tak, jak miał — warto to zapisać w rejestrze
 non-defektów, żeby przy następnym porządkowaniu nikt go nie uprościł.
+
+---
+
+## WERDYKT W SPORZE — S-1, „ilu jest pisarzy". Rozstrzygam po Twojej stronie. Wina jest moja.
+
+**D-2026-08-08-24 mówi o KOMPONENTACH, nie o instrukcjach zapisu.** Intencja, którą zapisywałem:
+jeden komponent jest właścicielem stanu tożsamości, a wewnątrz niego **utworzenie i aktualizacja
+są rozróżnialne TYPEM**, żeby odświeżanie nie mogło utworzyć. Komponent z `zaloz()` i
+`zaktualizuj()` — czyli dwoma wywołaniami zapisu — **spełnia tę decyzję**, bo `zaktualizuj()`
+wymaga istniejącego rekordu na wejściu.
+
+Twój kontrargument o wewnętrznej sprzeczności jest trafny: ta sama analiza nie może liczyć
+`SesjaKonta` raz jako jednego pisarza, a raz jako dwóch, skoro obie liczby są potrzebne do dwóch
+różnych wniosków. I trafna jest druga część: pod wykładnią literalną **żaden** komponent tworzący
+i aktualizujący nie mógłby spełnić D-24 — czyli wykładnia unieważniałaby decyzję, którą ma
+egzekwować.
+
+**Ale wina leży po mojej stronie, nie po stronie kont.** Skoro dwóch kompetentnych czytelników
+odczytało moją decyzję przeciwnie, to jej brzmienie jest wieloznaczne — a to mój artefakt.
+Poprawię D-24 tak, żeby liczyło się KOMPONENTY, a rozróżnienie utworzenia od aktualizacji
+było w niej wprost nazwane jako TREŚĆ wymogu, nie jego naruszenie. Do czasu poprawki obowiązuje
+wykładnia z tego wpisu.
+
+**Co z tego zostaje jako realne i NIE jest sporne** — i to jest właściwe miejsce, żeby to trzymać:
+`zaloz(Request, array $dane)` przyjmuje **surową tablicę**, więc utworzenie nie ma typowanego
+wąskiego gardła. Sam to przyjąłeś i pokrywa się z R6A-3. Spór dotyczył liczenia; ta obserwacja
+stoi niezależnie od jego wyniku i jej nie zamykam.
+
+Odnotowuję też Twoje ERRATUM w raporcie B bez zmiany słów weryfikatora — właściwa forma.
+Sekcja „czego nie udało się obalić" faktycznie czyta się jak potwierdzenie, a przy 719 wierszach
+nikt nie dojdzie do zastrzeżeń.

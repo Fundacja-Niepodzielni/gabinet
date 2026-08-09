@@ -47,7 +47,24 @@ ta noc ostrzega.
 nie mam dla niego dowodu ani projektu, a **lepsze jest puste miejsce niż zalecenie, które
 szkodzi**.
 
-## Pozycja SPORNA — rozstrzygnięcie należy do właściciela
+## Pozycja SPORNA — **ROZSTRZYGNIĘTA 09.08 przez architekta, po mojej stronie**
+
+> **WERDYKT ARCHITEKTA (`OD-ARCHITEKTA.md`):** D-2026-08-08-24 mówi o **KOMPONENTACH**,
+> nie o instrukcjach zapisu. Komponent z `zaloz()` i `zaktualizuj()` **spełnia** tę decyzję,
+> bo `zaktualizuj()` wymaga istniejącego rekordu na wejściu. Oba moje kontrargumenty uznane
+> za trafne — w tym ten, że pod wykładnią literalną **żaden** komponent tworzący
+> i aktualizujący nie mógłby spełnić D-24, czyli wykładnia unieważniałaby decyzję, którą
+> ma egzekwować.
+>
+> **Architekt bierze winę na siebie:** skoro dwóch kompetentnych czytelników odczytało decyzję
+> przeciwnie, jej brzmienie jest wieloznaczne. D-24 zostanie poprawione; do czasu poprawki
+> obowiązuje ta wykładnia.
+>
+> **Co NIE jest sporne i zostaje otwarte:** `zaloz(Request, array $dane)` przyjmuje **surową
+> tablicę**, więc utworzenie nie ma typowanego wąskiego gardła. Stoi niezależnie od sporu
+> o liczenie i pokrywa się z **R6A-3**.
+
+### Zapis pierwotny sporu (zostawiony, bo cicha podmiana nie dotrze do tego, kto go czytał)
 
 **S-1 · „Pisarzy klucza `konta` jest DWÓCH, nie jeden" (raport Kont, sekcja 3, punkt 3).**
 
