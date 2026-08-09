@@ -1069,3 +1069,68 @@ case "$GDZIE" in *"/gabinet") ;; *) echo "ODMOWA: to nie moje repo"; exit 2 ;; e
 **Rzecz osobna, warta rejestru non-defektów:** przy N-10 szkodę ograniczył `trap` perturbacji,
 przy N-13 — nic. Sam fakt, że drugi raz zadziałał przypadek, a nie mechanizm, jest najmocniejszym
 argumentem za tym, żeby mechanizm powstał.
+
+---
+
+## N-14 — `SladWylogowania` jest w PROCESIE APLIKACJI cicho bezczynny; testy tego nie widzą, bo biegną jako inny użytkownik
+
+**Znalezione nie u siebie, tylko przy weryfikacji krzyżowej hubu** — ich Z-A-1 kazał mi zadać
+pytanie „czy mam to samo", a odpowiedź brzmi: **tamtego nie mam, ale mam jego rodzeństwo.**
+
+**Skutek po ludzku:** przyrząd, który zbudowałem specjalnie po to, żeby odróżnić „handler
+wylogowania w ogóle nie wystartował" od „wystartował i padł", **w prawdziwym procesie aplikacji
+nie zapisuje niczego**. Przy diagnozie awarii wylogowania — czyli dokładnie wtedy, gdy jest
+potrzebny — odda liczbę, która nie pochodzi z badanego zdarzenia.
+
+**Dowód (stan ZASTANY, bez żadnej perturbacji):**
+
+```
+$ docker exec gabinet-app sh -c 'ls -ld storage/slad-wylogowania'
+drwxr-xr-x  root root  storage/slad-wylogowania                ← katalog należy do roota, 755
+
+$ docker exec gabinet-app sh -c 'ps -o user,args | grep php-fpm'
+root      php-fpm: master process
+www-data  php-fpm: pool www                                    ← ŻĄDANIA obsługuje www-data
+
+$ docker exec -u www-data gabinet-app php artisan tinker --execute='SladWylogowania::wejscie(); …'
+WARNING  file_put_contents(storage/slad-wylogowania/wejscia): Failed to open stream: Permission denied
+wejscia widziane przez www-data: 3        ← licznik NIE wzrósł, a odczyt się udał
+
+$ docker exec -u root gabinet-app php artisan tinker --execute='SladWylogowania::wejscie(); …'
+wejscia widziane przez root: 4            ← jako root działa
+```
+
+**Dwie rzeczy naraz, i druga jest gorsza:**
+
+1. **Zapis cicho nie dochodzi.** `Illuminate\Filesystem::put()` **ostrzega i zwraca**, nie rzuca —
+   więc nic się nie zapala. (To samo zachowanie **uratowało mnie** przed defektem hubu: gdyby
+   rzucało, mój handler przewracałby się przed unieważnieniem sesji, bo `SladWylogowania::wejscie()`
+   stoi w `BackchannelLogoutController.php:40`, czyli **przed** blokiem `try` z linii 42.)
+2. **Odczyt się UDAJE i zwraca liczbę.** Pliki zapisane kiedyś przez roota są czytelne, więc
+   `wejscia()` odda wartość **z innego procesu i innej chwili**. Przyrząd diagnostyczny zwracający
+   nieświeżą liczbę jest gorszy od zwracającego zero, bo **wygląda jak pomiar**.
+
+**Dlaczego żaden test tego nie łapie — i to jest właściwa lekcja.** Testy biegną przez
+`docker compose exec`, czyli **jako root**; żądania obsługuje **www-data**. Asercje
+`SladWylogowania::wejscia() === 1` przechodzą, bo w kontekście testu zapis działa.
+**Kontrola jest walidowana w kontekście użytkownika, który w produkcji nie występuje.**
+
+To jest moja własna lekcja V-2 („42 kontrole zmierzone w jedynym środowisku, w którym wychodzą")
+w nowym przebraniu: tam różnicą był plik środowiska, tutaj — **UŻYTKOWNIK PROCESU**. Do listy
+pytań przy dodawaniu kontroli dochodzi więc trzecie, obok „czy sterownik jest prawdziwy" i „czy
+mam odczyt bazowy": **czy kontrola biegnie jako ten sam użytkownik, co proces obsługujący
+żądanie?**
+
+**Ironia warta zapisania:** `SladWylogowania` powstał jako naprawa reguły C1 — ślad wyprowadzony
+z cache'u do pliku, żeby nie dzielił mechanizmu z obserwowanym przedmiotem. Naprawa jest słuszna
+i dalej jej bronię. Tyle że **przeniosła kontrolę na mechanizm, którego uprawnień nikt nie
+sprawdził** — zamknąłem jedną drogę awarii i otworzyłem inną, o jeden poziom niżej.
+To jest dokładnie ten wzorzec, który tej samej nocy zarzuciłem hubowi jako ich własny:
+**naprawa ma zasięg tego, co pokazał weryfikator.** Mam go tak samo.
+
+**Waga:** wysoka dla przyrządu, żadna dla bezpieczeństwa produktu (unieważnienie sesji działa —
+zmierzone). **Czy blokuje:** nie.
+
+**NIE NAPRAWIAM tej nocy.** To defekt przedmiotu (kod produkcyjny + uprawnienia obrazu), nie
+przyrządu mierzącego bieżącą rundę. Do rana, z perturbacją: katalog śladu należący do roota
+**musi** dawać czerwone, a kontrola ma biec jako `www-data`.
