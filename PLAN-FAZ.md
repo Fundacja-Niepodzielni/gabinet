@@ -11,9 +11,20 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
 - **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
   na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
-- **Testy: 199 zielonych, 1 czerwony (noga 1), 2 POMINIĘTE, 700 asercji** (zmierzone
-  09.08 po rundzie 2, `docker compose exec -T app ./vendor/bin/pest`). Podłogi bramki:
-  199/695. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Testy: 223 zielone, 1 czerwony (noga 1), 2 POMINIĘTE, 1917 asercji** (zmierzone
+  09.08 wieczorem, `docker compose exec -T app ./vendor/bin/pest`). Podłogi bramki:
+  223/1912. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Klasa 3 (wynik zgodny z więcej niż jednym światem) — zamknięte 09.08:** `R6B-11`
+  (sonda portów pytała HTTP-em o Postgresa), `R6B-7` (sześć `sed -i` bez odczytu zwrotnego),
+  `R6B-2`/`R6A-1` (test „POZYTYWNY" dowodził znacznika, nie kasowania sesji) oraz członek
+  znaleziony tego dnia (kontrola tekstowa zaspokojona KOMENTARZEM cytującym usunięty kod).
+  **Otwarte: `R6B-8`, `R6B-6`; `R6B-1` i `N-12` zależą od nogi 1.**
+- **`D-EKO-012` domknięte u siebie:** `RejestrSesji::uniewazniona()` rozstrzyga OBECNOŚCIĄ
+  wiersza, wiek jest wyłącznie progiem sprzątania, a próg pochodzi z KONTRAKTU
+  (`konta.sso_session_max_s`) — **bez wartości domyślnej**, brak konfiguracji rzuca wyjątek.
+- **⚠ OTWARTE, wysoki iloczyn:** kontrola unieważnienia **nie jest middlewarem** — blok
+  `withMiddleware` jest pusty, więc sprawdza ją **jedna trasa z 34** (`ODPOWIEDZ-031`).
+  Wyjątki **nie są zadeklarowane** (`D6`). To jest bieżąca pozycja `PODJETO-032`.
 - **Pominięte to kontrola D3 (`TwierdzeniaKomentarzyTest`)** — zdjęta z bramki 09.08 po
   weryfikacji helpdesku: 14 obejść na 15 prób. Zielone z niej było FAŁSZYWYM ZAPEWNIENIEM.
   Przeprojektowanie (wymóg świadka wiązany z ROLĄ TEKSTU, nie ze słowami) czeka.
@@ -275,6 +286,20 @@ Silnik: tabela zaplanowanych + worker z ponowieniami; **przeplanowanie przy każ
 
 Przepięcie ekranów z danych lokalnych na API (fazami: pacjent → specjalista → koordynator) · routing po ścieżkach · usunięcie paska demo i localStorage-ról · stany ładowania/błędów (404/403/wygasły link/utrata połączenia przy płatności) · WCAG 2.1 AA (siatki z klawiatury, kontrasty walidatorem, aria-live) · responsywność paneli · osadzenie wizualne w niepodzielni.com.
 **Bramka:** `sprawdz-ekrany` w CI (Chrome headless); scenariusze E2E pełnej ścieżki pacjenta; audyt dostępności 3 przepływów.
+
+**Warunek POKRYCIA, nie treści (D6 przyłożone do kryteriów odbioru):** bramka F7 **nie jest
+zielona**, dopóki każde z kryteriów `K1`–`K10` z `_architektura/12-frontend-kryteria-odbioru.md`
+(**ŹRÓDŁO, nie kopia** — treści tu nie przepisujemy, bo dwa opisy jednej rzeczy rozjeżdżają się
+po cichu, klasa P3) nie ma **albo przypisanej kontroli, albo JAWNEGO wpisu „bez kontroli"
+z powodem i warunkiem znoszącym**. Kryterium nieprzypisane i niezadeklarowane → **CZERWONE**.
+
+Wpis „bez kontroli" jest **wynikiem, nie porażką** — `K7` („to, co widzi człowiek, mierzone
+u człowieka") prawdopodobnie tam trafi i będzie to poprawne, o ile poda **kto i kiedy patrzył**.
+
+**Deklaracja ma być DANĄ, nie prozą.** Zmierzone u siebie 09.08 (`ODPOWIEDZ-032`): gdy wyjątek
+jest tańszy od zgodności, lista wyjątków staje się drogą domyślną — nie przez złą wolę, przez
+pośpiech. Wpis „bez kontroli" musi więc kosztować **tyle samo co przypisanie kontroli**:
+identyfikator kryterium, powód, warunek znoszący, data.
 
 ## F8 — Integracje ekosystemu (M)
 
