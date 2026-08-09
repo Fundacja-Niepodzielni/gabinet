@@ -18,7 +18,15 @@ namespace App\Retencja;
 final readonly class Wynik
 {
     /**
-     * @param  list<int>  $pozostale
+     * Typ identyfikatora należy do DZIEDZINY, nie do kontraktu (D-2026-08-09-03):
+     * sesja ma identyfikator tekstowy, wiersz zgody liczbowy. Kształtem
+     * rozstrzygnięcia jest zbiór pól, ich znaczenie i `kompletny()` — nie typ klucza.
+     *
+     * Reprezentacja jest ZACHOWYWANA, nie ujednolicana: normalizacja do napisów
+     * uczyniłaby `42` i `"42"` nieodróżnialnymi, czyli zrobiłaby wartość
+     * zdegenerowaną z pola, którego jedynym zadaniem jest wskazywać konkretny obiekt.
+     *
+     * @param  list<int|string>  $pozostale
      */
     public function __construct(
         public int $wybrane,

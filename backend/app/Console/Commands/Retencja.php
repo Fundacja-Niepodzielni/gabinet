@@ -66,7 +66,8 @@ final class Retencja extends Command
             $wynik = (new ZadanieRetencji($teraz))->wykonaj(
                 $tabela,
                 $wpis['kolumna_pochodzenia'],
-                $prog
+                $prog,
+                $wpis['kolumna_klucza'],
             );
 
             $razemUsuniete += $wynik->usuniete;

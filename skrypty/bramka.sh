@@ -133,15 +133,15 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # Doszedł też skan wstępny klamry pytający o WŁASNOŚĆ, nie o nazwę (ZLECENIE-011),
 # z kontrolą w obie strony.
 #
-# PODNIESIENIE 09.08 (ZLECENIE-012): 195/683 -> 196/688. Doszła kontrola klucza
-# retencji. Stan: 196 zielonych, 2 pominięte, DWA czerwone (noga 1 ORAZ klucz
-# `uniewaznione_sesje` — defekt REALNY, naprawa wstrzymana do decyzji o `Wynik`),
-# 693 asercje.
-MINIMUM_TESTOW=196
+# PODNIESIENIE 09.08 (ZLECENIE-012/014): 195/683 -> 199/695. Doszła kontrola klucza
+# retencji + naprawa (wariant A). Stan: 199 zielonych, 2 pominięte, JEDEN czerwony
+# (noga 1 — przyrząd). Czerwień klucza ZNIKNĘŁA po naprawie, z tego samego powodu.
+# 700 asercji.
+MINIMUM_TESTOW=199
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=688
+MINIMUM_ASERCJI=695
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

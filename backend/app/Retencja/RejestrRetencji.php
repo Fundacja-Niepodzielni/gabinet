@@ -42,7 +42,7 @@ final class RejestrRetencji
      * `false` — sprzątaczka kasująca NIE MA ich dotykać, bo rezerwacje i rekordy
      * finansowe muszą zostać.
      *
-     * @return array<string, array{kolumna_pochodzenia: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
+     * @return array<string, array{kolumna_pochodzenia: string, kolumna_klucza: string, opis_dla_czlowieka: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
      */
     public static function wpisy(): array
     {
@@ -67,13 +67,15 @@ final class RejestrRetencji
     /**
      * Część rejestru trzymana w kodzie — bez okresu.
      *
-     * @return array<string, array{kolumna_pochodzenia: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
+     * @return array<string, array{kolumna_pochodzenia: string, kolumna_klucza: string, opis_dla_czlowieka: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
      */
     private static function opis(): array
     {
         return [
             'pacjenci' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Osoby korzystajace z pomocy: imie, nazwisko, e-mail, telefon oraz to, ze zglosily sie po pomoc psychologiczna. DANE PACJENTOW, najwrazliwsze w calym systemie.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'RODO art. 9 — dane o zdrowiu; okres do ustalenia z IOD (P-3 w DPIA).',
                 'sposob_usuniecia' => 'anonimizacja (zanonimizowany_at), nie DELETE — rezerwacje muszą zostać do rozliczeń.',
                 'kasuje' => false,
@@ -81,6 +83,8 @@ final class RejestrRetencji
             ],
             'uniewaznione_sesje' => [
                 'kolumna_pochodzenia' => 'uniewazniona_at',
+                'opis_dla_czlowieka' => 'Techniczne znaczniki wylogowania: skrot identyfikatora sesji i godzina. NIE MA tu zadnych danych o osobie — sluzy tylko temu, zeby wylogowanie w jednym miejscu dzialalo wszedzie.',
+                'kolumna_klucza' => 'sid_skrot',
                 'podstawa' => 'Znacznik unieważnienia sesji SSO — negatywna asercja bezpieczeństwa. Skrót sid, bez danych osobowych.',
                 'sposob_usuniecia' => 'DELETE po `wygasa_at` — próg zapisany W WIERSZU, żeby sprzątaczka nie odblokowała wcześniej niż SSO Session Max.',
                 'kasuje' => true,
@@ -88,6 +92,8 @@ final class RejestrRetencji
             ],
             'zgody' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Dowody, ze pacjent zgodzil sie na regulamin i przetwarzanie danych: kiedy, na ktora wersje dokumentu i z jakiego adresu. DANE PACJENTOW; to nasz dowod w razie sporu.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'Dowód zgody przechowywany tak długo, jak długo może być potrzebny do obrony roszczeń.',
                 'sposob_usuniecia' => 'DELETE po ustaniu podstawy — wpis dopisywany, nigdy modyfikowany.',
                 'kasuje' => true,
@@ -95,6 +101,8 @@ final class RejestrRetencji
             ],
             'rezerwacje' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Umowione wizyty: kto, do kogo, kiedy, za ile i czy zaplacono. DANE PACJENTOW polaczone z dokumentem ksiegowym.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'Dokument księgowy — 5 lat od końca roku podatkowego (ustawa o rachunkowości).',
                 'sposob_usuniecia' => 'odpięcie od pacjenta (anonimizacja pacjenta), rekord finansowy zostaje.',
                 'kasuje' => false,
@@ -102,6 +110,8 @@ final class RejestrRetencji
             ],
             'zdarzenia_rezerwacji' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Historia tego, co dzialo sie z wizyta: umowiona, przelozona, odwolana, oplacona. DANE PACJENTOW posrednio — pokazuja, kto i kiedy korzystal z pomocy.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'Dziennik tylko-do-dopisywania; retencja równa retencji rezerwacji.',
                 'sposob_usuniecia' => 'kasowanie całych partii po wygaśnięciu rezerwacji nadrzędnej.',
                 'kasuje' => true,
@@ -109,6 +119,8 @@ final class RejestrRetencji
             ],
             'users' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Konta pracownikow i wspolpracownikow fundacji (koordynatorzy, administracja). DANE PERSONELU, nie pacjentow.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'Konto personelu — usuwane po ustaniu współpracy (sygnał z Kont Niepodzielni).',
                 'sposob_usuniecia' => 'DELETE po potwierdzeniu, że nie ma powiązanych decyzji uznaniowych.',
                 'kasuje' => true,
@@ -116,6 +128,8 @@ final class RejestrRetencji
             ],
             'specjalisci' => [
                 'kolumna_pochodzenia' => 'created_at',
+                'opis_dla_czlowieka' => 'Dane psychologow i terapeutow: imie, nazwisko, kontakt, opis do strony. DANE WSPOLPRACOWNIKOW, czesciowo publiczne.',
+                'kolumna_klucza' => 'id',
                 'podstawa' => 'Dane współpracownika — okres rozliczeniowy + roszczenia.',
                 'sposob_usuniecia' => 'oznaczenie nieaktywności; usunięcie danych kontaktowych po okresie roszczeń.',
                 'kasuje' => false,
@@ -134,7 +148,7 @@ final class RejestrRetencji
      * Wpisy, które zadanie czyszczące WOLNO dziś wykonać: kasowane i z USTALONYM
      * okresem. Reszta czeka na IOD i jest raportowana, nie pomijana po cichu.
      *
-     * @return array<string, array{kolumna_pochodzenia: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
+     * @return array<string, array{kolumna_pochodzenia: string, kolumna_klucza: string, opis_dla_czlowieka: string, podstawa: string, sposob_usuniecia: string, kasuje: bool, okres_dni: int|null}>
      */
     public static function doWykonania(): array
     {

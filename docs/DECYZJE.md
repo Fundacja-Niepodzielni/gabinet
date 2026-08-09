@@ -964,3 +964,62 @@ oba zapisy brzmiały sensownie osobno i nikt nie czytał ich razem.
 
 **Czego ta decyzja NIE przesądza:** że kredyt jest złym pomysłem. Przechodzi do dalszej fazy
 razem z historią finansową pacjenta, do której należy — a nie jest odrzucony.
+
+## D-2026-08-09-03 — typ identyfikatora należy do DZIEDZINY, nie do kontraktu
+
+**Rozstrzygnięcie architekta (ZLECENIE-014), po pytaniu z ODPOWIEDZ-012.**
+
+> **Kształt rozstrzygnięcia to ZBIÓR PÓL, ICH ZNACZENIE i POWIERZCHNIA ROZSTRZYGNIĘCIA
+> (`kompletny()`, osie zasięgu i zakończenia). TYP IDENTYFIKATORA NALEŻY DO DZIEDZINY,
+> NIE DO KONTRAKTU.**
+
+Rozszerzenie typu elementu `Wynik::pozostale` z `int` do `int|string` **nie jest** zmianą
+kształtu rozstrzygnięcia. Sesja ma identyfikator tekstowy (`sid`), wiersz zgody liczbowy;
+wymaganie jednorodności w skali ekosystemu byłoby niewykonalne i błędne — zmuszałoby dziedzinę
+do udawania cudzej reprezentacji.
+
+**Dlaczego NIE normalizujemy wszystkiego do napisów** (wariant odrzucony): `42` i `"42"` stają
+się wtedy **nieodróżnialne**. To jest wartość zdegenerowana — jeden odczyt zgodny z dwoma
+światami — i to w polu, którego jedynym zadaniem jest **wskazywać konkretny obiekt**.
+Jednorodność kupiona ceną utraty rozróżnienia jest stratą, nie porządkiem.
+
+**Konsekwencja w kodzie:** `ZadanieRetencji` rozstrzyga reprezentację **raz, po typie KOLUMNY**
+(`information_schema`), a nie po wyglądzie wartości — klucz tekstowy złożony z samych cyfr
+wyglądałby jak liczba i po cichu zmieniłby reprezentację.
+
+## D-2026-08-09-04 — obie strony JEDNEGO porównania w tym samym kodowaniu
+
+**Reguła zastępująca wymóg jednorodności typów.** Powstała tutaj, obowiązuje cztery
+repozytoria.
+
+> **Obie strony JEDNEGO PORÓWNANIA muszą produkować identyfikatory w tym samym kodowaniu.**
+> Zadeklarowane i zaobserwowane porównuje się **wewnątrz jednej dziedziny**; identyfikatorów
+> z różnych dziedzin nie zestawia się nigdy.
+
+**Po co:** bez tego ktoś kiedyś porówna listę kluczy z jednego magazynu z listą z drugiego
+i dostanie **pustą część wspólną, która wygląda jak brak wycieku**. To ten sam kształt co
+„brak dopasowania daje wynik pozytywny", tylko o piętro wyżej — i **łapie go wyłącznie ta
+reguła**, bo typy po obu stronach mogą być poprawne osobno.
+
+## D-2026-08-09-05 — limit 10 niskopłatnych jest SUMARYCZNY na pacjenta; „4" to INNY limit
+
+**Decyzja właściciela (ZLECENIE-013 D-1):** limit **10** wizyt niskopłatnych jest **per
+pacjent, sumarycznie** — nie odnawia się co tydzień, miesiąc ani rok.
+
+**Co z liczbą 4 — ustalone z kodu, nie zgadnięte.** To jest **limit podażowy po stronie
+SPECJALISTY**, a nie limit pacjenta, i **ma już inną nazwę w konfiguracji**:
+
+```
+limit_niskoplatnych_wizyt        = 10   → na PACJENTA, sumarycznie   (D-2026-08-07-08)
+limit_niskoplatnych_na_tydzien   = 4    → na SPECJALISTĘ, tygodniowo (dziennik makiety, rozdz. 24)
+```
+
+**Limity są DWA, są rozłączne i nie ma tu pomyłki do usunięcia.** `PLAN-FAZ.md:223` mówi
+o tym wprost („limit podażowy 4 terminy/tydzień/specjalista"); mylący jest wyłącznie
+`PLAN-FAZ.md:245`, gdzie zapisano „limit 4 niskopłatnych/tydzień (ISO, reset poniedziałek)"
+**bez powiedzenia, czyj to limit** — i to jedno zdanie zostało uzupełnione.
+
+**Czego to NIE rozstrzyga:** licznik sumaryczny per osoba wymaga liczenia wizyt wstecz,
+a nie okna czasowego. Wartość limitu nie wymaga zmiany modelu (jest w konfiguracji reguł),
+ale **mechanizm liczenia wymaga decyzji o tożsamości pacjenta**: rezerwacja jako gość, konto
+założone później. To jest praca F2 i nie została podjęta.

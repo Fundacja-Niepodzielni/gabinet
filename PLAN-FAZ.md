@@ -11,9 +11,15 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
   Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
 - **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
   na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
-- **Testy: 186 zielonych, 1 czerwony (noga 1), 0 pominiętych, 661 asercji** (zmierzone
-  09.08 po weryfikacji krzyżowej rundy 1, `docker compose exec -T app ./vendor/bin/pest`,
-  29,5 s). Podłogi bramki: 186/656. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Testy: 199 zielonych, 1 czerwony (noga 1), 2 POMINIĘTE, 700 asercji** (zmierzone
+  09.08 po rundzie 2, `docker compose exec -T app ./vendor/bin/pest`). Podłogi bramki:
+  199/695. Liczby ROSNĄ; sprawdzaj `pest`, nie tę linię.
+- **Pominięte to kontrola D3 (`TwierdzeniaKomentarzyTest`)** — zdjęta z bramki 09.08 po
+  weryfikacji helpdesku: 14 obejść na 15 prób. Zielone z niej było FAŁSZYWYM ZAPEWNIENIEM.
+  Przeprojektowanie (wymóg świadka wiązany z ROLĄ TEKSTU, nie ze słowami) czeka.
+- **RETENCJA MA WYWOŁUJĄCEGO od 09.08** (`gabinet:retencja`, codziennie 3:10) — ale
+  **kasuje dziś ZERO tabel**, bo okresy czekają na IOD (D-EKO-009). Zamknięty jest
+  MECHANIZM, nie POKRYCIE. Zadanie odmawia i wypisuje dług.
 - **Allowlisty przyczyny czerwieni: 7 z 13 NIE ROZRÓŻNIA** (wzorzec równy nazwie testu
   spełnia się w każdym przebiegu, także zielonym). **Pięć z tych siedmiu wprowadziła
   runda 1**, która twierdziła, że tę klasę zamyka — sprostowanie w `ZNALEZISKA.md`.
@@ -242,7 +248,7 @@ NAJPIERW DPIA-checklista (art. 9: co zbieramy, po co, retencje, dostępy) — wy
 
 ## F2 — Silnik dostępności (L) — [spec: M1/2-4, M2/2-5; „najbardziej niedoszacowany element projektu"]
 
-Trzy warstwy (rytm/poprawki/urlopy) · sloty 50+10 i 90+10 (90-min zdejmuje dwa sloty) · horyzonty 2 h / 30 dni / 7 dni · limit 4 niskopłatnych/tydzień (ISO, reset poniedziałek) · jedna funkcja slotów dla panelu (7 d × 1 os.), wyszukiwarki (30 d × 111) i grafiku (35 d × 111) · materializacja/cache z unieważnianiem per specjalista/dzień · API wyszukiwarki z filtrami (bez N+1).
+Trzy warstwy (rytm/poprawki/urlopy) · sloty 50+10 i 90+10 (90-min zdejmuje dwa sloty) · horyzonty 2 h / 30 dni / 7 dni · limit podażowy 4 niskopłatnych/tydzień NA SPECJALISTĘ (ISO, reset poniedziałek) — NIE mylić z limitem pacjenta, który wynosi 10 wizyt SUMARYCZNIE (D-2026-08-09-05) · jedna funkcja slotów dla panelu (7 d × 1 os.), wyszukiwarki (30 d × 111) i grafiku (35 d × 111) · materializacja/cache z unieważnianiem per specjalista/dzień · API wyszukiwarki z filtrami (bez N+1).
 **Bramka:** testy — zmiana czasu, urlop nachodzący na rytm, poprawka spoza rytmu, kolizja 90-min; wydajność < 300 ms na seedzie 111 osób; **test 100 równoczesnych żądań o ten sam termin = dokładnie jedna rezerwacja**.
 
 ## F3 — Rezerwacja + płatności (L) — [spec: M1/6-14, M5/1-4]

@@ -1,0 +1,23 @@
+POTWIERDZAM ZLECENIE-013 · 09.08.2026 14:39
+
+Rozumiem: to nie nowa runda, tylko rozstrzygniecia do odnotowania.
+
+D-1: limit 10 niskoplatnych jest PER PACJENT SUMARYCZNIE, nie tygodniowy. Mam
+USTALIC Z KODU I PLANU, do czego odnosi sie liczba 4 z PLAN-FAZ.md:240, i POWIEDZIEC
+— nie zgadywac, nie implementowac obu limitow. Jesli materialu nie starcza, mam
+powiedziec i to. Jesli licznik sumaryczny zmienia model danych — zatrzymac sie.
+
+D-2: nic u mnie do zmiany, moje sformulowanie polityki scalania przyjete jako wzorzec.
+
+D-3: okresy retencji zostaja NIEUSTALONE, zadnej wartosci domyslnej nie wpisuje.
+Do przygotowania: przy kazdej z szesciu tabel JEDNO ZDANIE PO POLSKU dla
+nietechnicznego czytelnika — co tam lezy i czyje to dane. To opis przedmiotu
+decyzji, nie wymyslanie okresu.
+
+Kolejnosc: ZLECENIE-012 (klucz) zostaje pozycja biezaca; D-1 i D-3 do odnotowania
+i przygotowania, nie do wdrozenia.
+
+Kanal: pliku 013 nie mierze uczciwie — obserwator zglosil go, gdy bylem w trakcie
+domykania 012, i zgodnie z protokolem najpierw skonczylem pozycje biezaca.
+Plik powstal 14:32:43.802; przeczytalem go 14:38:46, ale ta roznica to MOJA
+kolejka, nie opoznienie kanalu.

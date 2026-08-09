@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use App\Retencja\RejestrRetencji;
+use App\Retencja\ZadanieRetencji;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Tests\Wsparcie\KlamraPerturbacji;
 
 /**
  * KLUCZ, PO KTÓRYM ZADANIE RETENCJI SELEKCJONUJE I WERYFIKUJE.
@@ -21,8 +24,10 @@ use Illuminate\Support\Facades\DB;
  * Kontrola bada WARTOŚĆ, nie samą obecność kolumny w schemacie — patrz kierunek 0.
  */
 
-/** Nazwa kolumny, którą `ZadanieRetencji` zakłada. Jedno miejsce, żeby dało się policzyć. */
-const KLUCZ_ZAKLADANY = 'id';
+// Klucz NIE JEST już zakładany — pochodzi z rejestru (`kolumna_klucza`).
+// Kontrola pilnuje więc czegoś mocniejszego niż wcześniej: że ZADEKLAROWANY
+// klucz naprawdę istnieje i ma wartości. Wpisanie do rejestru kolumny, której
+// nie ma, zapala tę kontrolę tak samo jak dawniej brak `id`.
 
 /**
  * Czy zadanie retencji ma po czym zapamiętać i zweryfikować rekordy tej tabeli.
@@ -81,7 +86,7 @@ it('KAŻDA kasowana tabela z rejestru ma klucz, po którym zadanie retencji umie
 
         $powod = null;
 
-        if (! kluczUzyteczny($tabela, KLUCZ_ZAKLADANY, $powod)) {
+        if (! kluczUzyteczny($tabela, $wpis['kolumna_klucza'], $powod)) {
             $wadliwe[] = (string) $powod;
         }
     }
@@ -127,5 +132,55 @@ it('KIERUNEK 0: klucz OBECNY w schemacie, ale o wartościach NULL, musi zostać 
         expect($powod)->toBeNull();
     } finally {
         DB::statement('drop table if exists proba_klucza');
+    }
+});
+
+it('zadanie DZIAŁA na tabeli z kluczem TEKSTOWYM — i zachowuje jego reprezentację', function (): void {
+    // To jest dowód właściwy. Kontrola wyżej mówi tylko, że klucz ISTNIEJE;
+    // dopiero ten test pokazuje, że zadanie na takiej tabeli naprawdę kasuje
+    // i weryfikuje. Bez niego „zielona kontrola klucza" byłaby zieloną deklaracją.
+    $stary = hash('sha256', 'stara-sesja');
+    $swiezy = hash('sha256', 'swieza-sesja');
+
+    DB::table('uniewaznione_sesje')->insert([
+        ['sid_skrot' => $stary, 'uniewazniona_at' => '2020-01-01 00:00:00', 'wygasa_at' => '2020-01-02 00:00:00', 'powod' => 'backchannel-logout'],
+        ['sid_skrot' => $swiezy, 'uniewazniona_at' => now(), 'wygasa_at' => now()->addDay(), 'powod' => 'backchannel-logout'],
+    ]);
+
+    $wynik = (new ZadanieRetencji(CarbonImmutable::now()))->wykonaj(
+        'uniewaznione_sesje',
+        'uniewazniona_at',
+        progDni: 30,
+        kolumnaKlucza: 'sid_skrot',
+    );
+
+    expect($wynik->wybrane)->toBe(1, 'Zadanie nie wybrało rekordu po terminie na tabeli z kluczem tekstowym.')
+        ->and($wynik->usuniete)->toBe(1)
+        ->and($wynik->kompletny())->toBeTrue()
+        ->and(DB::table('uniewaznione_sesje')->where('sid_skrot', $stary)->exists())->toBeFalse('Rekord po terminie PRZEŻYŁ zadanie.')
+        ->and(DB::table('uniewaznione_sesje')->where('sid_skrot', $swiezy)->exists())->toBeTrue('Zadanie skasowało rekord PRZED terminem.');
+});
+
+it('reprezentacja klucza NIE JEST ujednolicana — tekstowy zostaje tekstem, liczbowy liczbą', function (): void {
+    // D-2026-08-09-03: typ identyfikatora należy do DZIEDZINY. Normalizacja do
+    // napisów uczyniłaby `42` i `"42"` nieodróżnialnymi — wartość zdegenerowana
+    // w polu, którego jedynym zadaniem jest wskazywać konkretny obiekt.
+    $sid = hash('sha256', 'blokada-tekstowa');
+    DB::table('uniewaznione_sesje')->insert([
+        'sid_skrot' => $sid, 'uniewazniona_at' => '2020-01-01 00:00:00',
+        'wygasa_at' => '2020-01-02 00:00:00', 'powod' => 'backchannel-logout',
+    ]);
+
+    $zdejmij = KlamraPerturbacji::zablokujKasowanie('uniewaznione_sesje');
+
+    try {
+        $wynik = (new ZadanieRetencji(CarbonImmutable::now()))->wykonaj(
+            'uniewaznione_sesje', 'uniewazniona_at', progDni: 30, kolumnaKlucza: 'sid_skrot'
+        );
+
+        expect($wynik->pozostale)->toBe([$sid], 'Klucz tekstowy zmienił reprezentację po drodze.');
+        expect($wynik->pozostale[0])->toBeString();
+    } finally {
+        $zdejmij();
     }
 });

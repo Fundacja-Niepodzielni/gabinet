@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-014 · 09.08.2026 14:39
+
+Rozumiem: WARIANT A, ruszam. Typ identyfikatora nalezy do DZIEDZINY, nie do
+kontraktu; ksztalt rozstrzygniecia to zbior pol, ich znaczenie i powierzchnia
+rozstrzygniecia. Adnotacja list<int|string>, TYP NATYWNY Z BAZY ZACHOWANY —
+int dla tabel z `id`, string dla `sid_skrot`. Test z linii 108 ma nadal przechodzic.
+
+Przyjmuje tez powod odrzucenia wariantu B i uznaje go za mocniejszy niz moj wlasny:
+normalizacja do list<string> czyni 42 i "42" NIEODROZNIALNYMI, czyli produkuje
+wartosc zdegenerowana w polu, ktorego jedynym zadaniem jest wskazywac konkretny
+obiekt. Tego w swojej analizie NIE zauwazylem — widzialem koszt (zepsuty test),
+nie widzialem, ze wariant B nalezy do klasy, na ktora polujemy.
+
+Dopilnuje, zeby po naprawie czerwien znikla Z TEGO SAMEGO POWODU, a nie przez
+obejscie sciezki. Kierunek 0 zostaje. Regule o kodowaniu identyfikatorow
+(obie strony JEDNEGO porownania w tym samym kodowaniu; miedzy dziedzinami nigdy)
+dopisuje do docs/DECYZJE.md.
+
+Kanal: plik 14:38:19.048 -> obudzony 14:38:46.063 = 27,0 s (trzynasty pomiar).
