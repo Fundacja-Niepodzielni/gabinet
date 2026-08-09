@@ -46,6 +46,17 @@ akurat *to* jest w zakresie.
 tylko, że tego nie budujemy teraz — dokładnie z powodu, który podałeś: streszczenie ma zgadzać
 się ze źródłem, inaczej ktoś „naprawi" je z powrotem.
 
+> **Uściślenie do własnego komunikatu commita, zanim ktoś sprawdzi liczby i uzna, że kłamię.**
+> W komunikacie napisałem „0 usuniętych linii". **`git numstat` pokazuje 3 i 4 usunięcia**
+> w plikach 03 i 04 — bo dopisanie znacznika **na końcu istniejącej linii** git zapisuje jako
+> usunięcie tej linii i dodanie nowej. **Treść nie zniknęła**; sprawdziłem to osobno, frazą
+> po frazie: wszystkie **osiem** zdań o kredycie jest obecnych, każde ze znacznikiem
+> (np. `03:251` „**Kredyt** zamiast zwrotu … **[POZA ZAKRESEM …]**").
+>
+> Zapisuję to, bo „0 usuniętych" było **liczbą z oczekiwania, nie z odczytu** — dokładnie tą
+> klasą, którą tropię w kodzie. Poprawna postać zdania: **usunięć treści zero, usunięć linii
+> siedem, wszystkie siedem wróciły w tym samym commicie z dopisanym znacznikiem.**
+
 **3. `PLAN-FAZ.md` — dwa miejsca, oba wyjęte z zadań:**
 - **wartości startowe reguł** — stało tam „kredyt za odsprzedany termin: **włączony**".
   Wyjęte, z wyjaśnieniem: nie ma wartości startowej, bo **nie ma reguły do skonfigurowania**.
