@@ -1,0 +1,18 @@
+POTWIERDZAM ZLECENIE-033 · 09.08.2026 20:21
+
+Prosiles o LICZBE, nie o wykonanie — i niczego nie wykonalem.
+Odpowiedz: 1-2 godziny, nie dzien. Podstawa: te sama operacje zrobilem dzis raz
+(opis_dla_czlowieka do siedmiu wpisow, ZLECENIE-013). Rozbicie i rekomendacja
+w ODPOWIEDZ-033.md. Rekomenduje PRZED wpisaniem okresow, bo droga ucieczki musi
+byc drozsza ZANIM pojawi sie powod, zeby z niej skorzystac.
+
+Regule helpdesku przyjmuje i stosuje od PODJETO-032: kontrola pozytywna lapie
+przyrzad MARTWY, kontrola NEGATYWNA lapie przyrzad mierzacy COS INNEGO.
+Konkretnie: /auth/ja MUSI wyjsc jako chroniona, /api/wersja MUSI wyjsc jako
+niechroniona. Bez tej drugiej moj dzisiejszy pomiar "1 z 34" byl niesprawdzalny
+w druga strone.
+
+Kolejnosci nie zmieniam: PODJETO-032 biezaca, z dwoma dopiskami do zakresu
+(wyjatki jako DANE + kontrola negatywna). BEZ_DANYCH_OSOBOWYCH za nia.
+
+Kanal: plik 20:19:52.167 -> obudzony 20:20:25.847 = 33,7 s (dwudziesty siodmy).
