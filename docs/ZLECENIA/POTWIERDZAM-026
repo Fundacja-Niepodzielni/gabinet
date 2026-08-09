@@ -1,0 +1,10 @@
+POTWIERDZAM ZLECENIE-026 · 09.08.2026 18:36
+
+Rozumiem: R6B-11 — kontrola "nic nie wystawione" pyta HTTP-em o Postgresa.
+Kontrola czerwona przed naprawa; sonda dopasowana do PROTOKOLU, odrozniajaca
+"nie slucha" od "slucha, ale nie mowi po tym protokole"; kierunek 0 (adres pusty,
+0.0.0.0, nazwa niesprawdzalna) — NIEZNANE traktuje JAK WYSTAWIONE; galaz bazowa
+w odczycie przy tej pozycji; kontrola pozytywna — poprawna konfiguracja MUSI
+przejsc. Nic nie wystawiam: caly pomiar na loopbacku.
+
+Kanal: plik 18:35:57.752 -> obudzony 18:36:41.793 = 44,0 s (dwudziesty drugi).

@@ -137,11 +137,11 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # retencji + naprawa (wariant A). Stan: 199 zielonych, 2 pominięte, JEDEN czerwony
 # (noga 1 — przyrząd). Czerwień klucza ZNIKNĘŁA po naprawie, z tego samego powodu.
 # 700 asercji.
-MINIMUM_TESTOW=216
+MINIMUM_TESTOW=219
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=1891
+MINIMUM_ASERCJI=1901
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0
@@ -496,21 +496,70 @@ krok 'zależności zgodne z composer.lock (rozjazd wolumenu vendor)'
 	fi
 
 	krok "porty: aktywnie — każdy port × adres hosta spoza loopbacku"
-	ADRES_LAN="$(php -r 'echo gethostbyname(gethostname());' 2>/dev/null)"
+	# SONDA DOPASOWANA DO PROTOKOŁU, NIE JEDNA DLA WSZYSTKIEGO (R6B-11).
+	#
+	# Do 09.08 stało tu zapytanie HTTP-em na KAŻDY port, w tym na Postgresa
+	# i Redisa. Zmierzone na loopbacku, bez wystawiania czegokolwiek:
+	#
+	#   Postgres NASŁUCHUJĄCY na 127.0.0.1:55442
+	#     sonda HTTP (curl)  → NIE WYKRYŁA
+	#     próba połączenia TCP → WYKRYŁA
+	#     kontrola pozytywna sondy: TCP na martwym porcie 59999 → nie połączyła
+	#
+	# Baza nie mówi po HTTP, więc pytanie HTTP-em o bazę odpowiada na inne
+	# pytanie, niż zadajemy. Kontrola „nic nie wystawione" była zielona także
+	# przy wystawionej bazie danych — jedna wartość, dwa światy.
+	#
+	# Próba połączenia TCP rozstrzyga to, o co naprawdę pytamy: czy KTOKOLWIEK
+	# z sieci może nawiązać połączenie z tym portem.
+	#
+	# Trzy wyniki, nie dwa — „nie wiem" NIE JEST tym samym co „nie słucha":
+	#   OSIAGALNY  — połączenie nawiązane          → wystawione, czerwone
+	#   ODMOWA     — odrzucone od razu             → nie słucha, w porządku
+	#   NIEZNANY   — cisza do wyczerpania czasu    → traktujemy JAK WYSTAWIONE
+	port_z_sieci() {
+		local adres="$1" port="$2" kod=0
+
+		timeout 3 bash -c "echo > /dev/tcp/${adres}/${port}" 2>/dev/null || kod=$?
+
+		case "$kod" in
+			0)   printf 'OSIAGALNY' ;;
+			124) printf 'NIEZNANY' ;;   # `timeout` zabił próbę — pakiety mogą być filtrowane
+			*)   printf 'ODMOWA' ;;
+		esac
+	}
+
+	ADRES_LAN="${GABINET_ADRES_LAN:-$(php -r 'echo gethostbyname(gethostname());' 2>/dev/null)}"
 	case "$ADRES_LAN" in
-		127.*|""|*[!0-9.]*) echo "    pominięte: nie ustalono adresu spoza loopbacku (mam: '${ADRES_LAN:-brak}')" ;;
+		127.*|""|0.0.0.0|*[!0-9.]*)
+			# NIEZNANE → NIE „pominięte". Poprzednia wersja wypisywała
+			# „pominięte" i szła dalej, więc brak pomiaru wyglądał identycznie
+			# jak pomiar udany. To jest ta sama klasa co sonda wyżej.
+			echo "    NIEROZSTRZYGNIĘTE: nie ustalono adresu spoza loopbacku (mam: '${ADRES_LAN:-brak}')."
+			echo "    Kontrola bezpieczeństwa, której NIE WYKONANO, nie jest kontrolą zdaną."
+			echo "    Podaj adres jawnie: GABINET_ADRES_LAN=<adres> ./skrypty/bramka.sh"
+			zle
+			;;
 		*)
-			OSIAGALNE=""
+			OSIAGALNE=""; NIEROZSTRZYGNIETE_PORTY=""
 			for PORT in "$PORT_HTTP" "$PORT_PG" "$PORT_REDIS"; do
-				if curl -s --max-time 3 --connect-timeout 3 -o /dev/null "http://${ADRES_LAN}:${PORT}/" 2>/dev/null; then
-					OSIAGALNE="$OSIAGALNE $PORT"
-				fi
+				case "$(port_z_sieci "$ADRES_LAN" "$PORT")" in
+					OSIAGALNY) OSIAGALNE="$OSIAGALNE $PORT" ;;
+					NIEZNANY)  NIEROZSTRZYGNIETE_PORTY="$NIEROZSTRZYGNIETE_PORTY $PORT" ;;
+				esac
 			done
-			if [ -z "$OSIAGALNE" ]; then
-				echo "    z adresu $ADRES_LAN nie odpowiada żaden port ($PORT_HTTP, $PORT_PG, $PORT_REDIS)"
-			else
-				echo "    OSIĄGALNE Z SIECI:$OSIAGALNE"
+
+			if [ -n "$OSIAGALNE" ]; then
+				echo "    OSIĄGALNE Z SIECI (połączenie TCP nawiązane):$OSIAGALNE"
 				zle
+			fi
+			if [ -n "$NIEROZSTRZYGNIETE_PORTY" ]; then
+				echo "    NIEROZSTRZYGNIĘTE (cisza, możliwe filtrowanie):$NIEROZSTRZYGNIETE_PORTY"
+				echo "    Nieznane traktujemy JAK WYSTAWIONE — inaczej zapora udaje bezpieczeństwo."
+				zle
+			fi
+			if [ -z "$OSIAGALNE" ] && [ -z "$NIEROZSTRZYGNIETE_PORTY" ]; then
+				echo "    z adresu $ADRES_LAN każdy port ODMAWIA połączenia ($PORT_HTTP, $PORT_PG, $PORT_REDIS)"
 			fi
 			;;
 	esac

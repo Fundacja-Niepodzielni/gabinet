@@ -92,18 +92,18 @@ def statyczny(wzorzec, filtr, nazwy):
 def dynamiczny(wpis):
     """Uruchamia polecenie na kodzie NIEZMUTOWANYM i szuka wzorca w wyjsciu."""
     if not wpis['polecenie']:
-        return None, 'nie umiem wydobyc polecenia — NIEROZSTRZYGNIETE'
+        return None, 'nie umiem wydobyc polecenia — NIEROZSTRZYGNIETE', None
     try:
         proc = subprocess.run(
             wpis['polecenie'], shell=True, cwd=KORZEN,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600
         )
     except Exception as e:
-        return None, 'polecenie nie dalo sie uruchomic: %s' % e
+        return None, 'polecenie nie dalo sie uruchomic: %s' % e, None
 
     wyjscie = proc.stdout.decode('utf-8', errors='replace')
     if not wyjscie.strip():
-        return None, 'PUSTE WYJSCIE (pustka to blad, nie zero) — NIEROZSTRZYGNIETE'
+        return None, 'PUSTE WYJSCIE (pustka to blad, nie zero) — NIEROZSTRZYGNIETE', None
 
     # Ten sam mechanizm co w oczekuj_czerwone: grep -qiE
     try:
@@ -118,10 +118,10 @@ def dynamiczny(wpis):
         'OBECNY' if obecny else 'nieobecny'
     )
     if not zielony:
-        return None, 'przebieg NIE BYL zielony (kod %d) — odczyt dynamiczny NIEROZSTRZYGNIETY: %s' % (proc.returncode, opis)
+        return None, 'przebieg NIE BYL zielony (kod %d) — odczyt dynamiczny NIEROZSTRZYGNIETY: %s' % (proc.returncode, opis), False
 
     # rozroznia <=> wzorzec NIEOBECNY w zielonym
-    return (not obecny), opis
+    return (not obecny), opis, zielony
 
 
 def main():
@@ -144,10 +144,14 @@ def main():
 
     kategorie = {'ZGODNE-NIE-ROZROZNIA': [], 'ZGODNE-ROZROZNIA': [],
                  'ROZBIEZNOSC-A': [], 'ROZBIEZNOSC-B': [], 'NIEROZSTRZYGNIETE': []}
+    # GALAZ BAZOWA (R6B-13): perturbacja celujaca w polecenie, ktore JUZ JEST
+    # czerwone na kodzie NIEZMUTOWANYM, nie moze niczego dowiesc — jej czerwien
+    # przyjdzie zawsze, niezaleznie od mutacji.
+    baza_czerwona = []
 
     for wpis in wpisy:
         st, st_op = statyczny(wpis['wzorzec'], wpis['filtr'], nazwy)
-        dy, dy_op = dynamiczny(wpis)
+        dy, dy_op, baza_zielona = dynamiczny(wpis)
 
         if dy is None:
             kat = 'NIEROZSTRZYGNIETE'
@@ -158,6 +162,8 @@ def main():
         else:
             kat = 'ROZBIEZNOSC-B'   # statyczny przyjmuje, dynamiczny odrzuca  <-- NAJGROZNIEJSZY
         kategorie[kat].append(wpis['nr'])
+        if baza_zielona is False:
+            baza_czerwona.append(wpis['nr'])
 
         w('-' * 100)
         w('linia %-5d  [%s]' % (wpis['nr'], kat))
@@ -174,6 +180,15 @@ def main():
     w('=' * 100)
     for k in ('ZGODNE-NIE-ROZROZNIA', 'ZGODNE-ROZROZNIA', 'ROZBIEZNOSC-A', 'ROZBIEZNOSC-B', 'NIEROZSTRZYGNIETE'):
         w('%-22s : %2d   linie: %s' % (k, len(kategorie[k]), kategorie[k]))
+    w('')
+    w('GALAZ BAZOWA (R6B-13) — polecenia JUZ CZERWONE na kodzie niezmutowanym: %d   linie: %s'
+      % (len(baza_czerwona), baza_czerwona))
+    if baza_czerwona:
+        w('   Te perturbacje NIE MOGA NICZEGO DOWIESC: ich czerwien przychodzi zawsze,')
+        w('   niezaleznie od mutacji. Zawez je --filter albo napraw przyczyne czerwieni.')
+    else:
+        w('   Kazde badane polecenie jest ZIELONE na kodzie niezmutowanym, wiec czerwien')
+        w('   po mutacji da sie przypisac mutacji. To jest galaz bazowa, ktorej brakowalo.')
     w('')
     w('ROZBIEZNOSC-A = statyczny NIE rozroznia, dynamiczny rozroznia.')
     w('   Wzorzec JEST nazwa testu, ale do wyjscia nie dociera — u nas przez UCINANIE')
