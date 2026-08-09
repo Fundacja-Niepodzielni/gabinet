@@ -208,7 +208,22 @@ cofnij_wszystko() {
 	fi
 	return 0
 }
-trap cofnij_wszystko EXIT INT TERM
+# DWA TRAPY, nie jeden — `trap … EXIT INT TERM` w jednej linii NIE PRZERYWA
+# przebiegu. Zmierzone u siebie (ZLECENIE-022, powtórzenie pomiaru hubu):
+#
+#   jednolinijkowa → CLEANUP · „PO SLEEPIE — WYKONALO SIE DALEJ" · CLEANUP · kod 0
+#   dwa trapy      → CLEANUP · kod 130
+#
+# Bash po powrocie z uchwytu INT/TERM WZNAWIA wykonanie — przerwanie wymaga
+# jawnego `exit`. Forma jednolinijkowa po zabiciu procesu leci dalej, sprząta
+# DWA RAZY i melduje SUKCES.
+#
+# Ten sam idiom stoi poprawnie w `bramka.sh:209` i `perturbacje.sh:203` od
+# znaleziska U-5 — a mimo to napisałem tu formę wadliwą. Wiedza zapisana
+# w komentarzu obok nie propaguje się sama.
+przerwano_odwrotna() { cofnij_wszystko; trap - EXIT; exit 130; }
+trap cofnij_wszystko EXIT
+trap przerwano_odwrotna INT TERM
 
 printf '\n== PERTURBACJA ODWROTNA (gabinet) — poprawiam zachowanie, szukam ZIELONYCH, które padną ==\n'
 printf '   deklaracji: %s, w tym ZACIEŚNIAJĄCYCH: %s\n' "$LICZBA_DEKL" "$LICZBA_ZAC"

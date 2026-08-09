@@ -35,7 +35,8 @@ use RuntimeException;
  *      co jeszcze zostawił. Sprzątanie po fakcie zamieniłoby sygnał w ciszę.
  *   3. KLAMRA — zdjęcie reguły w `finally`, czyli także wtedy, gdy asercja
  *      rzuci. W repozytoriach bez transakcji na test rolę klamry pełni
- *      `trap … EXIT INT TERM` w skrypcie (patrz `PRZENOSNOSC` niżej).
+ *      w skrypcie DWA trapy: `trap sprzataj EXIT` oraz `trap przerwano INT TERM`,
+ *      gdzie `przerwano` kończy JAWNYM `exit` (patrz `PRZENOSNOSC` niżej).
  *
  * TU DODATKOWO zamyka nas transakcja `RefreshDatabase` — ale **nie wolno na niej
  * polegać jako na jedynym zabezpieczeniu**, bo repozytoria adaptujące ten wzorzec
@@ -49,7 +50,10 @@ use RuntimeException;
  *   · skan wstępny pyta MAGAZYN o istnienie artefaktu, nie pamięć procesu;
  *   · odmowa jest twarda (wyjątek / `exit`), nigdy ostrzeżenie;
  *   · zdjęcie artefaktu wykonuje się na ścieżce, która biegnie także przy
- *     awarii — `finally`, `trap EXIT INT TERM`, `defer`.
+ *     awarii — `finally`, `defer`, a w bashu DWA trapy z jawnym `exit`
+ *     w uchwycie INT/TERM. **`trap … EXIT INT TERM` w jednej linii NIE
+ *     PRZERYWA przebiegu** — zmierzone: po SIGTERM skrypt leci dalej,
+ *     sprząta dwa razy i kończy się kodem 0 (ZLECENIE-022).
  *
  * ZASTRZEŻENIE, KTÓREGO NIE WOLNO POMINĄĆ PRZY ADAPTACJI: ten wzorzec dowodzi
  * **KASOWANIA**, nie **URUCHAMIANIA**. Skopiowany bez osobnej asercji „zadanie

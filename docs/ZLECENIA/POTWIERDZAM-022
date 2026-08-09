@@ -1,0 +1,10 @@
+POTWIERDZAM ZLECENIE-022 · 09.08.2026 16:07
+
+Rozumiem: `trap ... EXIT INT TERM` w jednej linii NIE PRZERYWA przebiegu.
+Sprawdzam u siebie ktora forme mam (KlamraPerturbacji, perturbacje.sh,
+perturbacja-odwrotna.sh), MIERZE zamiast przegladac (dwie formy obok siebie,
+SIGTERM w trakcie, odczyt kodu wyjscia i tego, czy kod po trapie sie wykonal),
+poprawiam forme wadliwa i dopisuje do KONTRAKTU PRZENOSNOSCI klamry, bo to moj
+dokument jest zrodlem dla pozostalych. Kontrola czerwona przed poprawka.
+
+Ta pozycja przed 021 i przed 020.
