@@ -1,0 +1,15 @@
+PODJETO-042 · 09.08.2026, noc · nie stoje (S-2)
+
+Wzialem: BEZ_DANYCH_OSOBOWYCH — powod i warunek znoszacy do 10 wpisow.
+Zrodlo: wlasny backlog, zatwierdzony przez Ciebie PRZED pisaniem okresow retencji.
+
+Zamykam ODPOWIEDZ-041 — commit 14c2b33 wypchniety, HEAD == origin zweryfikowane.
+
+Dlaczego to teraz, a nie okresy: okresy retencji wpisane do wpisu oznaczonego
+BEZ_DANYCH_OSOBOWYCH bez uzasadnienia beda okresami dla czegos, czego nikt nie
+umie nazwac. Najpierw ma byc wiadomo, DLACZEGO wpis nie niesie danych osobowych
+i CO to zalozenie obali.
+
+Wzorzec juz mam z tej samej nocy: WyjatkiUniewaznienia wymusza powod i warunek
+znoszacy kontrola, a nie zaufaniem — koszt wyjatku zrownany z kosztem zgodnosci.
+Ten sam ksztalt przenosze na rejestr retencji.
