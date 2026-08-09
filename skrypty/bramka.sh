@@ -137,11 +137,11 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # retencji + naprawa (wariant A). Stan: 199 zielonych, 2 pominięte, JEDEN czerwony
 # (noga 1 — przyrząd). Czerwień klucza ZNIKNĘŁA po naprawie, z tego samego powodu.
 # 700 asercji.
-MINIMUM_TESTOW=219
+MINIMUM_TESTOW=220
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=1901
+MINIMUM_ASERCJI=1905
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0
@@ -273,6 +273,46 @@ dc() {
 # ---------------------------------------------------------------------------
 # .env — bramka NIGDY nie nadpisuje pliku dewelopera.
 # ---------------------------------------------------------------------------
+# PODMIANA W PLIKU ŚRODOWISKA Z ODCZYTEM ZWROTNYM (R6B-7).
+#
+# `sed -i` na wzorcu, którego w pliku NIE MA, kończy się KODEM 0 i nie zmienia
+# nic. Zmierzone:
+#
+#   plik: APP_KEY=stare / INNY=x
+#   sed -i "s|^GABINET_PORT_HTTP=.*|...|"  → kod 0, klucza w pliku: 0
+#
+# Czyli „podmiana wykonana" i „podmiana nie trafiła" dawały IDENTYCZNY sygnał —
+# ta sama klasa co sonda HTTP nad Postgresem i co `unlink` bez odczytu.
+#
+# Sprawdzamy TREŚĆ PO, nie kod wyjścia. Odmawiamy też przy DWÓCH trafieniach:
+# `sed` podmieniłby oba, a to już jest inna zmiana niż zamierzona (kierunek 0).
+ustaw_w_env() {
+	local klucz="$1" wartosc="$2" ile po
+
+	ile="$(grep -c "^${klucz}=" "$PLIK_ENV" || true)"
+
+	if [ "$ile" -eq 0 ]; then
+		echo "    ODMOWA: w $(basename "$PLIK_ENV") NIE MA klucza ${klucz} — podmiana nie miałaby w co trafić"
+		zle
+		return 1
+	fi
+	if [ "$ile" -gt 1 ]; then
+		echo "    ODMOWA: klucz ${klucz} występuje ${ile} razy — podmiana zmieniłaby WIĘCEJ, niż zamierzono"
+		zle
+		return 1
+	fi
+
+	sed -i "s|^${klucz}=.*|${klucz}=${wartosc}|" "$PLIK_ENV"
+
+	# ODCZYT ZWROTNY — „polecenie się wykonało" nie znaczy „plik ma treść".
+	po="$(sed -n "s|^${klucz}=||p" "$PLIK_ENV")"
+	if [ "$po" != "$wartosc" ]; then
+		echo "    ODMOWA: po podmianie ${klucz} ma wartość '${po}', a miało mieć '${wartosc}'"
+		zle
+		return 1
+	fi
+}
+
 przygotuj_env() {
 	# DYSCYPLINA WERYFIKACJI USŁUGI STANOWEJ (korekta architekta, 08.08).
 	#
@@ -302,15 +342,15 @@ przygotuj_env() {
 	klucz="base64:$(openssl rand -base64 32)"
 
 	# `|` jako separator: klucz base64 zawiera `/`.
-	sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${haslo}|" "$PLIK_ENV"
-	sed -i "s|^APP_KEY=.*|APP_KEY=${klucz}|" "$PLIK_ENV"
+	ustaw_w_env DB_PASSWORD "$haslo"
+	ustaw_w_env APP_KEY     "$klucz"
 
 	# Prefiks i porty tego przebiegu — inaczej compose weźmie je z `.env.example`
 	# i stos bramki zderzy się z deweloperskim po NAZWIE zasobu.
-	sed -i "s|^GABINET_PREFIX=.*|GABINET_PREFIX=${PROJEKT}|" "$PLIK_ENV"
-	sed -i "s|^GABINET_PORT_HTTP=.*|GABINET_PORT_HTTP=${PORT_HTTP}|" "$PLIK_ENV"
-	sed -i "s|^GABINET_PORT_POSTGRES=.*|GABINET_PORT_POSTGRES=${PORT_PG}|" "$PLIK_ENV"
-	sed -i "s|^GABINET_PORT_REDIS=.*|GABINET_PORT_REDIS=${PORT_REDIS}|" "$PLIK_ENV"
+	ustaw_w_env GABINET_PREFIX        "$PROJEKT"
+	ustaw_w_env GABINET_PORT_HTTP     "$PORT_HTTP"
+	ustaw_w_env GABINET_PORT_POSTGRES "$PORT_PG"
+	ustaw_w_env GABINET_PORT_REDIS    "$PORT_REDIS"
 }
 
 # ---------------------------------------------------------------------------

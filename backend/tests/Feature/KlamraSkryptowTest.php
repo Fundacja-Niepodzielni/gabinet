@@ -84,3 +84,43 @@ it('KIERUNEK ODWROTNY: skaner widzi formę wadliwą — na materiale zbudowanym 
     expect(preg_match($wzorzec, $poprawna2))->toBe(0, 'Skaner oskarża poprawny `trap … INT TERM`.');
     expect(preg_match('/^\s*#/', $komentarz))->toBe(1, 'Komentarz nie jest rozpoznawany jako komentarz.');
 });
+
+it('bramka NIE podmienia kluczy środowiska gołym `sed -i` — bez odczytu zwrotnego (R6B-7)', function (): void {
+    // `sed -i` na wzorcu nieobecnym kończy się KODEM 0 i nie zmienia nic.
+    // Zmierzone: plik bez klucza, `sed -i "s|^GABINET_PORT_HTTP=.*|…|"` → kod 0,
+    // klucza w pliku 0. „Podmiana wykonana" i „podmiana nie trafiła" dawały
+    // identyczny sygnał — a `docker-compose.yml` bierze wtedy wartość domyślną,
+    // czyli PORT DEWELOPERA.
+    //
+    // KOMENTARZE ODFILTROWANE — nagłówek pomocnika cytuje starą postać wywołania.
+    $tresc = (string) file_get_contents(base_path('../skrypty/bramka.sh'));
+    $kod = (string) preg_replace('~^\s*#.*$~m', '', $tresc);
+
+    // Próg wynosi ZERO, nie jeden. Pierwsza wersja dopuszczała jedno wystąpienie
+    // „na wnętrze pomocnika" — a pomocnik używa ZMIENNEJ (`^${klucz}=`), więc
+    // wzorzec `\^\w+=` go NIE ŁAPIE. Zmierzone perturbacją: przy progu 1
+    // przywrócenie gołego `sed -i` NIE zapaliło kontroli. Trzeci raz dziś mój
+    // własny próg był ustawiony na podstawie założenia, nie pomiaru.
+    $gole = [];
+
+    foreach (explode("\n", $kod) as $nr => $linia) {
+        if (preg_match('/sed -i .*\^\w+=/', $linia) !== 1) {
+            continue;
+        }
+        $gole[] = ($nr + 1).': '.trim($linia);
+    }
+
+    expect(count($gole))->toBe(
+        0,
+        "Gołe `sed -i` na kluczu środowiska poza `ustaw_w_env`:\n  ".implode("\n  ", $gole)."\n".
+        'Podmiana bez odczytu zwrotnego nie odróżnia „trafiła" od „nie trafiła".'
+    );
+
+    expect(str_contains($kod, 'ustaw_w_env'))->toBeTrue(
+        'Brak pomocnika `ustaw_w_env` — podmiany wróciły do gołego `sed -i`.'
+    );
+
+    // Pomocnik ma ODMAWIAĆ w obu kierunkach: brak klucza i klucz zwielokrotniony.
+    expect(str_contains($kod, 'NIE MA klucza'))->toBeTrue('Pomocnik nie odmawia przy braku klucza.');
+    expect(str_contains($kod, 'występuje'))->toBeTrue('Pomocnik nie odmawia przy kluczu zwielokrotnionym.');
+});
