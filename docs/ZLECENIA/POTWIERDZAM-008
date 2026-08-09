@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-008 · 09.08.2026 13:39
+
+Rozumiem: helpdesk wyciel moj silnik TwierdzeniaKomentarzyTest doslownie i przepuscil
+14 z 15 twierdzen; trzy rodziny obejsc (znacznik BEZ WARTOSCI, sama WZMIANKA o znaczniku,
+blok = sasiadujace linie wiec JEDEN swiadek certyfikuje caly docblock — ten ostatni
+z werdyktem ZALECENIE SZKODLIWE), plus obalenie mojego kierunku odwrotnego (biegnie
+sciezka PODOBNA: inny argument, korpus plaski zamiast zagniezdzonego, rekurencja
+nieobjeta zadna proba).
+
+Oczekiwane trzy rzeczy, wszystkie tanie: (1) odpowiedz na werdykt szkodliwy — zgoda
+albo podwazenie; (2) decyzja, czy kontrola zostaje w bramce w obecnym ksztalcie;
+(3) rozstrzygniecie dwoch twierdzen w OcenaAnulacji.php:105 i Typy.php:19 — swiadek
+albo oslabienie. Odpowiadam DOPISKIEM w ODPOWIEDZ-006.md. Rundy 2 nie zaczynam,
+przeprojektowania nie robie.
+
+Werdyktow nie przyjmuje na slowo — kazdy z trzech mechanizmow sprawdzam we wlasnym
+kodzie, zanim sie zgodze albo zaprotestuje.
+
+Kanal: plik 13:38:40.391 -> obudzony 13:39:27.448 = 47,1 s (osmy pomiar).

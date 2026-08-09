@@ -417,3 +417,97 @@ runda przyrządu jest zamknięta pomiarem, a to jest zmiana, której sam bym nie
 Zero `main`, merge, deploy · **zero zapisu w cudzych repozytoriach** (subagenci dostali ten
 zakaz w prompcie; obaj raportują wyłącznie `ls`/`cat`/`grep`) · nic poza fundację · sekretów
 nie zapisuję · rundy 2 nie zaczynam. **Sprzeczności zlecenia z zasadą twardą: brak.**
+
+---
+
+# DOPISEK (ZLECENIE-008) — werdykty helpdesku o mojej kontroli D3
+
+Kanał: plik **13:38:40.391** → obudzony **13:39:27.448** = **47,1 s** (ósmy pomiar).
+
+**Werdyktów nie przyjąłem na słowo — sprawdziłem każdy z trzech mechanizmów we własnym
+kodzie.** Wszystkie trzy potwierdzam, i to nie na podstawie ich raportu, tylko odczytu
+`backend/tests/Feature/TwierdzeniaKomentarzyTest.php`.
+
+## 1 · Werdykt ZALECENIE SZKODLIWE — **zgadzam się w całości, nie podważam**
+
+| obejście | gdzie w moim kodzie | potwierdzam |
+|---|---|---|
+| `@dowod:` **BEZ WARTOŚCI** rozbraja blok | w. 126: `str_contains($blok['tresc'], '@dowod:')` — sprawdzam **obecność napisu**, nigdy wartości po dwukropku | **TAK** |
+| Sama **WZMIANKA** o znaczniku rozbraja blok | ta sama linia — nie odróżniam znacznika od prozy o znaczniku | **TAK** |
+| **Blok = sąsiadujące linie**, więc JEDEN świadek certyfikuje cały docblock | w. 69–89: sklejam kolejne linie komentarza w **jeden** ciąg, a w. 126 pyta o niego jako o całość | **TAK** |
+
+Trzecie jest najgorsze i nazwaliście je poprawnie. Kontrola dawała **tani sposób, żeby ją
+uciszyć**, a docblock wyglądał potem na sprawdzony. To jest gorsze niż brak kontroli, bo brak
+kontroli nikogo nie uspokaja. Napisałem w docblocku, że kontrakt jest „celowo tani" — okazało
+się, że tani był sposób jego obejścia.
+
+**Dokładam własną obserwację, której w Waszym raporcie nie ma:** obejście 1 to **kierunek 0
+z projektu P1 kont** (kształt zachowany, wartość jałowa) popełniony **wewnątrz kontroli mającej
+pilnować dowodów**. Znam ten kierunek, opisywałem go innym — i nie sprawdziłem własnej kontroli
+pod jego kątem.
+
+## 2 · Decyzja o bramce — **ZDJĘTA. Obie kontrole POMINIĘTE, z powodem w kodzie**
+
+Przyjmuję rekomendację architekta. `->skip()` z pełnym powodem w treści, żeby nikt nie
+przywrócił tego bez przeczytania, dlaczego zniknęło.
+
+**Pominąłem także kierunek odwrotny** — bo obalenie gałęzi zdegenerowanej dotyczy jego, a nie
+tylko kontroli produkcyjnej. Wasz pomiar czytam jako rozstrzygający:
+
+```
+korpus PŁASKI (mój kierunek odwrotny):  oryginał=1, mutant nierekurencyjny=1  → MÓJ TEST PRZESZEDŁBY
+korpus ZAGNIEŻDŻONY (jak app/):         oryginał=1, mutant nierekurencyjny=0  → mutant OŚLEPŁ na całe app/
+```
+
+Mój kierunek odwrotny biegł ścieżką **podobną, nie tą samą** — inny argument
+(katalog tymczasowy vs `base_path('app')`) i inny kształt wejścia (płaski vs 26 plików na
+głębokości 9–10). **Rekurencji nie obejmowała żadna próba.** To jest moja własna reguła
+złamana moją ręką: kontrola dzieląca z przedmiotem mniej niż ścieżkę nie jest kontrolą tej
+ścieżki. Waszą brakującą asercję („liczba plików `.php` przeczytanych **pod ścieżką
+produkcyjną** > 0") zapisałem w powodzie pominięcia — wejdzie przy przeprojektowaniu.
+
+**Przeprojektowania NIE zaczynam** (runda 2). Zgadzam się natomiast z kierunkiem: wiązać wymóg
+świadka z **rolą tekstu**, nie ze słowami. Denylista słów przegrywa i to jest jej podręcznikowy
+przypadek — dwa prawdziwe trafienia za dwa fałszywe alarmy to nie jest bilans, na którym stawia
+się bramkę.
+
+## 3 · Dwa twierdzenia w żywym `app/` — **oba PRAWDZIWE, oba dostały świadka**
+
+Sprawdziłem każde osobno, zamiast osłabiać hurtem.
+
+**`OcenaAnulacji.php:105` — „zwrot NIGDY nie przekroczy tego, co pacjent naprawdę zapłacił".
+PRAWDZIWE, a świadek ISTNIAŁ — brakowało wyłącznie wskazania.** Kod to
+`min($kwotaZwrotuGr, $kwotaZamrozonaGr)`, a w suicie stoi test o nazwie niemal dosłownie
+powtarzającej twierdzenie: `GranicePienidzyTest` — *„nigdy nie zwraca więcej, niż pacjent
+zapłacił — nawet gdyby oba wcześniejsze zamki zawiodły"*. Dopisany `@dowod:`.
+
+**`Typy.php:19` — „Tablica, obiekt i `null` NIGDY nie stają się napisem po cichu". PRAWDZIWE,
+ale świadka NIE BYŁO — i to jest cenniejsze znalezisko niż samo twierdzenie.** `Typy::napis`
+miała w suicie wyłącznie **użytkowników** (`BrakWlasnychHaselTest`, `ModelDanychTest`), którzy
+wołają ją po drodze do czegoś innego. **Ani jednej asercji o samej regule.** Zamiana
+`return $domyslny` na `return (string) $wartosc` mogła przejść niezauważona — w pomocniku,
+od którego zależy kod rozstrzygający o tożsamości i uprawnieniach.
+
+Dopisałem świadka zamiast osłabiać prawdziwe zdanie: `backend/tests/Unit/TypyTest.php` —
+tablica/obiekt/`null`/`bool` dostają wartość domyślną, **kierunek odwrotny** (napis, `int`,
+`float` przechodzą — inaczej pomocnik zwracałby domyślną zawsze i test byłby pusty) oraz
+obiekt z `__toString`, który też ma **nie** przejść.
+
+**Wasze trafienie było więc lepsze, niż je opisaliście:** znaleźliście nie „twierdzenie bez
+znacznika", tylko **regułę bez pokrycia**.
+
+## 4 · Stan po tych zmianach
+
+```
+187 zielonych · 2 POMINIĘTE (kontrola D3) · 1 czerwony (noga 1) · 664 asercje
+podłogi bramki: 186/656 → 187/659   (pominięte nie liczą się do podłogi)
+```
+
+**Pełnej bramki nie przebiegłem** — zmieniałem `bramka.sh`. Własnej pracy nie zamykam.
+
+## 5 · Co przyjmuję na swoją stronę
+
+Potrzeba kontroli została **POTWIERDZONA** Waszym pomiarem (56 akapitów orzekających bez
+świadka na 2352). Zawiódł kształt, nie diagnoza — ale zielone od wadliwego kształtu było
+**fałszywym zapewnieniem**, więc do czasu przeprojektowania lepsze jest jawne pominięcie
+niż kontrola, która przepuszcza czternaście na piętnaście.

@@ -143,7 +143,16 @@ it('każde TWIERDZENIE w komentarzu kodu produkcyjnego wskazuje dowód', functio
         "Dopisz `@dowod: <nazwa testu | znalezisko | decyzja>` w tym samym bloku\n".
         "albo osłab zdanie do opisu zamiaru:\n  ".implode("\n  ", $bezDowodu)
     );
-});
+})->skip(
+    'ZDJĘTE Z BRAMKI 09.08 po weryfikacji helpdesku: 14 obejść na 15 prób, silnik '.
+    'wycięty z tego pliku DOSŁOWNIE. Trzy rodziny: (1) `@dowod:` BEZ WARTOŚCI rozbraja '.
+    'blok; (2) sama WZMIANKA o znaczniku w prozie rozbraja blok, więc udokumentowanie '.
+    'konwencji zwalnia z konwencji; (3) blok = sąsiadujące linie, więc JEDEN świadek '.
+    'certyfikuje cały docblock — dopisanie `@dowod:` do jednego zdania po cichu '.
+    'certyfikuje cztery inne. Zielone z tej kontroli było FAŁSZYWYM ZAPEWNIENIEM, '.
+    'a fałszywe zapewnienie jest gorsze niż brak kontroli. Przeprojektowanie (wymóg '.
+    'świadka wiązany z ROLĄ TEKSTU, nie ze słowami) należy do rundy 2.'
+);
 
 it('SKANER NAPRAWDĘ WIDZI twierdzenia — inaczej powyższy test jest pusty', function (): void {
     // Kierunek odwrotny, bez którego „zero bez dowodu" przechodzi także wtedy,
@@ -168,4 +177,13 @@ it('SKANER NAPRAWDĘ WIDZI twierdzenia — inaczej powyższy test jest pusty', f
         array_map('unlink', glob($katalog.'/*.php') ?: []);
         rmdir($katalog);
     }
-});
+})->skip(
+    'ZDJĘTE RAZEM Z KONTROLĄ, którą miało chronić — i samo też jest wadliwe. '.
+    'Helpdesk zmierzył, że ten kierunek odwrotny biegnie ścieżką PODOBNĄ, nie TĄ SAMĄ: '.
+    'korpus tymczasowy jest PŁASKI, a produkcyjne `app/` ma 26 plików na głębokości 9-10. '.
+    'Mutant z nierekurencyjnym iteratorem daje na korpusie płaskim 1 trafienie (test '.
+    'ZIELONY), a na `app/` — ZERO, czyli oślepłby na cały kod produkcyjny. Drugi rozjazd: '.
+    'inny argument (katalog tymczasowy vs `base_path(app)`), więc puste `app/` też '.
+    'przechodzi. Brakująca asercja jest tania i wejdzie przy przeprojektowaniu: liczba '.
+    'plików `.php` przeczytanych POD ŚCIEŻKĄ PRODUKCYJNĄ musi być > 0.'
+);

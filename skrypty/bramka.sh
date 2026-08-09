@@ -120,11 +120,17 @@ ZNACZNIK_APLIKACJI="gabinet-api-v1"
 # doszła ZAPADKA POKRYCIA dla allowlist przyczyny czerwieni
 # (`PrzyczynyPerturbacjiTest`, 3 kontrole), więc stan wynosi 187 testów
 # (186 zielonych + noga 1) i 661 asercji.
-MINIMUM_TESTOW=186
+#
+# PODNIESIENIE 09.08 (ZLECENIE-008): 186/656 → 187/659. Doszedł świadek dla
+# `Typy::napis` (3 kontrole), a DWIE kontrole twierdzeń w komentarzach zostały
+# POMINIĘTE — helpdesk zmierzył na nich 14 obejść na 15. Pominięte nie liczą się
+# do podłogi, więc podłoga NIE rośnie o nie; stan: 187 zielonych, 2 pominięte,
+# 1 czerwony (noga 1), 664 asercje.
+MINIMUM_TESTOW=187
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
 # testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=656
+MINIMUM_ASERCJI=659
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0

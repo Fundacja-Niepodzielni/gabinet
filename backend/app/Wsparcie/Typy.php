@@ -19,6 +19,12 @@ final class Typy
     /**
      * Zwraca napis albo wartość domyślną. Tablica, obiekt i `null` NIGDY nie
      * stają się napisem „po cichu" — dostają wartość domyślną.
+     *
+     * @dowod: TypyTest — „tablica, obiekt, null i bool NIE stają się napisem".
+     *         Twierdzenie wskazane przez helpdesk (ZLECENIE-008) jako orzekające
+     *         bez świadka. Sprawdzone: twierdzenie było PRAWDZIWE, ale świadka
+     *         NIE BYŁO — `Typy::napis` miała wyłącznie użytkowników, ani jednej
+     *         asercji o samej regule. Świadek dopisany, nie zdanie osłabione.
      */
     public static function napis(mixed $wartosc, string $domyslny = ''): string
     {

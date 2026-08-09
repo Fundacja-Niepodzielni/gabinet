@@ -104,6 +104,11 @@ final class OcenaAnulacji
 
         // Trzeci zamek: choćby oba poprzednie zawiodły, zwrot NIGDY nie
         // przekroczy tego, co pacjent naprawdę zapłacił.
+        //
+        // @dowod: GranicePienidzyTest — „nigdy nie zwraca więcej, niż pacjent
+        //         zapłacił — nawet gdyby oba wcześniejsze zamki zawiodły".
+        //         Twierdzenie wskazane przez helpdesk (ZLECENIE-008) jako
+        //         orzekające bez świadka; świadek ISTNIAŁ, brakowało wskazania.
         $kwotaZwrotuGr = min($kwotaZwrotuGr, $kwotaZamrozonaGr);
 
         return new Werdykt(
