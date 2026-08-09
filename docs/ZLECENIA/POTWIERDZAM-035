@@ -1,0 +1,19 @@
+POTWIERDZAM ZLECENIE-035 · 09.08.2026 20:35
+
+Pomiar, nie budowa — modelu danych nie tknalem, niczego nie zaprojektowalem.
+Piec odpowiedzi w ODPOWIEDZ-035.md. Trzy najwazniejsze:
+
+1. "Pseudo-konto" JUZ ISTNIEJE: rezerwacje.pacjent_id jest NOT NULL, wiec rezerwacja
+   goscia MUSI zalozyc rekord pacjenta. To wiersz pacjenci z keycloak_sub = NULL.
+   Decyzja wlasciciela nie wymaga nowej tabeli — wymaga REGULY SCALANIA.
+2. JEDNOZNACZNOSC jest WYLACZNIE na keycloak_sub. Telefon, e-mail i email_skrot
+   nie maja zadnej. ZMIERZONE kierunkiem 0: dwa razy te same dane goscia dalyу
+   DWA ROZNE REKORDY. Przyszly licznik zobaczylby dwie osoby po piec wizyt.
+3. LIMIT NIE JEST DZIS LICZONY WCALE — to wylacznie wartosc w ZestawRegul,
+   zero uzyc poza definicja. Pytanie "po czym rozpoznaje te sama osobe" nie ma
+   dzis adresata, i to jest odpowiedz, nie unik.
+
+Odnotowuje tez, ze limit_niskoplatnych_indywidualny JUZ ISTNIEJE jako kolumna —
+czyli "czasami zdejmowany decyzja fundacji" trafia w model, ktory to przewidzial.
+
+Kanal: plik 20:33:48.148 -> obudzony 20:34:23.056 = 34,9 s (dwudziesty dziewiaty).
