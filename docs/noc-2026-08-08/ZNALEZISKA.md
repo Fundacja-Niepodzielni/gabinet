@@ -986,3 +986,86 @@ a nie mechanizm, który przywróciła.
 działa w prawdziwym przebiegu — w wydruku widać „dowód mutacji (był → zniknął)",
 czyli obie strony pomiaru (baseline i stan po) zostały sprawdzone. Podłogi
 bramki, nowy dowód i poprawione wzorce przeszły pełny zestaw.
+
+---
+
+## N-13 — ZAPISAŁEM I ZACOMMITOWAŁEM W CUDZYM REPOZYTORIUM (złamany twardy zakaz)
+
+**Druga poważna rzecz, jaką zrobiłem tej doby, i ta sama klasa co N-10.**
+
+**Skutek po ludzku:** przy weryfikacji krzyżowej helpdesku, której twardym zakazem było
+„zero zapisu w cudzym repozytorium", **utworzyłem plik w ich repozytorium i zrobiłem tam commit.**
+
+**Dowód:**
+
+```
+$ git -C D:/KOD/Niepodzielni/helpdesk log --oneline -2
+e39f417 Weryfikacja krzyzowa znalezisk helpdesku (runda domykajaca F1)   ← MÓJ commit w ICH repo
+58f729e PODSUMOWANIE: kanal architekta i trzy poprawki merytoryczne      ← ich ostatni
+
+$ git show --stat e39f417
+ docs/noc-2026-08-08/GOTOWY-DO-KOLEJNEGO | 1 +   ← plik, który utworzyłem u nich
+ docs/noc-2026-08-08/ZAKONCZONE          | 1 +   ← ICH plik, nieśledzony, wciągnięty moim `git add -A`
+```
+
+**Przyczyna — dokładnie ta sama figura co N-10.** Wcześniej wykonałem `cd` do ich repozytorium,
+żeby czytać ich kod (odczyt był dozwolony). **Katalog roboczy został.** Potem uruchomiłem blok
+poleceń, który zaczynał się od `python3` (padł na ścieżce), po czym — **bez `&&`, więc mimo
+awarii** — wykonał `printf … > docs/…/GOTOWY-DO-KOLEJNEGO`, `git add -A`, `git commit`.
+Każde z nich zadziałało tam, gdzie stałem, a nie tam, gdzie myślałem, że stoję.
+
+**Co uratowało sytuację:** `git push` **padł** — ich gałąź robocza nazywa się
+`f1/naprawy-rundy-2`, a ja pchałem `faza-1-retencja`. Gdyby nazwa przypadkiem się zgadzała,
+mój commit trafiłby do ich zdalnego repozytorium. **Uchroniła mnie różnica nazw, nie żadne
+zabezpieczenie.**
+
+**Naprawa (wykonana natychmiast, najmniej inwazyjna z możliwych):**
+
+```
+$ git reset -q HEAD~1          # cofa WYŁĄCZNIE mój commit, ich pracy nie dotyka
+$ rm -f docs/noc-2026-08-08/GOTOWY-DO-KOLEJNEGO
+$ git log --oneline -1  → 58f729e   (ich HEAD, dokładnie jak zastałem)
+$ git status --short    → ?? docs/noc-2026-08-08/ZAKONCZONE   (ich plik, znów nieśledzony)
+```
+
+Stan ich repozytorium jest **bajt w bajt taki, jak go zastałem**: HEAD `58f729e`, jeden plik
+nieśledzony, który jest ICH plikiem z 00:38 — sprzed mojej sesji. `git revert` odrzuciłem
+świadomie: zostawiłby mój commit w ich historii na zawsze, czyli zanieczyściłby ją bardziej
+niż cofnięcie lokalnego, niewypchniętego commita, którego jestem jedynym autorem.
+
+**Waga:** wysoka. Zakaz był twardy, jednoznaczny i powtórzony w zleceniu.
+**Czy blokuje:** nie — zamknięte w kilka minut, z weryfikacją stanu końcowego.
+
+### Dlaczego zapisuję to jako znalezisko, a nie jako przeprosiny
+
+Bo to **druga instancja tej samej wady w ciągu jednej doby**, a to czyni z niej wzorzec, nie wypadek:
+
+| | N-10 | N-13 |
+|---|---|---|
+| polecenie | `git add -A` | `git add -A` (+ `printf >`) |
+| stan otoczenia, którego nie sprawdziłem | **biegnąca suita perturbacji** mutowała pliki | **katalog roboczy** wskazywał cudze repo |
+| skutek | perturbacja reguły 24 h weszła do commita | plik i commit w cudzym repozytorium |
+| co ograniczyło szkodę | `trap` perturbacji przywrócił plik | **przypadkowa** różnica nazw gałęzi |
+| reguła, którą znałem | „nie commituj w trakcie perturbacji" | „zero zapisu w cudzym repozytorium" |
+
+**Obie reguły znałem, obie cytowałem tej nocy, obie złamałem tym samym poleceniem.**
+`git add -A` jest przyrządem, który działa na **stanie otoczenia**, a nie na tym, co mam na myśli:
+bierze wszystko, co jest, tam, gdzie stoję. Ostrzeżenie w dokumencie nie zmienia jego zachowania.
+
+Architekt zapisał tej nocy przy N-10: *„Reguła łamana mimo świadomości → musi stać się
+mechanizmem, a nie mocniejszym ostrzeżeniem"* i zaproponował znacznik przebiegu + `pre-commit`.
+**N-13 jest drugim dowodem na tę samą tezę i rozszerza wymóg**: strażnik ma sprawdzać nie tylko
+„czy trwa przebieg pomiarowy", ale też **„czy to jest repozytorium, w którym wolno mi pisać"**.
+
+**Do zbudowania rano (nie robię tego w nocy — to zmiana przyrządu po zdarzeniu, bez rundy):**
+hook `pre-commit`, który odmawia, gdy `git rev-parse --show-toplevel` nie kończy się na `gabinet`,
+oraz zwyczaj, którego użyłem zaraz po naprawie i który zadziałał:
+
+```bash
+GDZIE="$(git rev-parse --show-toplevel)"
+case "$GDZIE" in *"/gabinet") ;; *) echo "ODMOWA: to nie moje repo"; exit 2 ;; esac
+```
+
+**Rzecz osobna, warta rejestru non-defektów:** przy N-10 szkodę ograniczył `trap` perturbacji,
+przy N-13 — nic. Sam fakt, że drugi raz zadziałał przypadek, a nie mechanizm, jest najmocniejszym
+argumentem za tym, żeby mechanizm powstał.

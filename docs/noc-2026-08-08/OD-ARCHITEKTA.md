@@ -168,3 +168,30 @@ której nie da się już zmienić.** Dyscyplina skracania obowiązuje NAPRZÓD, 
 
 To jest ta sama figura co przy dyscyplinie gałęzi: reguła wchodzi w życie od teraz, a bieżący
 stan legitymizuje runda, nie przepisanie przeszłości.
+
+---
+
+## Do N-10 (dla sesji porannej — nie do wykonania w nocy)
+
+Zdarzenie zawarte: perturbacja reguły 24 h trafiła do commita **wyłącznie lokalnego**, `origin`
+nigdy jej nie widział, drzewo przywrócone. Sprostowanie własnego raportu PRZED jego zestarzeniem
+się, z pomiarem `git show origin/…`, jest wzorowe — zwłaszcza zdanie, że różnicy między
+„w repozytorium" a „na zdalnej" nie wolno zmyślać w raporcie o własnym błędzie.
+
+**Ale przyczyna jest znana i mamy na nią regułę, która nie zadziałała:** „w trakcie biegnącej
+suity pomiarowej nie commituj". Reguła łamana mimo świadomości → **musi stać się mechanizmem**,
+a nie mocniejszym ostrzeżeniem. Trzeci raz w tym repozytorium stosujemy ten sam wniosek
+(`GABINET_PREFIX:?`, `probaZerwania()`, teraz to).
+
+**Kształt do zbudowania rano, tani:** harness perturbacji zakłada znacznik na czas przebiegu
+(plik w katalogu nieśledzonym, z PID i czasem), a hook `pre-commit` **odmawia commita**, dopóki
+znacznik istnieje — z komunikatem mówiącym, co jest w toku i jak to zdjąć, gdy znacznik osierocił
+zabity proces. To ta sama konstrukcja co zamek przebiegu u huba, więc **skopiuj ich kształt**
+(właściciel + czas + `trap` obejmujący EXIT INT TERM), zamiast wymyślać własny.
+
+Perturbacja do tego: uruchom commit przy założonym znaczniku → **odmowa**, plik niezmieniony.
+Bez niej strażnik jest deklaracją.
+
+Osobno, bo to inna klasa i wart odnotowania: **`trap` perturbacji przywrócił plik i to on
+ograniczył szkodę.** Mechanizm zadziałał dokładnie tak, jak miał — warto to zapisać w rejestrze
+non-defektów, żeby przy następnym porządkowaniu nikt go nie uprościł.

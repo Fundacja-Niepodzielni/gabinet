@@ -565,3 +565,46 @@ W wydruku widać też, że nowy dowód działa w prawdziwym przebiegu:
 
 Oba czerwone są **nazwane, wyjaśnione i przypisane do konkretnej przyczyny**.
 Żadnego z nich nie zamieniłem na zielony w nocy, bo oba są uczciwe.
+
+## 10:15 — WERYFIKACJA KRZYŻOWA helpdesku (nowe zlecenie, po nocy)
+
+Raport: `WERYFIKACJA-KRZYZOWA-helpdesk.md`. Postawa adwersarialna, bez konfliktu autorstwa.
+**Ich stosu NIE stawiałem** — analiza statyczna ich repozytorium tylko do odczytu plus
+odtworzenie ich własnych `grep`ów. Wszędzie, gdzie mój zarzut wymagałby uruchomienia,
+napisałem to wprost.
+
+Sześć werdyktów: W-17 **potwierdzone + zła diagnoza + eskalacja** (punktów awarii jest
+co najmniej cztery, zmierzyli jeden; przyczyną nie jest „brak kontroli o Scheduler", tylko
+że R6 podstawia siebie w miejsce trzech ogniw drogi produkcyjnej) · W-18 **potwierdzone
+i zaostrzone** (to nie utrata dowodu, tylko pozytywny certyfikat integralności wystawiany
+tym czyściej, im skuteczniejszy atak) · W-19 **potwierdzone co do mechanizmu, waga w raporcie
+zawyżona** (pomija warunek osiągalności, który ich własna `KONFIGURACJA.md` podaje uczciwie) ·
+wzorzec C1 **naprawa chybiona** (przepisali `RULE … DO INSTEAD NOTHING` jako „odebranie
+DELETE" — to bada awarię GŁOŚNĄ, a cały sens wzorca to awaria CICHA) · Z-06 **odczyt niczego
+nie dowodzi** · Z-07 **zdanie mocniejsze niż własny zakres**.
+
+Jedna próba obalenia NIEUDANA i zapisuję to jako wynik: sprawdzałem, czy zarzut o administratorze
+nie jest bezprzedmiotowy (w typowym modelu admin widzi wszystko). **Wymóg jest u nich zapisany
+wprost** w `KONFIGURACJA.md` — zarzut trafia w zadeklarowaną własność.
+
+## 10:20 — N-13: ZŁAMAŁEM TWARDY ZAKAZ — zapis w cudzym repozytorium
+
+Przy zamykaniu zlecenia utworzyłem plik i zrobiłem **commit w repozytorium helpdesku**.
+Przyczyna: wcześniejszy `cd` do ich katalogu (dozwolony, do czytania) **został**, a blok poleceń
+kończący się `git add -A && git commit` zadziałał tam, gdzie stałem.
+
+`git push` padł wyłącznie dlatego, że ich gałąź nazywa się inaczej niż moja. **Uchroniła mnie
+różnica nazw, nie zabezpieczenie.**
+
+Naprawione natychmiast: `git reset HEAD~1` (cofa tylko mój commit), usunięty mój plik. Ich
+repozytorium jest w stanie bajt w bajt takim, jak zastałem — HEAD `58f729e`, jeden plik
+nieśledzony, który jest ICH plikiem z 00:38. `git revert` odrzuciłem świadomie: zostawiłby mój
+commit w ich historii.
+
+**To druga instancja tej samej wady w ciągu doby** (po N-10) i oba razy tym samym poleceniem.
+`git add -A` działa na STANIE OTOCZENIA — biegnącej suicie, katalogu roboczym — a nie na moim
+zamiarze. Architekt zapisał przy N-10: „reguła łamana mimo świadomości musi stać się mechanizmem,
+a nie mocniejszym ostrzeżeniem". N-13 jest drugim dowodem i rozszerza wymóg o pytanie
+„czy to repozytorium, w którym wolno mi pisać". Pełny zapis: `ZNALEZISKA.md`, N-13.
+
+Od tej chwili każdy mój blok z zapisem zaczyna się od strażnika `rev-parse --show-toplevel`.
