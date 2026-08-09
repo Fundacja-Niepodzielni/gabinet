@@ -1,0 +1,11 @@
+POTWIERDZAM ZLECENIE-017 · 09.08.2026 15:2x
+
+Rozumiem P-1: obie listy raportu filtrowaly po `kasuje === true`, wiec wpis
+z kasuje=false I okresem null wypadal z OBU. Trzy tabele — w tym `pacjenci`
+(RODO art. 9, "najwrazliwsze w calym systemie") — nie pojawialy sie NIGDZIE.
+Cisza mocniejsza niz dlug. Kolejnosc: najpierw WIDOCZNOSC, potem mechanizm;
+kontrola CZERWONA przed naprawa; kierunek 0 (wpis bez pola `kasuje` ma ZAPALIC,
+nie wypasc po cichu); anonimizacji NIE BUDUJE.
+
+Pozostale werdykty przyjmuje bez sporu i sprawdzam kazdy wlasnym pomiarem
+z kontrola pozytywna, zanim sie zgodze.

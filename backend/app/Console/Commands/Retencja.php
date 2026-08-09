@@ -99,6 +99,20 @@ final class Retencja extends Command
             );
         }
 
+        // DŁUG CIĘŻSZY NIŻ BRAK OKRESU — i do 09.08 NIEWIDOCZNY W OGÓLE.
+        // Przy braku okresu mechanizm istnieje i czeka na liczbę; tutaj nie
+        // istnieje nic. Milczenie o tabeli z danymi RODO art. 9 jest gorsze
+        // niż jawny dług, bo dług przynajmniej ma listę.
+        $pozaKasowaniem = RejestrRetencji::pozaKasowaniem();
+
+        if ($pozaKasowaniem !== []) {
+            $this->warn(
+                '  DŁUG ANONIMIZACJI — tabele, których sprzątaczka NIE dotyka (rekord ma znikać '
+                .'przez anonimizację), a MECHANIZMU ANONIMIZACJI NIE MA W KODZIE: '
+                .implode(', ', $pozaKasowaniem)
+            );
+        }
+
         if ($niekompletne !== []) {
             $this->error('RETENCJA NIEKOMPLETNA: '.implode('; ', $niekompletne));
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Retencja;
 
+use InvalidArgumentException;
+
 /**
  * REJESTR RETENCJI — jedno źródło prawdy dla kontroli strukturalnej i dla
  * zadania czyszczącego.
@@ -19,15 +21,24 @@ namespace App\Retencja;
  * ================== OKRES RETENCJI ==================
  *
  * `okres_dni` jest osobnym polem i wolno mu być `null`. `null` znaczy
- * **NIEUSTALONY**, a nie „zero" i nie „bez ograniczeń". Zadanie czyszczące
- * ODMAWIA dotknięcia takiej tabeli.
+ * **NIEUSTALONY**, a nie „zero" i nie „bez ograniczeń".
+ *
+ * OSŁABIONE 09.08 po werdykcie helpdesku (ZŁA DIAGNOZA): pisałem tu, że zadanie
+ * „ODMAWIA" dotknięcia takiej tabeli. W kodzie to jest FILTR, nie odmowa —
+ * wpis po prostu nie trafia do zbioru wykonywanego i zostaje WYPISANY jako dług.
+ * Odmowa to czynność, która przerywa; filtr niczego nie przerywa. Nazywam to
+ * teraz tak, jak działa, bo sam jestem autorem zasady „nieznane → odmowa"
+ * i różnica między nią wykonaną a udawaną jest cała.
  *
  * To jest świadome zastosowanie reguły „nieznane → odmowa": okresy retencji dla
  * danych o zdrowiu (RODO art. 9) rozstrzyga IOD w DPIA, a nie programista
  * przy pisaniu sprzątaczki. Wpisanie tu wartości domyślnej byłoby podjęciem
  * decyzji prawnej przez przeoczenie — i to takiej, która KASUJE dane.
  *
- * @dowod: HarmonogramRetencjiTest — „zadanie odmawia tabeli o nieustalonym okresie".
+ * @dowod: HarmonogramRetencjiTest — „FAIL-CLOSED: tabela o NIEUSTALONYM okresie nie jest
+ *         kasowana, i mówi się o tym głośno". Nazwa poprawiona 09.08: poprzednia wersja
+ *         tego znacznika cytowała test „zadanie odmawia tabeli o nieustalonym okresie",
+ *         którego NIE MA — moja własna klasa D3, w pliku napisanym tego samego dnia.
  */
 final class RejestrRetencji
 {
@@ -144,6 +155,51 @@ final class RejestrRetencji
         'konfiguracja_regul', 'uslugi', 'specjalista_usluga',
     ];
 
+    public const DO_WYKONANIA = 'do-wykonania';
+
+    public const CZEKA_NA_OKRES = 'czeka-na-okres';
+
+    public const POZA_KASOWANIEM = 'poza-kasowaniem';
+
+    /**
+     * KLASYFIKATOR TOTALNY — każdy wpis dostaje dokładnie jedną kategorię
+     * albo wywala się GŁOŚNO.
+     *
+     * Powstał, bo poprzednia wersja miała dwie NIEZALEŻNE listy, obie filtrujące
+     * po `kasuje === true`. Wpis z `kasuje=false` i okresem `null` wypadał
+     * z OBU — i tak wypadły `pacjenci` (RODO art. 9), `rezerwacje`
+     * i `specjalisci`. Raport wymieniał 4 z 7 tabel, a o trzech MILCZAŁ.
+     * Cisza jest gorsza niż dług, bo dług przynajmniej ma listę.
+     *
+     * Konstrukcja przed strażnikiem: przy podziale na kategorie wypadnięcie
+     * „pomiędzy" przestaje być możliwe, zamiast być pilnowane osobną kontrolą.
+     *
+     * Wpis niekompletny NIE dostaje kategorii domyślnej — „nieznane → odmowa".
+     * Inaczej nowa tabela dopisana bez pola `kasuje` zostałaby po cichu uznana
+     * za anonimizowaną i zniknęła z raportu tak samo jak `pacjenci`.
+     *
+     * @param  array<string, mixed>  $wpis
+     *
+     * @dowod: WidocznoscRejestruTest — „KIERUNEK 0: wpis BEZ pola `kasuje` ZAPALA”
+     */
+    public static function kategoria(array $wpis): string
+    {
+        foreach (['kasuje', 'okres_dni'] as $wymagane) {
+            if (! array_key_exists($wymagane, $wpis)) {
+                throw new InvalidArgumentException(
+                    "Wpis rejestru retencji BEZ pola `{$wymagane}` — odmawiam zaklasyfikowania. ".
+                    'Wpis bez kategorii wypadłby ze wszystkich raportów po cichu.'
+                );
+            }
+        }
+
+        if ($wpis['kasuje'] !== true) {
+            return self::POZA_KASOWANIEM;
+        }
+
+        return $wpis['okres_dni'] === null ? self::CZEKA_NA_OKRES : self::DO_WYKONANIA;
+    }
+
     /**
      * Wpisy, które zadanie czyszczące WOLNO dziś wykonać: kasowane i z USTALONYM
      * okresem. Reszta czeka na IOD i jest raportowana, nie pomijana po cichu.
@@ -154,7 +210,7 @@ final class RejestrRetencji
     {
         return array_filter(
             self::wpisy(),
-            static fn (array $w): bool => $w['kasuje'] === true && $w['okres_dni'] !== null
+            static fn (array $w): bool => self::kategoria($w) === self::DO_WYKONANIA
         );
     }
 
@@ -170,7 +226,26 @@ final class RejestrRetencji
     {
         return array_keys(array_filter(
             self::wpisy(),
-            static fn (array $w): bool => $w['kasuje'] === true && $w['okres_dni'] === null
+            static fn (array $w): bool => self::kategoria($w) === self::CZEKA_NA_OKRES
+        ));
+    }
+
+    /**
+     * Wpisy, których sprzątaczka KASUJĄCA nie dotyka, bo rekord znika przez
+     * ANONIMIZACJĘ — a mechanizmu anonimizacji **NIE MA W KODZIE**.
+     *
+     * To jest dług cięższy niż brak okresu i musi być widoczny osobno: przy
+     * braku okresu istnieje mechanizm i czeka na liczbę, tutaj **nie istnieje
+     * nic**. Leży tu `pacjenci` — „DANE PACJENTÓW, najwrażliwsze w całym
+     * systemie", podstawa „RODO art. 9".
+     *
+     * @return list<string>
+     */
+    public static function pozaKasowaniem(): array
+    {
+        return array_keys(array_filter(
+            self::wpisy(),
+            static fn (array $w): bool => self::kategoria($w) === self::POZA_KASOWANIEM
         ));
     }
 }
