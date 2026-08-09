@@ -1,0 +1,15 @@
+POTWIERDZAM ZLECENIE-027 · 09.08.2026 19:00
+
+Rozumiem: R6B-7 — szesc `sed -i` bez odczytu zwrotnego. `sed` na wzorcu
+nieobecnym konczy sie kodem 0 i nie zmienia nic, wiec "podmiana wykonana"
+i "podmiana nie trafila" daja identyczny sygnal. Kontrola czerwona przed
+naprawa; odczyt zwrotny TRESCI, nie kod wyjscia; kierunek 0 = wzorzec trafiajacy
+WIECEJ NIZ RAZ (sed bez kotwicy to druga polowa tej samej wady); filtrowanie
+komentarzy przy sprawdzaniu; a jesli ktores z szesciu jest bezpieczne
+konstrukcyjnie — powiedziec i nie naprawiac na sile.
+
+Zglaszam wlasne naruszenie: ODPOWIEDZ-025 i ODPOWIEDZ-026 nie istnialy, mimo ze
+prace zrobilem i zacommitowalem. Regule z ZLECENIE-023 oparlem na pamietaniu,
+nie na kontroli — i dlatego nie zadzialala. Oba pliki dopisane.
+
+Kanal: plik 18:59:10.061 -> obudzony 18:59:53.596 = 43,5 s (dwudziesty trzeci).
