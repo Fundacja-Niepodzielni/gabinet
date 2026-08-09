@@ -526,6 +526,133 @@ tabele zadań. Wyszło natychmiast wyłącznie dlatego, że skrypt wypisywał li
 usuwanych znaków, a usuwaną treść zapisywał do pliku przed nadpisaniem.
 **Zapisuj to, co nadpisujesz** — kosztuje jedną linijkę.
 
+## RDZEŃ WSPÓLNY PRZYWRÓCONY 09.08.2026 — cztery reguły, których u nas NIE BYŁO
+
+> **Skąd to jest.** Weryfikator architekta zmierzył `grep`-em obecność reguł rdzenia w czterech
+> repozytoriach i **obalił twierdzenie**, że rdzeń jest identyczny
+> (`_architektura/weryfikacja-architekta/2026-08-09-kryteria-faz.md`, sekcja 5).
+> U nas brakowało **czterech** reguł. Poniższe **treści rdzenia skopiowałem dosłownie
+> z `hub/WYTYCZNE-PRACY.md`, wersja z 09.08.2026** — nie z opisu architekta, bo jego parafrazy
+> raz już przekręciły wzorzec w sposób unieważniający jego sens. Do każdej reguły dołożyłem
+> **instancję zmierzoną u NAS**, bo reguła bez własnego numeru wpadki czyta się jak ogólna
+> ostrożność i pierwsza wylatuje przy porządkowaniu.
+>
+> **Żadnej z tych czterech nie oznaczam jako „nie stosuje się u nas".** Wszystkie cztery mają
+> u nas zmierzone instancje — trzy z nich z tej samej doby.
+
+### Kontrole bezpieczeństwa: allowlisty, nie denylisty — sekcja wspólna ekosystemu
+
+**ZASADA: „wylicz zakazane" zawsze przegra z wariantem spoza listy.** Denylista broni tylko
+tego, co jej autor zdążył sobie wyobrazić. Właściwa postać kontroli bezpieczeństwa to
+**zakazane domyślnie, jawna zgoda na każdy wyjątek w rejestrze** (deny by default).
+
+Precedens ekosystemowy: zakaz własnych haseł w Gabinecie przegrał **trzykrotnie tak samo** —
+literalne nazwy → wzorce → zakres. Każda z tych trzech napraw była inną denylistą, więc każda
+przegrała z wariantem, którego nie objęła.
+
+**Praktycznie.** Kontrola ma odpowiadać na pytanie „czy wszystko, co tu jest, zostało
+**dopuszczone**?", a nie „czy jest tu coś **zakazanego**?". Zbiór dopuszczony trzymamy jawnie
+w kodzie kontroli; dopisanie do niego wymaga świadomej decyzji, czyli zostawia ślad
+w przeglądzie i w rejestrze.
+
+> **Nasza instancja — i to jest wstyd, że reguły tu nie było: przegraliśmy CZWARTY raz.**
+> `BrakWlasnychHaselTest` opiera się na wyrażeniu `PRYMITYWY_POSWIADCZEN`, które **wylicza
+> zakazane** prymitywy. Weryfikator rundy 6 zbudował kompletny mechanizm własnych haseł na
+> `hash('sha256', …)` — prymitywu spoza listy — i **cała kontrola CLAUDE.md §2 przeszła:
+> `7 passed`** (znalezisko **R6A-4**). Na liście nie ma też `hash_hmac`, `md5`, `sha1`,
+> `openssl_*`.
+>
+> **Ciężar dokłada zdanie stojące w środku tej kontroli:** *„Lista jest ZAMKNIĘTA — nie da się
+> zweryfikować hasła bez jednego z nich (albo bez własnej kryptografii, co samo w sobie byłoby
+> czerwoną flagą przy przeglądzie)"*. Zdanie jest nieprawdziwe, **samo przewiduje dziurę**
+> i oddaje ją człowiekowi — czyli w miejscu, gdzie kontrola miała zastąpić regułę mechanizmem,
+> wraca reguła. Weryfikator krzyżowy Kont nazwał to cięższym niż sama luka: kontrola zawiera
+> **pisemne zapewnienie, że dziury nie ma**.
+>
+> To repozytorium jest w ekosystemie **dowodem** tej reguły i było jedynym, które jej nie nosiło.
+
+### Kiedy wolno napisać „zamknięte" — sekcja wspólna ekosystemu
+
+Dla znaleziska **podatnego na nawrót** samo naprawienie instancji nie wystarcza.
+„Zamknięte" wymaga dwóch rzeczy:
+
+1. **perturbacji rozpinającej KLASĘ**, nie jedną instancję — mutacja ma sięgać po wariant,
+   którego weryfikator **nie** pokazał;
+2. **przetrwania jednej pełnej rundy weryfikacji bez dotykania** naprawy.
+
+Naprawa dokładnie tej instancji, którą pokazał weryfikator, opisana jako „klasa zamknięta",
+to schemat, przez który w Gabinecie **nawróciły trzy naprawy naraz**.
+
+> **Nasze instancje, dwie z jednej doby.**
+> (a) **R6A-3** — napisałem o wąskim gardle §2, że ścieżka „brak rekordu → utwórz" jest
+> **NIEWYWOŁYWALNA**. Weryfikator wytworzył tożsamość koordynatora trzema wektorami
+> (dane z żądania, `Reflection`, `unserialize`). Zamknąłem pokazany przypadek; warunek
+> przeniósł się o poziom wyżej.
+> (b) **N-3** — naprawiając perturbacje dołożyłem dowód z odczytem bazowym i przeoczyłem
+> **osiem podmian robionych surowym `sed`-em**, które nie mają żadnego zabezpieczenia.
+> Zamknąłem klasę w jednym mechanizmie z dwóch.
+>
+> **Uwaga o cudzym odwołaniu:** `helpdesk/PLAN-FAZ.md` uzasadnia obniżenie statusu F1
+> „kryterium z rundy 4 Gabinetu (`WYTYCZNE-PRACY.md`, «Kiedy wolno napisać zamknięte»)" —
+> a sekcji o tej nazwie **u nas nie było**, więc odwołanie prowadziło donikąd (sekcja 5c
+> raportu). Od tego wpisu prowadzi tutaj.
+
+### Środowisko jest częścią pomiaru — sekcja wspólna ekosystemu
+
+**ŚRODOWISKO JEST CZĘŚCIĄ POMIARU.** Bramka i perturbacje muszą używać środowiska
+**zdefiniowanego w repo** (generowanego z `.env.example`), nigdy `.env` zastanego na maszynie
+dewelopera. Inaczej zielone istnieje wyłącznie w jednym środowisku — tym, w którym akurat
+mierzono.
+
+Precedens ekosystemowy: „42 perturbacje OK" zmierzone w jedynym środowisku, w którym były
+zielone; na czystym klonie **czerwone**, a pod spodem wyciek danych osobowych. Brakowało
+jednej linii w repo.
+
+**NAPRAWIAJ INTEGRALNOŚĆ POMIARU PRZED DEFEKTAMI.** Gdy przyrząd — bramka, perturbacja,
+skrypt powtarzalności — kłamie o wynikach, naprawianie defektów jest zgadywaniem. Najpierw
+prawdą ma być to, co runner mówi o zielonym i czerwonym; **dopiero potem** treść tego,
+co mierzy.
+
+> **Nasze instancje — i jedna z nich ROZSZERZA tę regułę o wymiar, którego nie miała.**
+> (a) **R6B-16, OTWARTE:** `skrypty/perturbacje.sh` nie podaje `--env-file`, więc
+> `docker-compose.yml` montuje **`.env` dewelopera z prawdziwymi sekretami**. Bramkę
+> naprawiliśmy (własny plik z `.env.example` przy każdym przebiegu), perturbacji **nie** —
+> czyli reguła obowiązuje u nas w połowie narzędzi.
+> (b) **N-14 — nowy wymiar: środowiskiem jest też UŻYTKOWNIK PROCESU.** Zmierzone: testy
+> biegną przez `docker compose exec` jako **root**, a żądania obsługuje **`www-data`**.
+> Katalog `storage/slad-wylogowania` należy do roota, więc w prawdziwym procesie zapis śladu
+> **cicho nie dochodzi** (`File::put` ostrzega i zwraca, nie rzuca), a odczyt **udaje się**
+> i oddaje nieświeżą liczbę z innego procesu. Kontrola jest walidowana w kontekście
+> użytkownika, który w produkcji nie występuje.
+>
+> **Wniosek do reguły:** przy dodawaniu kontroli pytamy nie tylko „czy sterownik jest
+> prawdziwy" i „czy plik środowiska pochodzi z repo", ale też **„czy kontrola biegnie jako
+> ten sam użytkownik, co proces obsługujący żądanie"**.
+
+### Suma zielonych nie jest dowodem — sekcja wspólna ekosystemu
+
+**SUMA ASERCJI NIE JEST DOWODEM. DOWODEM JEST ROZBICIE.** „80/80 zielonych" brzmi jak fakt
+o systemie, a bywa faktem o maszynie. Gdy liczba kontroli zależy od otoczenia (ile portów
+opublikowano, ile adresów ma host, ile plików znalazł skaner), porównanie samych sum między
+przebiegami nie dowodzi **niczego** — ani że kontroli przybyło, ani że ubyło. Raport ma
+podawać sumę **razem z rozbiciem**.
+
+**STAN WYJŚCIOWY SPRZĄTA SIĘ PRZED POMIAREM.** Bramka usuwa pozostałości własnego projektu,
+zanim cokolwiek zmierzy. Inaczej mierzy kontener, którego sama nie postawiła — i nie wie o tym.
+
+Reguła jest silniejsza niż wygląda: **liczba, która rośnie, uspokaja.** Dlatego wzrost sumy
+asercji wymaga takiego samego wyjaśnienia co spadek.
+
+> **Nasze instancje, obie z tej samej doby i obie o liczbie, która uspokajała.**
+> (a) **N-2:** podłogi bramki stały na 170/590 przy stanie 181/640. W zapasie jedenastu testów
+> mieściło się **skasowanie w całości dziesięciu z siedemnastu plików kontrolnych**, w tym
+> `ObietniceKomentarzyTest` — kontroli NAD kontrolami. Suma wyglądała dobrze przez cały czas.
+> (b) **N-12 / R6B-13:** „30 scenariuszy perturbacji" cytowaliśmy jako miarę pokrycia.
+> Zmierzone: **pięć** z nich nie może dziś zaświecić czerwono, bo celują w plik trwale czerwony
+> z innego powodu, a sześć z ośmiu allowlist `--przyczyna` nie zawęża niczego. Liczba 30 jest
+> prawdziwa i **nie jest** miarą pokrycia — dlatego `CURRENT WORK` niesie dziś zdanie
+> „nie cytuj «30 scenariuszy» jako miary pokrycia".
+
 ## Czego agentom nie wolno nigdy
 
 Wdrażać na produkcję bez zgody właściciela · zapisywać sekretów · wyłączać/obchodzić bramek · relitygować decyzji z `CLAUDE.md` i `docs/DECYZJE.md` · pracować dalej mimo niezrozumienia wymagania (wtedy: pytanie do właściciela w raporcie, praca na innym froncie).
