@@ -59,6 +59,7 @@ mkdir -p \
 	storage/framework/sessions \
 	storage/framework/views \
 	storage/logs \
+	storage/slad-wylogowania \
 	bootstrap/cache
 
 # Kontener działa jako root (dev). Prawa ustawiamy dla użytkownika php-fpm,

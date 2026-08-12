@@ -178,6 +178,14 @@ final class RejestrRetencji
     public static function bezDanychOsobowych(): array
     {
         return [
+            'sesje_sso' => [
+                'powod' => 'Mapa `sid -> identyfikatory sesji lokalnych`. Niesie SKROT `sid` (SHA-256) i identyfikator sesji frameworka — oba techniczne, zadnej cechy czlowieka. Wiersze kasuje sprzatanie po tym samym progu, co znaczniki uniewaznienia.',
+                'warunek_znoszacy' => 'Gdyby identyfikator sesji zaczal byc budowany z czegokolwiek osobowego, albo gdyby doszla kolumna opisujaca uzytkownika (adres IP, przegladarka) — czyli dokladnie to, co uczynilo `sessions` zwolnieniem WARUNKOWYM.',
+            ],
+            'sygnaly_zdrowia' => [
+                'powod' => 'Sygnaly zdrowia infrastruktury (puls harmonogramu): klucz techniczny i znacznik czasu. Opisuje MASZYNE, nie czlowieka.',
+                'warunek_znoszacy' => 'Gdyby ktos zaczal zapisywac tu sygnaly per uzytkownik — np. „ostatnia aktywnosc pacjenta X” — wtedy tabela staje sie dziennikiem obecnosci.',
+            ],
             'migrations' => [
                 'powod' => 'Dziennik zastosowanych migracji: nazwa pliku, numer partii. Opisuje KSZTAŁT bazy, nie jej zawartość.',
                 'warunek_znoszacy' => 'Gdyby ktoś zaczął umieszczać w nazwach migracji cokolwiek poza opisem zmiany schematu.',

@@ -6,7 +6,6 @@ namespace App\Tozsamosc;
 
 use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use RuntimeException;
@@ -21,20 +20,45 @@ use RuntimeException;
  * @dowod: OdebranieRoliTest — „zabija sesję NATYCHMIAST po back-channel logout"
  *         liczy skasowane sesje po `sid` z tego rejestru.
  */
+/*
+ * MAGAZYNEM JEST BAZA, NIE CACHE (R6B-9, zamkniete 12.08).
+ *
+ * Do 12.08 mapa mieszkala w cache'u z TTL 86 400 s. Utrata cache'u dawala
+ * `skasowane_sesje = 0` BEZ JEDNEGO KOMUNIKATU — czyli fail-open w wylogowaniu,
+ * gdzie objawem jest BRAK OBJAWU. Cztery wymagania trwalosci zastosowalismy
+ * wczesniej do ZNACZNIKA uniewaznienia i nie zastosowalismy ich tutaj —
+ * naprawa miala zasieg tego, co pokazal weryfikator.
+ *
+ * Czesc przyczyny lezy po stronie KONTRAKTU Kont: ich §4.5 mowi „skasuj sesje
+ * o tym sid” i milczy o tym, ze trzeba je najpierw UMIEC ZNALEZC. Zapisali to
+ * jako znalezisko przeciwko sobie.
+ *
+ * Odczyt oddaje dzis DWIE rzeczy zamiast jednej liczby: ile sesji rejestr ZNAL
+ * i ile NAPRAWDE zniknelo. „Zero skasowanych” przestalo byc nieodroznialne od
+ * „rejestr pusty”.
+ *
+ * @dowod: TrwaloscRejestruSesjiTest — mapa PRZEZYWA `Cache::flush()`.
+ */
 final class RejestrSesji
 {
-    /** Rejestr żyje tak długo, jak najdłuższa sesja SSO w IdP (max 24 h). */
-    private const CZAS_ZYCIA_SEKUND = 86400;
+    /**
+     * Ile sesji rejestr znal przy ostatnim `zakoncz()`.
+     *
+     * Stan procesu, nie magazyn — sluzy WYLACZNIE do odroznienia „nie bylo
+     * czego kasowac” od „rejestr zniknal” w odpowiedzi handlera.
+     */
+    private static int $znanychPrzyOstatnimZakonczeniu = 0;
 
     public static function zapamietaj(string $sid, string $idSesjiLokalnej): void
     {
-        $identyfikatory = self::odczytaj($sid);
+        $teraz = CarbonImmutable::now();
 
-        if (! in_array($idSesjiLokalnej, $identyfikatory, true)) {
-            $identyfikatory[] = $idSesjiLokalnej;
-        }
-
-        Cache::put(self::klucz($sid), $identyfikatory, self::CZAS_ZYCIA_SEKUND);
+        DB::table('sesje_sso')->upsert([[
+            'sid_skrot' => hash('sha256', $sid),
+            'id_sesji' => $idSesjiLokalnej,
+            'zapamietana_at' => $teraz,
+            'wygasa_at' => $teraz->addSeconds(self::oknoUniewaznieniaSekund()),
+        ]], ['sid_skrot', 'id_sesji'], ['zapamietana_at', 'wygasa_at']);
     }
 
     /**
@@ -47,6 +71,11 @@ final class RejestrSesji
         $identyfikatory = self::odczytaj($sid);
         $uchwyt = Session::getHandler();
         $skasowane = 0;
+
+        // ILE REJESTR W OGOLE ZNAL — drugi, niezalezny sygnal (R6B-9).
+        // Bez niego `skasowane_sesje = 0` jest zgodne z dwoma swiatami:
+        // „nie bylo czego kasowac” i „rejestr zniknal”.
+        self::$znanychPrzyOstatnimZakonczeniu = count($identyfikatory);
 
         foreach ($identyfikatory as $id) {
             if ($uchwyt->destroy($id)) {
@@ -72,7 +101,7 @@ final class RejestrSesji
         // przy każdym żądaniu.
         self::zapiszUniewaznienie($sid);
 
-        Cache::forget(self::klucz($sid));
+        DB::table('sesje_sso')->where('sid_skrot', hash('sha256', $sid))->delete();
 
         // SPRZĄTANIE NA ŚCIEŻCE MUTUJĄCEJ — tutaj, nie w odczycie.
         //
@@ -95,7 +124,19 @@ final class RejestrSesji
      */
     public static function odczytaj(string $sid): array
     {
-        return Typy::listaNapisow(Cache::get(self::klucz($sid), []));
+        return Typy::listaNapisow(
+            DB::table('sesje_sso')
+                ->where('sid_skrot', hash('sha256', $sid))
+                ->orderBy('id')
+                ->pluck('id_sesji')
+                ->all()
+        );
+    }
+
+    /** Ile sesji rejestr ZNAL przy ostatnim `zakoncz()` — sygnal niezalezny od liczby skasowanych. */
+    public static function znanychPrzyOstatnimZakonczeniu(): int
+    {
+        return self::$znanychPrzyOstatnimZakonczeniu;
     }
 
     /**
@@ -156,6 +197,11 @@ final class RejestrSesji
         }
 
         DB::table('uniewaznione_sesje')->whereIn('sid_skrot', $doUsuniecia)->delete();
+
+        // TEN SAM PROG dla mapy `sid -> sesje`. Dwa progi dla dwoch polowek
+        // jednego mechanizmu rozjechalyby sie po cichu: mapa przezylaby
+        // znacznik albo znacznik mape, a objawem bylby brak objawu.
+        DB::table('sesje_sso')->where('wygasa_at', '<=', CarbonImmutable::now())->delete();
 
         // „Polecenie się wykonało" ≠ „wiersz zniknął". Liczymy to, co NAPRAWDĘ
         // zniknęło, pytając bazę drugą drogą — nie ufamy liczbie z `delete()`.
@@ -223,10 +269,5 @@ final class RejestrSesji
         }
 
         return $prog;
-    }
-
-    private static function klucz(string $sid): string
-    {
-        return 'konta:sid:'.hash('sha256', $sid);
     }
 }

@@ -71,6 +71,12 @@ const OCZEKIWANY_SCHEMAT = [
     // Znaczniki unieważnionych sesji SSO (BLK-22). Trzyma WYŁĄCZNIE skrót
     // `sid` — żadnych poświadczeń, żadnych danych osobowych.
     'uniewaznione_sesje' => ['powod', 'sid_skrot', 'uniewazniona_at', 'wygasa_at'],
+    // Mapa `sid -> sesje lokalne` wyprowadzona z cache'u do bazy (R6B-9).
+    // ZERO kolumn nadajacych sie na poswiadczenie: skrot `sid`, identyfikator
+    // sesji frameworka i dwie daty.
+    'sesje_sso' => ['id', 'id_sesji', 'sid_skrot', 'wygasa_at', 'zapamietana_at'],
+    // Sygnaly zdrowia (puls harmonogramu) — R6B-10. Klucz techniczny i liczba.
+    'sygnaly_zdrowia' => ['klucz', 'wartosc', 'zapisany_at'],
     'zgody' => [
         'created_at', 'id', 'ip', 'pacjent_id', 'rodzaj', 'rozstrzygnieta_at',
         'udzielona', 'wersja_dokumentu',

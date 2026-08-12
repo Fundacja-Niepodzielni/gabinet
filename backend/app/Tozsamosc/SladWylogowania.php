@@ -39,6 +39,30 @@ use Illuminate\Support\Facades\File;
  * Dlatego ślad idzie do PLIKU. To osobny mechanizm: perturbacja cache'u nie
  * znika tą samą drogą, którą kontrola patrzy.
  */
+/*
+ * SRODOWISKIEM JEST TEZ UZYTKOWNIK PROCESU (N-14, zamkniete 12.08).
+ *
+ * Naprawa reguly C1 (slad wyprowadzony z cache'u do pliku) otworzyla inna
+ * droge awarii, o poziom nizej. Zmierzone: testy biegna przez
+ * `docker compose exec`, czyli jako ROOT, a zadania obsluguje WWW-DATA.
+ * Katalog sladu powstawal leniwie — u tego, kto pisal pierwszy — wiec
+ * w prawdziwym procesie zapis CICHO nie dochodzil (`File::put()` ostrzega
+ * i zwraca, NIE rzuca), a odczyt UDAWAL SIE i oddawal nieswieza liczbe
+ * z innego procesu. Przyrzad diagnostyczny zwracajacy stara liczbe jest
+ * GORSZY od zwracajacego zero, bo WYGLADA JAK POMIAR.
+ *
+ * Dwie strony naprawy, bo jedna by nie wystarczyla:
+ *   1. SRODOWISKO — katalog powstaje w `entrypoint.sh`, przed pierwszym
+ *      zadaniem, wiec obejmuje go `chown www-data`;
+ *   2. TYP — odczyt oddaje `null` (NIE WIEM), gdy magazyn nie jest
+ *      zapisywalny dla TEGO procesu. Wolajacy musi obsluzyc oba stany,
+ *      wiec nie da sie wziac ciszy za pomiar. Ta sama zasada, co
+ *      `TozsamoscSesji` oddajace `null` zamiast pustej tozsamosci:
+ *      BRAK WARTOSCI PRZED SPRAWDZANIEM WARTOSCI.
+ *
+ * @dowod: SladNieKlamieTest — katalog bez prawa zapisu daje NIE WIEM,
+ *         nigdy liczby (kontrola pozytywna i negatywna).
+ */
 final class SladWylogowania
 {
     private const WEJSCIA = 'wejscia';
@@ -64,17 +88,20 @@ final class SladWylogowania
         self::zwieksz(self::ODMOWY);
     }
 
-    public static function odmowy(): int
+    /** @return int|null `null` znaczy NIE WIEM — magazyn nie przyjmuje zapisow tego procesu. */
+    public static function odmowy(): ?int
     {
         return self::licznik(self::ODMOWY);
     }
 
-    public static function wejscia(): int
+    /** @return int|null `null` znaczy NIE WIEM — magazyn nie przyjmuje zapisow tego procesu. */
+    public static function wejscia(): ?int
     {
         return self::licznik(self::WEJSCIA);
     }
 
-    public static function awarie(): int
+    /** @return int|null `null` znaczy NIE WIEM — magazyn nie przyjmuje zapisow tego procesu. */
+    public static function awarie(): ?int
     {
         return self::licznik(self::AWARIE);
     }
@@ -100,8 +127,29 @@ final class SladWylogowania
         File::put(self::katalog().'/'.$nazwa, $wartosc);
     }
 
-    private static function licznik(string $nazwa): int
+    /**
+     * Czy magazyn sladu przyjmuje zapisy PROCESU, ktory o to pyta.
+     *
+     * Sciezka NIEZALEZNA od samego zapisu: pytamy system plikow o uprawnienia,
+     * zamiast wnioskowac z wyniku `File::put()`, ktory przy braku praw
+     * ostrzega i zwraca, zamiast rzucic.
+     */
+    public static function zapisywalny(): bool
     {
+        $katalog = self::katalog();
+
+        return is_dir($katalog) ? is_writable($katalog) : is_writable(dirname($katalog));
+    }
+
+    private static function licznik(string $nazwa): ?int
+    {
+        // NIE WIEM przed liczba. Gdy magazyn nie przyjmuje zapisow TEGO procesu,
+        // kazda odczytana wartosc pochodzi z innego procesu i innej chwili —
+        // a to jest gorsze niz brak odpowiedzi, bo wyglada jak pomiar.
+        if (! self::zapisywalny()) {
+            return null;
+        }
+
         $plik = self::katalog().'/'.$nazwa;
 
         return File::exists($plik) ? Typy::liczba(trim(File::get($plik))) : 0;

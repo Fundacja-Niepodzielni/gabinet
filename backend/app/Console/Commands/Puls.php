@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Wsparcie\Typy;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Puls harmonogramu — dowód, że pętla `schedule:work` realnie WYKONAŁA zadanie.
@@ -19,6 +20,17 @@ use Illuminate\Support\Facades\Cache;
  * W F6 od tej samej pętli zależą przypomnienia 24 h i 2 h, wygaszanie blokad
  * koszyka i awanse z listy rezerwowej. Martwy harmonogram = pacjent bez
  * przypomnienia i termin, który nigdy nie wraca do puli.
+ */
+/*
+ * MAGAZYNEM JEST BAZA, NIE CACHE (R6B-10, zamkniete 12.08).
+ *
+ * Puls siedzial w cache'u — magazynie, ktory `cache:clear`, deploy i restart
+ * Redisa czyszcza rutynowo. Waga jest NIZSZA niz przy mapie `sid -> sesje`
+ * i mowie to wprost: utrata pulsu daje healthcheck CZERWONY, czyli
+ * fail-CLOSED. Kosztem nie jest dziura, tylko FALSZYWY ALARM przy kazdym
+ * czyszczeniu cache'u — a falszywy alarm uczy ludzi ignorowac alarm.
+ *
+ * @dowod: PulsPrzezywaCacheTest — puls PRZEZYWA `Cache::flush()`.
  */
 final class Puls extends Command
 {
@@ -38,14 +50,21 @@ final class Puls extends Command
             return $this->sprawdz();
         }
 
-        Cache::put(self::KLUCZ, time(), self::SWIEZOSC_SEKUND * 4);
+        DB::table('sygnaly_zdrowia')->upsert([[
+            'klucz' => self::KLUCZ,
+            'wartosc' => (string) time(),
+            'zapisany_at' => CarbonImmutable::now(),
+        ]], ['klucz'], ['wartosc', 'zapisany_at']);
 
         return self::SUCCESS;
     }
 
     private function sprawdz(): int
     {
-        $zapisany = Typy::liczba(Cache::get(self::KLUCZ), 0);
+        $zapisany = Typy::liczba(
+            DB::table('sygnaly_zdrowia')->where('klucz', self::KLUCZ)->value('wartosc'),
+            0
+        );
 
         if ($zapisany === 0) {
             $this->error('[BŁĄD] harmonogram nie zapisał jeszcze ani jednego pulsu');
