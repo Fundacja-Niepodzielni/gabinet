@@ -4,6 +4,14 @@
 **Gałąź:** `testy-plan-f2` · **Baza:** `71cd8a5` (`faza-1-retencja`)
 **Status:** plan, nie kod. **Zero zmian w `backend/`, zero w `tests/`.**
 
+> **Aktualizacja 12.08, po `ODPOWIEDZ-045` i `ZLECENIE-049`.** Rozstrzygnięte **9 z 10**
+> pytań blokujących (§8.1) i rozjazd `R-1` (§1.2). Dopisany `B-05` — przypadek, który
+> wcześniej nie mógł istnieć. Dopisane §8.3: **„test ma czytać konfigurację" wymaga
+> zastrzeżenia**, inaczej wynik jedzie tą samą drogą co wejście.
+> Szkielety wykonawcze grup A, B, E, G, I: [`SZKIELETY-F2.md`](SZKIELETY-F2.md).
+> **Nic nie kasuję** — pytania zostają widoczne pod swoimi numerami, ze znacznikiem
+> rozstrzygnięcia, bo cicha podmiana nie dociera do tego, kto zdążył przeczytać.
+
 ---
 
 ## 0 · Czym ten plan jest i czym NIE jest
@@ -52,7 +60,7 @@ natknąłem się pisząc ten plan — do przekazania, nie do rozstrzygnięcia u 
 
 | # | rzecz | wersje, które istnieją | co przyjmuję i dlaczego |
 |---|---|---|---|
-| **R-1** | blokada slotu przy rezerwacji **własnej** | spec: **10 min** · właściciel 09.08 wieczorem: **„~godzina"** · `D-2026-08-09-08` tabela: **10 min** · prompt architekta 12.08: **10 min** | **10 min.** Ale zdanie właściciela **nigdy nie zostało wycofane na piśmie** — nowsza decyzja właściciela z poziomu 2 stoi dziś przeciwko trzem zapisom mówiącym 10 min. **To jest realny rozjazd, nie moja pomyłka w czytaniu.** |
+| **R-1** | blokada slotu przy rezerwacji **własnej** | spec: **10 min** · właściciel 09.08 wieczorem: **„~godzina"** · `D-2026-08-09-08` tabela: **10 min** · prompt architekta 12.08: **10 min** | **✅ ZAMKNIĘTE 12.08 (`ZLECENIE-049`): 10 min.** Właściciel zapytany wprost **wycofał** własne zdanie o „~godzinie". Plan pisany był na 10 min — **nic do zmiany**. Odnotowuję dla porządku, że rozstrzygnięcie przyszło **po** zgłoszeniu rozjazdu, a nie przez cichy wybór jednej z wersji. |
 | **R-2** | blokada slotu przy umawianiu przez **psychologa** | spec + `D-2026-08-09-15`: **2 dni + 10 min od otwarcia linku** · `D-2026-08-09-08`: **48 h, drugi stopień usunięty** · makieta `Grafik.tsx`: **24 h** · `DECYZJE-DO-PODJECIA` pyta „24 czy 48" | **2 dni + 10 min od otwarcia linku** (`D-2026-08-09-15` prostuje `D-2026-08-09-08`). „2 dni" i „48 h" to **nie ta sama liczba przy zmianie czasu** — patrz `Q-19`. |
 | **R-3** | weryfikacja numeru kodem | właściciel wieczorem: **przy KAŻDEJ rezerwacji** · właściciel w nocy + `D-2026-08-09-08`: **RAZ** | **RAZ.** Nowsza. Obronę przed zamrażaniem grafiku przejmuje limit równoczesnych blokad (`D-07`). |
 | **R-4** | rezerwacja jako gość | `CLAUDE.md` §2: **guest checkout bez konta = zasada twarda** · właściciel w nocy: **konto zamiast gościa, bez hasła, kod jednorazowy** (`D-2026-08-09-10`, wykonalność **niepotwierdzona**) | **Nie rozstrzygam.** Wpływa na tożsamość pacjenta w liczniku limitu (grupa F) i na `J-02`. Przypadki grupy F pisane są przeciwko **pacjentowi jako bytowi**, nie przeciwko sposobowi jego uwierzytelnienia — dzięki temu przeżyją obie wersje. |
@@ -209,7 +217,11 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   `SLOTY(2026-09-23)` = **4**.
 - **Poz.:** 5 i 4.
 - **Neg.:** `POPRAWKA.zapisz(dodaj, 2026-09-16 12:30)` — godzina kolidująca z rytmem
-  przez bufor (slot 12:00 kończy się 12:50) → **odrzucona**, `SLOTY` = 4, liczba poprawek = 1.
+  przez bufor (slot `12:00` zajmuje `12:00–13:00`) → **odrzucona**; na stanie **po**
+  powyższym `arrange`: `SLOTY(16.09)` **bez zmian = 5**, liczba poprawek **bez zmian = 1**.
+  *(Sprostowanie 12.08: pierwsza wersja mówiła „`SLOTY` = 4, liczba poprawek = 1", co jest
+  prawdą tylko na świeżym fixture i nie da się mieć obu naraz. Stan przypięty przy pisaniu
+  `SZK-A-03`.)*
 - **Pert.:** kontrola kolizji zdjęta → 6 slotów i dwie wizyty w odstępie 30 min, czerwony.
 - **Obserwacja:** `SLOTY` + niezależne zapytanie o liczbę poprawek.
 
@@ -218,8 +230,11 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
 - **Wynik:** `SLOTY` w oknie 14–18.09 = **0** dla każdej z **4** usług (cztery zapytania,
   cztery zera); `SLOTY(konsultacja pełnopłatna, 21–25.09)` = **20**.
 - **Poz.:** 20 (K-4 — świadek, że silnik w ogóle produkuje sloty).
-- **Neg.:** te same 4 zapytania **bez urlopu** = `4, 4, 2, 2` (pełnopłatna, ADHD… wg §3.2
-  dla wtorku) — cztery liczby różne od zera.
+- **Neg.:** te same 4 zapytania **bez urlopu**, wtorek `2026-09-22` =
+  **`4 · 2 · 2 · 2`** (konsultacja pełnopłatna · ADHD · konsultacja niskopłatna ·
+  asystent zdrowienia) — cztery liczby różne od zera.
+  *(Sprostowanie 12.08: pierwsza wersja mówiła `4, 4, 2, 2`, co przeczyło §3.2 — ADHD
+  w zakresie `09:00–13:00` daje **2** sloty po 100 min, nie 4. Złapane przy `SZK-A-04`.)*
 - **Pert.:** urlop zastosowany tylko do kategorii, w której go wpisano → jedna z czterech
   liczb ≠ 0, czerwony.
 - **Obserwacja:** cztery osobne zapytania, każde po innej usłudze.
@@ -336,6 +351,21 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
 - **Obserwacja:** przeliczenie **z bazy**, nie z odpowiedzi API — inaczej kontrola dzieli
   mechanizm z przedmiotem.
 
+#### F2-B-05 · Zakres niebędący wielokrotnością rastra — bufor wlicza się do zakresu
+> Dopisane 12.08 po rozstrzygnięciu `Q-1` (`ODPOWIEDZ-045`): **bufor wlicza się w zakres**.
+> Do tego dnia przypadek nie mógł istnieć, bo miał dwie wartości oczekiwane.
+- **Wejście:** rytm `09:00–12:59` (239 min); `SLOTY(konsultacja, wtorek)`.
+- **Wynik:** **3 sloty** — `[09:00, 10:00, 11:00]`. Czwarty wymagałby `12:00–13:00`,
+  a zakres kończy się `12:59`.
+- **Poz.:** rytm `09:00–13:00` (240 min) → **4**. **Jedna minuta różnicy w zakresie
+  zmienia liczbę slotów o jeden** — to jest cały sens rozstrzygnięcia `Q-1`.
+- **Neg.:** przy odczycie odrzuconym („bufor nie musi się zmieścić po ostatnim slocie")
+  zakres `09:00–12:59` dałby **4** sloty, bo wizyta `12:00–12:50` mieści się w zakresie.
+  Ta liczba jest teraz **czerwienią**, nie wariantem.
+- **Pert.:** raster liczony jako `długość_usługi` zamiast `długość + bufor` przy sprawdzaniu
+  końca zakresu → 4, czerwony.
+- **Obserwacja:** `SLOTY` + niezależne przeliczenie `floor(239 / 60) = 3`.
+
 ---
 
 ### C · Horyzonty: 2 h / 30 dni / 7 dni
@@ -427,7 +457,10 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   niepotwierdzony klikacz trzyma slot za darmo (`D-2026-08-09-08`).
 - **Pert.:** zegar liczony od wyboru terminu → `trzymane_do` = `t0+10:00`, czerwony.
 - **Obserwacja:** `trzymane_do` z bazy + odczyt `SLOTY` drugim kontem.
-- **⚠ Długość blokady wstępnej: `Q-8` (10 czy 15 min).**
+- **✅ `Q-8` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): blokada wstępna = 10 min**, parametr
+  konfiguracyjny. `X = 10 min`, więc bez potwierdzenia slot wraca o `t0+10:00.001`,
+  a z potwierdzeniem o `t0+2:00` — o `t0+12:00.001`. **Dwie liczby różniące się o 2 min
+  i to jest cały mechanizm.**
 
 #### F2-D-03 · Umawianie przez psychologa: 2 dni
 - **Wejście:** `BLOKADA.zaloz(psycholog)` o `2026-09-15 10:00`.
@@ -449,7 +482,9 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   **`max(wysłanie + 2 dni, otwarcie + 10 min)`**, nie zastąpienie.
 - **Pert.:** `min` zamiast `max` → `trzymane_do` = 20:10, czerwony.
 - **Obserwacja:** `trzymane_do` przed i po `LINK.otworz`.
-- **⚠ `max` vs zwolnienie po 10 min: `Q-9`.**
+- **✅ `Q-9` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): `max(wysłanie + 2 dni, otwarcie + 10 min)`.**
+  Uzasadnienie architekta: *otwarcie linku nie może SKRACAĆ okna pacjenta*. Wartość
+  oczekiwana kontroli negatywnej jest więc twarda: **`2026-09-17 10:00`**.
 
 #### F2-D-05 · `okno = min(okno_ścieżki, czas_do_wizyty − margines)`
 - **Wejście:** wizyta `2026-09-16 09:00`; `BLOKADA.zaloz(psycholog)` o `2026-09-15 18:00`.
@@ -460,7 +495,9 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   (pełne 2 dni). Dwie wizyty, jedna operacja, dwie różne wartości.
 - **Pert.:** `min` usunięty → `trzymane_do` po wizycie, czerwony.
 - **Obserwacja:** `trzymane_do` z bazy.
-- **⚠ Wartość `M`: `Q-10`.**
+- **✅ `Q-10` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): `M = 2 h`**, parametr konfiguracyjny,
+  **ta sama oś co „najbliższy możliwy termin"**. Wartość `trzymane_do = 2026-09-16 07:00`
+  jest twarda; różnica do terminu wizyty = **7200 s**.
 
 #### F2-D-06 · Płatność po wygaśnięciu blokady NIE tworzy wizyty
 - **Wejście:** blokada pacjenta A wygasła; slot zajęty przez pacjenta B; webhook płatności
@@ -486,7 +523,9 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
 - **Pert.:** limit liczony po **sesji** zamiast po **pacjencie** → pacjent z dwóch
   przeglądarek zakłada 4 blokady, czerwony. (To jest scenariusz zamrażania grafiku `D5`.)
 - **Obserwacja:** liczba aktywnych blokad z bazy, klucz = pacjent.
-- **⚠ Wartość limitu: `Q-12`.**
+- **✅ `Q-12` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): limit = 2**, parametr konfiguracyjny.
+  Uzasadnienie architekta: *2 nie karze pary „wizyta dla mnie i dziecka"*. Wartości
+  w tym przypadku (przyjęte · przyjęte · odrzucone, aktywnych = 2) są twarde.
 
 #### F2-D-08 · Wygaśnięcie blokady zostawia ślad
 - **Wejście:** blokada wygasa bez płatności.
@@ -509,7 +548,9 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   kalendarzowe dają `10:00 CEST` (= **47 h**). Rozjazd w drugą stronę.
 - **Pert.:** doba liczona jako 86400 s przy odczycie kalendarzowym → czerwony.
 - **Obserwacja:** `trzymane_do` w UTC **i** lokalnie.
-- **⚠ Który odczyt: `Q-19`.**
+- **✅ `Q-19` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): 48 h absolutnych.** Wartość oczekiwana
+  twarda: **`2026-10-26 09:00 CET`**; odczyt kalendarzowy (`10:00 CET`) staje się
+  **kontrolą negatywną**, nie wariantem.
 
 ---
 
@@ -686,7 +727,11 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   i piąty odrzucony **w obu odczytach**. Rezerwacja jest jedyną zmienną, która je rozróżnia.
 - **Pert.:** definicja zmieniona po cichu → jedna z liczb się zmienia, czerwony.
 - **Obserwacja:** `LIMIT.specjalista` + liczba slotów niskopłatnych z bazy, per stan.
-- **⚠ BLOKUJĄCE dla wartości oczekiwanej: `Q-14`.**
+- **✅ `Q-14` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): „wystawiony" = slot OTWARTY**, niezależnie
+  od rezerwacji. Wartości twarde: `wystawione` = **4**, piąty **odrzucony**.
+  Odczyt „otwarty i wolny" (`wystawione` = 3, piąty przyjęty) staje się **kontrolą
+  negatywną** — uzasadnienie architekta: *limit podażowy ma ograniczać podaż, a drugi
+  odczyt czyni go rosnącym z każdą rezerwacją*.
 
 #### F2-F-10 · Dwa limity są rozłączne
 - **Wejście:** pacjent z `pozostale = 0`; specjalista z `wystawione(W39) = 3`;
@@ -816,7 +861,11 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   wynik = **6 i 6**, a liczba etykiet `02:00` = **1**. Test rozróżnia oba światy liczbą.
 - **Pert.:** deduplikacja po etykiecie lokalnej → 6, czerwony (przy rekomendacji).
 - **Obserwacja:** starty UTC i etykiety lokalne.
-- **⚠ BLOKUJĄCE dla wartości: `Q-3`.**
+- **✅ `Q-3` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): powtórzona `02:00` oferowana DWA RAZY,
+  a etykieta prezentacyjna MUSI je rozróżniać.** Wartości twarde: **7 i 6**.
+  **Warunek etykiety jest częścią decyzji, nie dopiskiem** — dlatego przypadek liczy go
+  osobno: liczba **rozróżnialnych** etykiet dla dwóch slotów `02:00` = **2** (np. przez
+  offset albo znacznik). Etykieta niejednoznaczna = **czerwony**, mimo poprawnych 7 slotów.
 
 #### F2-H-05 · Niezmiennik doby 25-godzinnej
 - **Wejście:** wszystkie sloty `S1` dnia `2026-10-25`.
@@ -939,7 +988,7 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
 → **`F2-D-06`.** Pozycja zostaje w spisie, bo pochodzi wprost z listy wymaganej przez
 architekta; treść stoi w grupie D, żeby jedna rzecz nie była opisana dwa razy (`P3`).
 **To jest odsyłacz, nie przypadek** — nie ma własnego wyniku, kontroli ani perturbacji
-i nie liczy się do sumy 74.
+i nie liczy się do sumy 75.
 
 #### F2-J-02 · Psycholog umawia osobę **bez konta**
 - **Wejście:** psycholog umawia pacjenta, którego w systemie nie ma; podaje imię,
@@ -977,7 +1026,9 @@ i nie liczy się do sumy 74.
 - **Pert.:** okno liczone przez dodanie „−1 dzień" do etykiety lokalnej → granica 12:00,
   wynik `[14500, 0, 0]` i cztery różne stringi daty, czerwony. **Allowlista.**
 - **Obserwacja:** `zwrot_gr` ×4 + trzy pola prezentacyjne.
-- **⚠ Odczyt „24 h absolutne": `Q-4`.**
+- **✅ `Q-4` ROZSTRZYGNIĘTE (`ODPOWIEDZ-045`): okno 24 h = 86 400 s absolutnych.**
+  Uzasadnienie architekta: *reguła nie może zmieniać wartości dwa razy w roku*.
+  Odczyt „ta sama godzina dzień wcześniej" staje się **kontrolą negatywną**.
 
 #### F2-J-04 · Ta sama rezygnacja — doba 23-godzinna
 - **Wejście:** wizyta **`2026-03-29 12:00 CEST`** (= `10:00Z`); odwołania o
@@ -1093,7 +1144,7 @@ i nie liczy się do sumy 74.
 - **Wynik:** liczba przypadków bez zadeklarowanej ścieżki obserwacji = **0**;
   liczba przypadków, w których obserwacja idzie **tą samą** drogą co mechanizm i nie ma
   wpisu wyjątku = **0**.
-- **Poz.:** liczba przypadków z zadeklarowaną ścieżką = **74** (wszystkie poza odsyłaczem
+- **Poz.:** liczba przypadków z zadeklarowaną ścieżką = **75** (wszystkie poza odsyłaczem
   `J-01`) — suma podana razem z rozbiciem per grupa, bo sama suma nie jest dowodem.
 - **Neg.:** przypadek czytający wynik z tej samej operacji, którą bada → wpis w rejestrze
   albo czerwień.
@@ -1155,7 +1206,7 @@ M2/2, M2/4, M2/5, M3/2, M5/16, M5/17 oraz `CLAUDE.md` §§1, 4, 5, 6, 14, 15.
 | 1 | złożenie rytmu tygodniowego | M1/2, M2/2 | A-01, A-09 |
 | 2 | poprawki jako **osobny byt**, jednorazowe | `CLAUDE.md` §5, M2/2 | A-02, A-03, A-06 |
 | 3 | urlop wygrywa z rytmem **i** z poprawkami, we wszystkich usługach | spec s. 36 | A-04, A-05, A-07, A-08 |
-| 4 | bufor 10 min | spec s. 25/35/50 | B-01, B-04, A-03(neg), I-04 |
+| 4 | bufor 10 min | spec s. 25/35/50 | B-01, B-04, **B-05**, A-03(neg), I-04 |
 | 5 | sloty 50+10 i 90+10; 90 zdejmuje dwa sloty | M1/2, M2/2 | A-01, B-02, B-03, I-05 |
 | 6 | horyzont 2 h | spec s. 5/24/35/49 | C-01 |
 | 7 | horyzont 30 dni (pacjent) | jw. | C-02 |
@@ -1196,11 +1247,15 @@ M2/2, M2/4, M2/5, M3/2, M5/16, M5/17 oraz `CLAUDE.md` §§1, 4, 5, 6, 14, 15.
 | 42 | reguła egzekwowana na serwerze, nie w interfejsie | `CLAUDE.md` §1 | C-03, J-06, F-08 |
 | 43 | testy **liczą wartości** | `CLAUDE.md` §15 | wszystkie |
 
-**Reguł: 43 · przypadków: 74 (+1 odsyłacz `J-01`) · reguł bez przypadku: 0.**
+**Reguł: 43 · przypadków: 75 (+1 odsyłacz `J-01`) · reguł bez przypadku: 0.**
 
 **Rozbicie per grupa** — bo suma bez rozbicia nie jest dowodem (`WYTYCZNE-PRACY.md`,
 „suma zielonych nie jest dowodem"):
-`A 10 · B 4 · C 5 · D 9 · E 4 · F 10 · G 5 · H 7 · I 6 · J 7(+1) · K 4 · L 3`.
+`A 10 · B 5 · C 5 · D 9 · E 4 · F 10 · G 5 · H 7 · I 6 · J 7(+1) · K 4 · L 3`.
+
+**Zmiana wobec wersji z 12.08 rano: +1 przypadek (`B-05`)** — mógł powstać dopiero po
+rozstrzygnięciu `Q-1`, bo wcześniej miał dwie wartości oczekiwane. Wzrost liczby wymaga
+wyjaśnienia tak samo jak spadek (`WYTYCZNE-PRACY.md`: *liczba, która rośnie, uspokaja*).
 
 **Przypadki bez perturbacji: 4** — wyłącznie `K-01`…`K-04`, z powodem i warunkiem
 znoszącym w nagłówku grupy K. **Nie „zero"** — cztery, wypisane.
@@ -1232,20 +1287,30 @@ Zgodnie z zasadą „pytania o intencję specyfikacji → ZLECENIE, nie zgadywan
 Pełna treść: `docs/ZLECENIA/ZLECENIE-045.md` (kanał żyje w głównym drzewie roboczym,
 `D:\KOD\Niepodzielni\gabinet`, nie na tej gałęzi — powód w tamtym pliku §4.2).
 
-### 8.1 Blokujące wartość liczbową
+### 8.1 Blokujące wartość liczbową — **9 z 10 rozstrzygniętych 12.08**
 
-| # | pytanie | wpływ | moja rekomendacja |
+Rozstrzygnął architekt w `ODPOWIEDZ-045` §1, przyjmując rekomendację w każdej z dziewięciu.
+**Wartości będące parametrami operacyjnymi wchodzą jako konfiguracja wersjonowana w bazie**
+(`CLAUDE.md` §14), nie jako stałe w kodzie — co ma **konsekwencję dla kształtu testu**,
+opisaną w §8.3.
+
+| # | pytanie | rozstrzygnięcie | gdzie działa |
 |---|---|---|---|
-| **Q-1** | Czy bufor 10 min musi zmieścić się w zadeklarowanym zakresie **po ostatnim slocie**? | zakres `09:00–12:59` daje **3** albo **4** sloty | **tak, wlicza się** (raster 60 min jako jednostka) — bufor chroni też przed wizytą spoza rastra i przed sąsiednim zakresem |
-| **Q-3** | Doba 25-godzinna: czy powtórzona godzina `02:00` jest oferowana **dwa razy**? | `H-04`: **7** albo **6** slotów | **dwa razy** (czas absolutny rozróżnia), pod warunkiem że **etykieta prezentacyjna rozróżnia** oba wystąpienia — inaczej pacjent nie wie, na którą się umawia |
-| **Q-4** | Okno 24 h: **86400 s absolutnych** czy „ta sama godzina dzień wcześniej"? | `J-03`/`J-04` odwracają wynik w oknie jednej godziny, dwa razy w roku | **absolutne**; „ta sama godzina" daje raz 25 h, raz 23 h — reguła po cichu zmienia wartość |
-| **Q-8** | Długość **krótkiej blokady wstępnej** (`D-2026-08-09-08` mówi „10–15 min") | `D-02` | **10 min** — równa oknu ścieżki własnej, jedna liczba mniej w zrzucie reguł |
-| **Q-9** | Otwarcie linku: `trzymane_do = max(2 dni, otwarcie + 10 min)` czy **zwolnienie** po 10 min od otwarcia? | `D-04`: `17.09 10:00` albo `16.09 20:10` | **`max`** — inaczej przypadkowe otwarcie linku kasuje pacjentowi resztę okna |
-| **Q-10** | Wartość marginesu `M` w `okno = min(okno_ścieżki, czas_do_wizyty − M)` | `D-05` | **2 h** — ta sama oś co „najbliższy możliwy termin" |
-| **Q-12** | Limit równoczesnych nieopłaconych blokad: **1 czy 2** | `D-07` | **2** — jedna blokada uniemożliwia umówienie dwóch wizyt w jednej sesji |
-| **Q-14** | „Wystawiony termin niskopłatny" = slot **otwarty** czy **otwarty i wolny**? Spec: *„ta definicja musi zapaść przed kodowaniem"* | `F-09`: **4** albo **5** | **otwarty** — przy drugim odczycie limit podażowy rośnie z każdą rezerwacją, czyli przestaje ograniczać podaż |
-| **Q-16** | Kto akceptuje regulamin i zgodę art. 9, gdy **psycholog umawia osobę bez konta**? | `J-02`: **0** albo **2** zapisane zgody | **pytanie właściciela, nie moje** — pozycja stoi otwarta w `DECYZJE-DO-PODJECIA`; do rozstrzygnięcia **zbieramy dane bez ustalonej podstawy** |
-| **Q-19** | „2 dni" = **48 h absolutnych** czy dwie doby kalendarzowe? | `D-09`: różnica **3600 s** dwa razy w roku | **48 h absolutnych** — spójnie z `Q-4` |
+| **Q-1** | bufor a koniec zakresu | ✅ **wlicza się** → `09:00–12:59` = **3 sloty** | `B-05` (nowy), `A-01` |
+| **Q-3** | powtórzona `02:00` przy dobie 25 h | ✅ **dwa razy**, etykieta **musi rozróżniać** | `H-04`, `H-05` |
+| **Q-4** | okno 24 h | ✅ **86 400 s absolutnych** | `E-01`, `J-03`, `J-04` |
+| **Q-8** | krótka blokada wstępna | ✅ **10 min** (parametr) | `D-02` |
+| **Q-9** | otwarcie linku | ✅ **`max(2 dni, otwarcie + 10 min)`** | `D-04` |
+| **Q-10** | margines `M` | ✅ **2 h** (parametr) | `D-05` |
+| **Q-12** | limit równoczesnych blokad | ✅ **2** (parametr) | `D-07` |
+| **Q-14** | „wystawiony termin niskopłatny" | ✅ **slot otwarty**, niezależnie od rezerwacji | `F-09` |
+| **Q-16** | zgody przy umawianiu przez psychologa osoby bez konta | 🔴 **OTWARTE — właściciel.** Na liście spotkania z Fundacją | `J-02` **czeka** |
+| **Q-19** | „2 dni" | ✅ **48 h absolutnych** | `D-09` |
+
+**Skutek dla planu:** każdy z dziewięciu przypadków ma dziś **jedną** wartość oczekiwaną,
+a odrzucony odczyt stał się **kontrolą negatywną** — czyli mocniejszym testem niż przed
+rozstrzygnięciem. **`J-02` pozostaje jedynym przypadkiem bez pełnej wartości oczekiwanej**
+(część zgodowa; liczby dotyczące tożsamości pacjenta i licznika limitu są twarde).
 
 ### 8.2 Nieblokujące (przyjmuję rekomendację, proszę o potwierdzenie)
 
@@ -1262,6 +1327,44 @@ Pełna treść: `docs/ZLECENIA/ZLECENIE-045.md` (kanał żyje w głównym drzewi
 | **Q-18** | Usługa 0 zł — czy w ogóle występuje blokada? | **nie** — rezerwacja potwierdzana natychmiast, `kwota_zamrozona = 0` |
 | **Q-20** | Kierunek „konto zamiast gościa" (`D-2026-08-09-10`) — czy F2 ma go zakładać? | **nie zakładam**; grupa F pisana przeciw **pacjentowi jako bytowi**, więc przeżyje obie wersje |
 | **Q-21** | Kto i kiedy ustala **kontrakt API F2** (§4) — potrzebny na wejście etapu B | KOD-SILNIK, przed pierwszym testem etapu B |
+
+**`Q-21` zamknięte w `ODPOWIEDZ-045` §1:** pierwsze zadanie F2 sesji KOD-SILNIK to
+**kontrakt operacji API**, drugie — **przestawienie kształtu zamrożonego zrzutu**
+(`D-2026-08-09-09`) zanim powstanie pierwsza rezerwacja.
+
+### 8.3 ⚠ „Test ma czytać konfigurację" — z zastrzeżeniem, bez którego test staje się tautologią
+
+`ODPOWIEDZ-045` §1 mówi: *wartości będące parametrami operacyjnymi wchodzą jako
+konfiguracja wersjonowana w bazie, nie stałe w kodzie — **test ma czytać konfigurację***.
+
+**Zgadzam się co do wejścia i nie zgadzam co do wyniku** — a różnica jest tą samą klasą,
+którą opisuje `D-2026-08-08-25`, kształt **(b) „wspólny klucz"**: kontrola pyta o klucz,
+którym operuje badana czynność, więc odpowiedź jest **z góry ustalona** i kontrola
+nie może zaświecić.
+
+Gdyby test **wyliczał wartość oczekiwaną z konfiguracji**:
+
+```
+bufor := konfiguracja('bufor_min')            # 10
+oczekiwane := floor(240 / (50 + bufor))       # 4
+asercja: liczba_slotow == oczekiwane
+```
+
+…to zmiana `bufor_min` na `20` daje `oczekiwane = 3`, silnik zwraca `3`, **test przechodzi**.
+Reguła „bufor 10 minut" przestałaby istnieć, a bramka nadal świeciłaby zielono.
+
+**Rozstrzygnięcie przyjęte w tym planie — rozdzielenie dwóch ról liczby:**
+
+1. **Konfiguracja jest WEJŚCIEM** — test czyta ją, żeby zbudować scenariusz i żeby nie
+   wpisywać parametru w dwóch miejscach (`P3`).
+2. **Wartość oczekiwana jest LITERAŁEM** wyprowadzonym ze specyfikacji, nigdy
+   z konfiguracji. `4` w `A-01` jest zapisane jako `4`.
+3. **Każdy parametr dostaje KOTWICĘ** — osobny, jednozdaniowy przypadek wiążący wartość
+   konfiguracji ze **źródłem w specyfikacji**. To jest jedyne miejsce, w którym literał
+   parametru wolno porównać z konfiguracją, i jedyne, które pada po jej zmianie.
+
+Bez punktu 3 zmiana konfiguracji jest **niewykrywalna**; bez punktu 2 jest **niewykrywalna
+podwójnie**, bo obie strony porównania jadą tą samą drogą. Kotwice: `SZKIELETY-F2.md` §2.
 
 ---
 
