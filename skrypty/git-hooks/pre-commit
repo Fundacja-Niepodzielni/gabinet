@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# ===========================================================================
+# STRAŻNIK COMMITA — reguła przestaje zależeć od pamięci wykonawcy.
+#
+# Wymóg architekta (`ODPOWIEDZ-048`, R-B), po SZEŚCIU złamaniach tej klasy
+# w ciągu jednej sesji. Żadnego z nich nie złapała kontrola — wszystkie
+# złapał przegląd, czyli przypadek. Jedno wciągnęło do commita pliki DWÓCH
+# INNYCH SESJI, jedno — żywą mutację reguły 24 h (N-10), jedno — commit
+# w cudzym repozytorium (N-13).
+#
+# ODMAWIA, gdy zachodzi którykolwiek z trzech warunków:
+#
+#   (a) trwa PRZEBIEG POMIAROWY — commit utrwaliłby stan sperturbowany
+#       i unieważnił pomiar;
+#   (b) repozytorium jest POZA zadeklarowanym zakresem sesji — to jest N-13:
+#       `cd` z fazy czytania został, a `git add` zadziałał tam, gdzie stoję,
+#       nie tam, gdzie myślałem, że stoję;
+#   (c) w indeksie są pliki SPOZA zakresu sesji — to jest wciągnięcie cudzej
+#       pracy przy czterech równoległych strumieniach.
+#
+# ⚠ KOMUNIKAT ODMOWY MA MÓWIĆ, JAK ODMOWĘ ZDJĄĆ. Strażnik bez wyjścia
+# awaryjnego zostanie wyłączony przy pierwszym pośpiechu — a wtedy nie chroni
+# już niczego. Zasada z `KLASY-I-NAPRAWY.md`: „koszt wyjątku = koszt zgodności".
+#
+# Obejście awaryjne: `GABINET_STRAZNIK=0 git commit …` — jawne, widoczne
+# w historii powłoki i wymagające świadomej decyzji, w odróżnieniu od
+# `--no-verify`, które wyłącza WSZYSTKIE hooki bez śladu w komunikacie.
+# ===========================================================================
+set -uo pipefail
+
+[ "${GABINET_STRAZNIK:-1}" = "0" ] && exit 0
+
+KORZEN="$(git rev-parse --show-toplevel 2>/dev/null || printf '')"
+
+if [ -z "$KORZEN" ]; then
+	printf 'ODMOWA STRAŻNIKA: nie jestem w repozytorium git.\n' >&2
+	exit 1
+fi
+
+ZAKRES="$KORZEN/.zakres-sesji"
+
+odmowa() {
+	printf '\n' >&2
+	printf '  ⛔ STRAŻNIK COMMITA ODMAWIA\n' >&2
+	printf '  ─────────────────────────────────────────────────────────────\n' >&2
+	printf '  %s\n' "$1" >&2
+	shift
+	while [ "$#" -gt 0 ]; do
+		printf '  %s\n' "$1" >&2
+		shift
+	done
+	printf '  ─────────────────────────────────────────────────────────────\n' >&2
+	printf '  Świadome obejście (zostawia ślad w powłoce, nie w historii):\n' >&2
+	printf '      GABINET_STRAZNIK=0 git commit …\n' >&2
+	printf '\n' >&2
+	exit 1
+}
+
+# --- (a) TRWA PRZEBIEG POMIAROWY -------------------------------------------
+#
+# Znacznik zakłada `bramka.sh` i `perturbacje.sh`, zdejmuje `trap` na
+# EXIT INT TERM. Osierocony znacznik (proces zabity `kill -9`) jest tu
+# ROZPOZNAWANY, a nie mylony z żywym — inaczej strażnik zamieniłby się
+# w blokadę bez wyjścia i pierwsza osoba wyłączyłaby go na stałe.
+ZNACZNIK="$KORZEN/.przebieg-pomiarowy"
+
+if [ -d "$ZNACZNIK" ]; then
+	PID="$(cat "$ZNACZNIK/pid" 2>/dev/null || printf '')"
+	CO="$(cat "$ZNACZNIK/co" 2>/dev/null || printf 'przebieg pomiarowy')"
+	OD="$(cat "$ZNACZNIK/od" 2>/dev/null || printf 'nieznana godzina')"
+
+	if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+		odmowa \
+			"TRWA PRZEBIEG POMIAROWY — commit utrwaliłby stan SPERTURBOWANY." \
+			"" \
+			"  co:  $CO" \
+			"  pid: $PID (żywy)" \
+			"  od:  $OD" \
+			"" \
+			"Tak 09.08 do repozytorium trafiła ŻYWA PERTURBACJA reguły 24 h (N-10):" \
+			"pacjent odwołujący dokładnie 24:00:00 przed wizytą tracił prawo do zwrotu." \
+			"" \
+			"Poczekaj na koniec przebiegu."
+	fi
+
+	odmowa \
+		"ZNACZNIK PRZEBIEGU JEST OSIEROCONY — proces $PID już nie żyje." \
+		"" \
+		"  co: $CO" \
+		"  od: $OD" \
+		"" \
+		"Przebieg został przerwany (kill, restart, zamknięte okno) i NIE zdążył" \
+		"posprzątać. Zanim zdejmiesz znacznik, SPRAWDŹ DRZEWO — mogła w nim zostać" \
+		"żywa mutacja:" \
+		"" \
+		"      git status --short" \
+		"      git diff" \
+		"" \
+		"Gdy drzewo jest czyste albo świadomie przywrócone:" \
+		"" \
+		"      rm -rf .przebieg-pomiarowy"
+fi
+
+# --- (b) REPOZYTORIUM POZA ZAKRESEM SESJI ----------------------------------
+#
+# N-13: pisałem i commitowałem w CUDZYM repozytorium, bo został po mnie `cd`
+# z fazy czytania. Przed wypchnięciem uchroniła mnie WYŁĄCZNIE różnica nazw
+# gałęzi — czyli szczęście, nie zabezpieczenie.
+if [ ! -f "$ZAKRES" ]; then
+	cat > "$ZAKRES" <<'SZABLON'
+# ZAKRES SESJI — jedna ścieżka na wiersz, prefiksy względne od korzenia repo.
+#
+# Ten plik jest DEKLARACJĄ, czego wolno Ci dotykać. Strażnik commita odmawia,
+# gdy w indeksie znajdzie cokolwiek spoza tej listy — bo przy równoległych
+# strumieniach `git add` regularnie wciąga cudzą pracę.
+#
+# Pierwszy wiersz bez `#` to NAZWA REPOZYTORIUM, w którym wolno Ci pisać.
+# Strażnik porównuje ją z `git rev-parse --show-toplevel`.
+#
+# Plik jest gitignorowany — należy do sesji, nie do repozytorium.
+gabinet
+SZABLON
+	odmowa \
+		"BRAK DEKLARACJI ZAKRESU SESJI — właśnie utworzyłem szablon." \
+		"" \
+		"  $ZAKRES" \
+		"" \
+		"Dopisz do niego ścieżki, których ta sesja dotyka, na przykład:" \
+		"" \
+		"      backend/" \
+		"      skrypty/" \
+		"      docs/ZLECENIA/ZLECENIE-054.md" \
+		"" \
+		"Deklaracja kosztuje kilkanaście sekund RAZ na sesję. Brak deklaracji" \
+		"kosztował 12.08 wciągnięcie do commita plików DWÓCH INNYCH SESJI."
+fi
+
+REPO_ZADEKLAROWANE="$(grep -v '^[[:space:]]*#' "$ZAKRES" | grep -v '^[[:space:]]*$' | head -1)"
+REPO_BIEZACE="$(basename "$KORZEN")"
+
+if [ "$REPO_BIEZACE" != "$REPO_ZADEKLAROWANE" ]; then
+	odmowa \
+		"REPOZYTORIUM POZA ZAKRESEM SESJI." \
+		"" \
+		"  jestem w:       $KORZEN" \
+		"  zadeklarowane:  $REPO_ZADEKLAROWANE" \
+		"" \
+		"To jest N-13: commit w CUDZYM repozytorium, bo został po mnie \`cd\`." \
+		"Wtedy przed wypchnięciem uchroniła mnie wyłącznie różnica nazw gałęzi."
+fi
+
+# --- (c) PLIKI W INDEKSIE SPOZA ZAKRESU ------------------------------------
+PREFIKSY="$(grep -v '^[[:space:]]*#' "$ZAKRES" | grep -v '^[[:space:]]*$' | tail -n +2)"
+
+if [ -n "$PREFIKSY" ]; then
+	POZA=""
+
+	while IFS= read -r PLIK; do
+		[ -z "$PLIK" ] && continue
+		PASUJE=0
+
+		while IFS= read -r PREFIKS; do
+			[ -z "$PREFIKS" ] && continue
+			case "$PLIK" in
+				"$PREFIKS"*) PASUJE=1; break ;;
+			esac
+		done <<< "$PREFIKSY"
+
+		[ "$PASUJE" -eq 0 ] && POZA="$POZA  $PLIK"$'\n'
+	done <<< "$(git diff --cached --name-only)"
+
+	if [ -n "$POZA" ]; then
+		odmowa \
+			"W INDEKSIE SĄ PLIKI SPOZA ZAKRESU TEJ SESJI:" \
+			"" \
+			"$POZA" \
+			"Zadeklarowany zakres (\`.zakres-sesji\`):" \
+			"$(printf '%s' "$PREFIKSY" | sed 's/^/      /')" \
+			"" \
+			"12.08 \`git add\` wciągnął tak pliki DWÓCH innych sesji oraz artefakt" \
+			"działania. \`git add\` pracuje na STANIE KATALOGU, nie na Twoim zamiarze." \
+			"" \
+			"      git restore --staged <plik>     # wypnij cudze" \
+			"      # albo dopisz ścieżkę do .zakres-sesji, jeśli NAPRAWDĘ jest Twoja"
+	fi
+fi
+
+exit 0

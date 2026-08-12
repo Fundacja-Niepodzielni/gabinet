@@ -146,6 +146,14 @@ PLIK_ENV="$KORZEN/.env.bramka.$PROJEKT"
 # perturbacja zamka tworzyła INNY plik niż ten, o który pytała bramka — i
 # „przechodziła" na czerwonym z zupełnie innego powodu. Ścieżkę wypisuje teraz
 # sam skrypt (`--pokaz-zamek`); nikt jej drugi raz nie składa ręcznie.
+# ZNACZNIK PRZEBIEGU POMIAROWEGO — dla straznika commita (R-B).
+# Osobny mechanizm od zamka: zamek wyklucza rownolegle przebiegi TEGO SAMEGO
+# projektu, znacznik mowi „trwa pomiar, nie commituj". Jedno zrodlo sciezki:
+# `skrypty/znacznik-przebiegu.sh`.
+. "$KORZEN/skrypty/znacznik-przebiegu.sh"
+znacznik_zaloz "bramka (projekt: $PROJEKT)"
+trap znacznik_zdejmij EXIT INT TERM
+
 ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka.${PROJEKT}.zamek"
 
 # Osobny kod wyjścia dla zajętego zamka. Bez niego perturbacja stwierdzała

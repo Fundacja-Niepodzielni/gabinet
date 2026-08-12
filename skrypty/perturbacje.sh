@@ -255,8 +255,20 @@ przywroc_wszystko() {
 # `trap ... INT TERM` nie kończy skryptu sam z siebie — bez jawnego `exit`
 # bash wraca do przerwanej instrukcji i perturbacje mielą dalej po Ctrl-C.
 przerwano_perturbacje() { przywroc_wszystko; trap - EXIT; exit 130; }
-trap przywroc_wszystko EXIT
-trap przerwano_perturbacje INT TERM
+# ZNACZNIK PRZEBIEGU POMIAROWEGO — dla straznika commita (R-B).
+#
+# To wlasnie TU 09.08 zabraklo mechanizmu: `git add -A` w trakcie tego
+# zestawu wciagnal do repozytorium ZYWA PERTURBACJE reguly 24 h (N-10).
+# Regula „nie commituj w trakcie przebiegu" byla zapisana w dwoch miejscach
+# i egzekwowana wylacznie pamiecia — dzis egzekwuje ja straznik.
+. "$KORZEN/skrypty/znacznik-przebiegu.sh"
+znacznik_zaloz "zestaw perturbacji"
+
+sprzataj_po_przebiegu() { znacznik_zdejmij; przywroc_wszystko; }
+przerwano_z_znacznikiem() { znacznik_zdejmij; przerwano_perturbacje; }
+
+trap sprzataj_po_przebiegu EXIT
+trap przerwano_z_znacznikiem INT TERM
 
 # --- raportowanie ----------------------------------------------------------
 naglowek() { printf '\n=== PERTURBACJA: %s\n' "$*"; }

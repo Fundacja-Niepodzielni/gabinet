@@ -10,3 +10,8 @@ storage/*.key
 # Artefakty pomiarowe perturbacji (XML, TSV, logi). Wynik pomiaru nalezy do
 # raportu, nie do repozytorium — i tak jest odtwarzalny skryptem.
 /dowody/
+
+# Znacznik trwajacego przebiegu pomiarowego i deklaracja zakresu sesji —
+# jedno i drugie nalezy do SESJI, nie do repozytorium (straznik commita).
+/.przebieg-pomiarowy/
+/.zakres-sesji
