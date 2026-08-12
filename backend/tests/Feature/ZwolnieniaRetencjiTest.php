@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Retencja\RejestrRetencji;
+use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -37,7 +38,10 @@ it('WARUNEK ZNOSZĄCY `sessions` JEST EGZEKWOWANY, nie opisany', function (): vo
     $zwolnione = RejestrRetencji::nazwyBezDanychOsobowych();
 
     if (! in_array('sessions', $zwolnione, true)) {
-        expect(true)->toBeTrue('`sessions` wypadła ze zwolnień — warunek nie ma czego pilnować.');
+        // `sessions` wypadla ze zwolnien — warunek nie ma czego pilnowac. MILCZACE
+        // przejscie byloby jednak zielenia BEZ PRZEDMIOTU, wiec zapisujemy stan,
+        // ktory faktycznie zachodzi, asercja o wartosci, a nie o stalej `true`.
+        expect($zwolnione)->not->toContain('sessions');
 
         return;
     }
@@ -56,24 +60,30 @@ it('WARUNEK ZNOSZĄCY `sessions` JEST EGZEKWOWANY, nie opisany', function (): vo
 
     expect($konfiguracja)->not->toBeFalse('Nie udało się odczytać `config/session.php`.');
 
-    preg_match("/'driver'\s*=>\s*env\('SESSION_DRIVER',\s*'([a-z]+)'\)/", (string) $konfiguracja, $t);
+    $trafil = preg_match("/'driver'\s*=>\s*env\('SESSION_DRIVER',\s*'([a-z]+)'\)/", (string) $konfiguracja, $t);
 
-    expect($t[1] ?? null)->not->toBeNull('Nie znalazłem domyślki `SESSION_DRIVER` — kontrola oślepła.')
-        ->and($t[1])->not->toBe(
-            'database',
-            'Domyślką sterownika sesji jest `database`, a `sessions` figuruje jako tabela BEZ danych '.
-            'osobowych. Tabela ma `ip_address` i `user_agent`. Brak `SESSION_DRIVER` w `.env` zaczyna '.
-            'wtedy CICHO zbierać adresy IP tam, gdzie rejestr retencji twierdzi, że danych nie ma.'
-        );
+    expect($trafil)->toBe(1, 'Nie znalazłem domyślki `SESSION_DRIVER` — kontrola oślepła.');
+
+    // `?? null` zamiast golego `$t[1]`: statyka nie wie, ze `preg_match() === 1`
+    // gwarantuje grupe pierwsza, a asercja o wartosci nieistniejacej bylaby
+    // czerwienia o przyrzadzie, nie o przedmiocie.
+    expect($t[1] ?? null)->not->toBe(
+        'database',
+        'Domyślką sterownika sesji jest `database`, a `sessions` figuruje jako tabela BEZ danych '.
+        'osobowych. Tabela ma `ip_address` i `user_agent`. Brak `SESSION_DRIVER` w `.env` zaczyna '.
+        'wtedy CICHO zbierać adresy IP tam, gdzie rejestr retencji twierdzi, że danych nie ma.'
+    );
 
     // Gałąź dynamiczna: poza testami, gdyby sterownik jednak wskazywał tabelę,
     // zwolnienie przestaje być prawdziwe niezależnie od tego, co mówi domyślka.
-    if (config('session.driver') === 'database') {
-        expect(false)->toBeTrue(
-            'Sterownik sesji to `database`, a `sessions` nadal jest zwolniona z retencji. '.
-            'Albo wróć na `redis`, albo przenieś `sessions` do rejestru z okresem.'
-        );
-    }
+    // Asercja WPROST o wartosci, nie `expect(false)->toBeTrue()` wewnatrz `if`:
+    // tamta forma jest dla statyki „asercja niemozliwa”, a dla czytelnika ukrywa,
+    // co wlasciwie jest sprawdzane.
+    expect(Typy::napis(config('session.driver')))->not->toBe(
+        'database',
+        'Sterownik sesji to `database`, a `sessions` nadal jest zwolniona z retencji. '.
+        'Albo wróć na `redis`, albo przenieś `sessions` do rejestru z okresem.'
+    );
 });
 
 it('KONTROLA NEGATYWNA: zwolnienia opisują TABELE, KTÓRE ISTNIEJĄ', function (): void {
@@ -115,7 +125,9 @@ it('KOLUMNY ZWOLNIONYCH TABEL NIE NIOSĄ OCZYWISTYCH DANYCH OSOBOWYCH', function
             continue;
         }
 
-        foreach (Schema::getColumnListing($tabela) as $kolumna) {
+        foreach (Schema::getColumnListing($tabela) as $surowa) {
+            $kolumna = Typy::napis($surowa);
+
             foreach ($podejrzane as $igla) {
                 if (str_contains(strtolower($kolumna), $igla)) {
                     $trafienia[] = "{$tabela}.{$kolumna}";

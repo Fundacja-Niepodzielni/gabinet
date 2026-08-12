@@ -112,6 +112,6 @@ final class ZadanieRetencji
             return true;   // kolumny nie ma — o tym mówi kontrola, nie ta metoda
         }
 
-        return in_array((string) $typ->data_type, ['smallint', 'integer', 'bigint'], true);
+        return in_array(Typy::pole($typ, 'data_type'), ['smallint', 'integer', 'bigint'], true);
     }
 }

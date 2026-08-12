@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Wsparcie;
 
+use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -159,7 +160,7 @@ final class KlamraPerturbacji
         );
 
         if ($reguly !== []) {
-            $nazwy = implode(', ', array_map(static fn (object $w): string => (string) $w->rulename, $reguly));
+            $nazwy = implode(', ', array_map(static fn (mixed $w): string => Typy::pole($w, 'rulename'), $reguly));
             $powod = "reguła DO INSTEAD na DELETE: {$nazwy}";
 
             return false;
@@ -173,14 +174,18 @@ final class KlamraPerturbacji
         );
 
         if ($wyzwalacze !== []) {
-            $nazwy = implode(', ', array_map(static fn (object $w): string => (string) $w->tgname, $wyzwalacze));
+            $nazwy = implode(', ', array_map(static fn (mixed $w): string => Typy::pole($w, 'tgname'), $wyzwalacze));
             $powod = "wyzwalacz na DELETE: {$nazwy}";
 
             return false;
         }
 
         // Próba ZACHOWANIOWA — tylko gdy jest co kasować.
-        if (DB::table($tabela)->count() === 0) {
+        // `exists()`, a nie `count() === 0`: statyka zapamietuje zawezenie TEGO SAMEGO
+        // wyrazenia i po tym `if` uznawala `count()` nizej za NIGDY zerowe — czyli
+        // `return true` na koncu metody za kod martwy. Pytanie o istnienie jest innym
+        // wyrazeniem i przy okazji mowi wprost, o co pytamy.
+        if (! DB::table($tabela)->exists()) {
             $powod = null;
 
             return true;   // strukturalnie czysto; mocniej dziś nie sprawdzę

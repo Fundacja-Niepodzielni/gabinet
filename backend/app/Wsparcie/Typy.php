@@ -66,6 +66,30 @@ final class Typy
     }
 
     /**
+     * Wartość kolumny z wiersza zwróconego przez `DB::select()` / `DB::selectOne()`.
+     *
+     * Sterowniki oddają wiersze jako `stdClass` o polach nieznanych statyce, więc
+     * `(string) $wiersz->kolumna` jest na poziomie `max` potrójnym błędem
+     * (`property.nonObject`, `cast.string`, `argument.type`) — a w czasie działania
+     * cichym rzutowaniem: brakująca kolumna daje `null`, czyli pusty napis nie do
+     * odróżnienia od kolumny pustej. Tu brak kolumny oddaje WARTOŚĆ DOMYŚLNĄ,
+     * którą wołający podaje świadomie.
+     *
+     * Jedno miejsce zamiast rzutowania w każdym wywołaniu — powstało przy naprawie
+     * 34 błędów statyki z 12.08, gdzie ten sam idiom powtarzał się w czterech plikach.
+     */
+    public static function pole(mixed $wiersz, string $kolumna, string $domyslna = ''): string
+    {
+        if (! is_object($wiersz)) {
+            return $domyslna;
+        }
+
+        $wartosci = get_object_vars($wiersz);
+
+        return self::napis($wartosci[$kolumna] ?? null, $domyslna);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function mapa(mixed $wartosc): array

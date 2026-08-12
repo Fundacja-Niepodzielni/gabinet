@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tozsamosc\RejestrSesji;
+use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -98,7 +99,7 @@ it('⛔ PRÓG SPRZĄTANIA nie jest krótszy niż najdłuższa możliwa sesja lok
     // dostęp okrężną drogą. Konta mają dziś tę stronę otwartą: ich `SessionStore`
     // nie sprawdza wieku rekordu w ogóle, więc sesja nie wygasa nigdy.
     $prog = RejestrSesji::progSprzataniaSekund();
-    $zycieSesji = (int) config('session.lifetime') * 60;
+    $zycieSesji = Typy::liczba(config('session.lifetime')) * 60;
 
     expect($zycieSesji)->toBeGreaterThan(0, 'Nie umiem odczytać życia sesji — kontrola mierzyłaby pustkę.');
 

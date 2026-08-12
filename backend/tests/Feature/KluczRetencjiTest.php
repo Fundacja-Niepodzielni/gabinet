@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Retencja\RejestrRetencji;
 use App\Retencja\ZadanieRetencji;
+use App\Wsparcie\Typy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Tests\Wsparcie\KlamraPerturbacji;
@@ -44,7 +45,7 @@ function kluczUzyteczny(string $tabela, string $klucz, ?string &$powod = null): 
 
     if ($istnieje === null) {
         $kolumny = array_map(
-            static fn (object $w): string => (string) $w->column_name,
+            static fn (mixed $w): string => Typy::pole($w, 'column_name'),
             DB::select(
                 'select column_name from information_schema.columns
                   where table_schema = current_schema() and table_name = ?

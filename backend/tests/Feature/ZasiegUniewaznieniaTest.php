@@ -36,7 +36,18 @@ function kontrolaObejmuje(string $uri): bool
     // niż deklaruje — dokładnie ten przypadek, którego kontrola pozytywna pilnuje.
     app()->make(Kernel::class);
 
-    $trasa = collect(Route::getRoutes())->first(fn ($t): bool => $t->uri() === $uri);
+    // `Route::getRoutes()` oddaje `RouteCollectionInterface`, ktory nie jest ani
+    // `iterable` dla statyki, ani nosnikiem typu elementu. `->getRoutes()` oddaje
+    // tablice `Route` — i dopiero wtedy `->uri()` ma na czym stac.
+    $trasa = null;
+
+    foreach (Route::getRoutes()->getRoutes() as $kandydat) {
+        if ($kandydat->uri() === $uri) {
+            $trasa = $kandydat;
+
+            break;
+        }
+    }
 
     if ($trasa === null) {
         return false;
@@ -52,7 +63,7 @@ function trasyAplikacji(): array
 {
     $wynik = [];
 
-    foreach (Route::getRoutes() as $trasa) {
+    foreach (Route::getRoutes()->getRoutes() as $trasa) {
         $uri = $trasa->uri();
 
         // Horizon i Scramble niosą WŁASNYCH strażników i własny cykl życia.

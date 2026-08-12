@@ -17,7 +17,11 @@ use Illuminate\Support\Facades\Route;
  * Tutaj trasa powstaje W TEŚCIE i nie ma z kontrolą nic wspólnego — nie woła jej, nie zna
  * jej nazwy, nie ma jej w podpowiedziach. Jeśli mimo to wyjdzie 401, chroni ją KONSTRUKCJA.
  */
-/** Tożsamość w magazynie sesji — minimalny kształt, jakiego wymaga `TozsamoscSesji`. */
+/**
+ * Tożsamość w magazynie sesji — minimalny kształt, jakiego wymaga `TozsamoscSesji`.
+ *
+ * @return array<string, array<string, string>>
+ */
 function sesjaZ(string $sid): array
 {
     return ['konta' => ['sub' => 'ktos-zalogowany', 'sid' => $sid]];

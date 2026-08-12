@@ -29,6 +29,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class SprawdzUniewaznienie
 {
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $trasa = $request->route();
