@@ -26,6 +26,7 @@ TRASY = KORZEN / "backend/routes/web.php"
 MODEL = KORZEN / "backend/app/Models/Personel.php"
 WALIDATOR = KORZEN / "backend/app/Tozsamosc/WalidatorTokenu.php"
 OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
+MIDDLEWARE_UNIEWAZNIENIE = KORZEN / "backend/app/Http/Middleware/SprawdzUniewaznienie.php"
 PEST = KORZEN / "backend/tests/Pest.php"
 OCENA = KORZEN / "backend/app/Reguly/OcenaAnulacji.php"
 SESJA = KORZEN / "backend/config/session.php"
@@ -424,7 +425,7 @@ def retencja_bez_kasowania() -> None:
     """
     podmien(
         ZADANIE,
-        "        DB::table($tabela)->whereIn('id', $doUsuniecia)->delete();",
+        "        DB::table($tabela)->whereIn($kolumnaKlucza, $doUsuniecia)->delete();",
         "        // perturbacja: kasowanie usuniete, selekcja zostaje",
     )
 
@@ -437,11 +438,20 @@ def uniewaznienie_po_sid() -> None:
     wiec wylogowanie kasuje wpis, ktorego nikt juz nie uzywa. Bez tego
     sprawdzenia konsument serwuje dalej po zamknieciu sesji w IdP.
     """
-    podmien(
-        ODSWIEZANIE,
-        "        if (RejestrSesji::uniewazniona($tozsamosc->sid())) {",
-        "        if (false) {",
-    )
+    # OBIE WARSTWY, nie jedna — zmierzone 12.08.
+    #
+    # Od 09.08 uniewaznienie sprawdzaja DWA miejsca: middleware w grupach
+    # `web` i `api` oraz sciezka odswiezania. Mutacja zdejmujaca tylko jedno
+    # zostawiala druga warstwe czynna, wiec test przechodzil, a scenariusz
+    # meldowal „kontrola PRZESZLA mimo zlamanej reguly" i obwinial kontrole
+    # za obrone, ktora dziala. To jest ta sama wada, co pomiar pojedynczego
+    # ogniwa w lancuchu majacym dwa.
+    for plik in (ODSWIEZANIE, MIDDLEWARE_UNIEWAZNIENIE):
+        podmien_jedyne(
+            plik,
+            "        if (RejestrSesji::uniewazniona($tozsamosc->sid())) {",
+            "        if (false) {",
+        )
 
 
 # ---------------------------------------------------------------------------

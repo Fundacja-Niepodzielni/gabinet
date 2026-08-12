@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 use Tests\Wsparcie\FabrykaTokenow;
 
 /**
@@ -861,4 +862,84 @@ it('brak rozstrzygnięcia o unieważnieniu = ODMOWA, nigdy 200 (fail-closed)', f
         ->and(in_array($status, [401, 500, 503], true))->toBeTrue(
             'Nieoczekiwany status przy braku rozstrzygnięcia: '.$status
         );
+});
+
+it('BLK-22 SEDNO: po ROTACJI identyfikatora sesji ratuje WYŁĄCZNIE znacznik po sid', function (): void {
+    // ⛔ TEN TEST JEST ŚWIADKIEM MECHANIZMU, KTÓRY 12.08 GO STRACIŁ.
+    //
+    // Historia jest pouczająca i zapisuję ją, bo sam ją spowodowałem. Test
+    // POZYTYWNY dostał tego dnia pełną granicę procesu i jawne ciasteczko
+    // (naprawa R6A-1/R6B-2). Skutek uboczny: jego 401 pochodzi teraz ze
+    // SKASOWANEJ SESJI, bo `RejestrSesji::zakoncz()` niszczy sesję pod
+    // zapamiętanym identyfikatorem, a klient niesie dokładnie ten identyfikator.
+    // Usunięcie sprawdzania znacznika po `sid` przestało więc być widoczne —
+    // zmierzone perturbacją: mutacja weszła, a kontrola PRZESZŁA.
+    //
+    // Naprawiając jedno znalezisko, odebrałem świadka innemu mechanizmowi.
+    //
+    // ── DLACZEGO ROTACJA JEST SEDNEM BLK-22 ──
+    //
+    // Rejestr zapamiętuje identyfikator sesji z chwili logowania. Identyfikator
+    // ROTUJE przy ruchu użytkownika (zmierzone `Set-Cookie` z dwóch kolejnych
+    // odpowiedzi). Wylogowanie kasuje wtedy wpis, którego nikt już nie używa,
+    // ŻYWA sesja zostaje nietknięta i konsument serwuje dalej. Kasowanie po
+    // identyfikatorze jest bezradne z definicji; ratuje wyłącznie znacznik
+    // wiązany z `sid` — tożsamością, którą zna IdP i która NIE rotuje.
+    //
+    // ── TABELA ŚWIATÓW ──
+    //   (401 przy zrotowanym id) → OCZEKIWANE: znacznik po `sid` działa
+    //   (200 przy zrotowanym id) → BLK-22 otwarte: konsument serwuje po wylogowaniu
+    config(['session.driver' => 'redis']);
+
+    $sid = zalogujKoordynatora(waznoscTokenuS: 600);
+    $idZLogowania = RejestrSesji::odczytaj($sid)[0] ?? '';
+
+    expect($idZLogowania)->not->toBe('', 'Rejestr nie zna sesji — test nie ma przedmiotu.');
+
+    // ROTACJA WYMUSZONA JAWNIE, nie „mam nadzieję, że zrotuje". Nowy
+    // identyfikator, ta sama tożsamość w środku — dokładnie stan, w którym
+    // kasowanie po zapamiętanym identyfikatorze chybia.
+    $stara = sesjaWMagazynie($idZLogowania);
+
+    expect($stara)->not->toBe('', 'Sesja z logowania nie istnieje w magazynie — nie ma czego rotować.');
+
+    // IDENTYFIKATOR MUSI PRZEJŚĆ `Store::isValidId()` — 40 znaków alfanumerycznych.
+    // Pierwsza wersja użyła `zrotowany-…` i odczyt bazowy dał 401: Laravel odrzucił
+    // niepoprawny identyfikator i wygenerował NOWY, pusty. Mierzyłbym wtedy własny
+    // przyrząd, a nie rotację — dlatego wartość pochodzi z `Str::random(40)`.
+    $idPoRotacji = Str::random(40);
+
+    Session::getHandler()->write($idPoRotacji, $stara);
+    Session::getHandler()->destroy($idZLogowania);
+
+    granicaProcesu($idPoRotacji);
+
+    // ODCZYT BAZOWY: po rotacji użytkownik nadal jest zalogowany. Bez tego
+    // 401 na końcu byłoby zgodne ze światem „rotacja sama zabiła sesję".
+    expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue(
+        'Sesja nie przeżyła rotacji identyfikatora — test nie ma czego bronić.'
+    );
+
+    // Back-channel logout. Rejestr zna WYŁĄCZNIE stary identyfikator, więc
+    // kasowanie po identyfikatorze CHYBIA — i to jest cały sens tego testu.
+    test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)])->assertOk();
+
+    expect(sesjaWMagazynie($idPoRotacji))->not->toBe(
+        '',
+        'Sesja po rotacji zniknęła z magazynu, czyli kasowanie po identyfikatorze jednak trafiło. '.
+        'Wtedy ten test nie bada BLK-22, tylko powtarza test POZYTYWNY.'
+    );
+
+    granicaProcesu($idPoRotacji);
+
+    $koncowa = test()->get('/auth/ja');
+
+    expect($koncowa->status())->toBe(
+        401,
+        'KONSUMENT SERWUJE PO WYLOGOWANIU: sesja SSO zostala zamknieta w IdP, identyfikator '.
+        'sesji lokalnej zrotowal, wiec kasowanie po identyfikatorze chybilo — i nic tego nie '.
+        'zlapalo. To jest defekt wzorca BLK-22 w pelnej postaci.'
+    );
+
+    $koncowa->assertJsonPath('zalogowany', false);
 });

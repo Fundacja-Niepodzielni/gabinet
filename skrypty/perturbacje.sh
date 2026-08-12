@@ -828,16 +828,26 @@ MIGRACJA
 	# Drugi kierunek: tabela JEST w rejestrze, ale znika kolumna, po której
 	# retencja filtruje. Zadanie czyszczące nie wybrałoby wtedy ani jednego
 	# rekordu — cisza, nie błąd. To trudniejszy przypadek i dlatego ważniejszy.
-	local rejestr="backend/tests/Feature/RetencjaTest.php"
+	# SCIEZKA POPRAWIONA 12.08 — rejestr przeniosl sie 09.08 z pliku testu
+	# do `app/Retencja/RejestrRetencji.php`, a perturbacja dalej mutowala
+	# STARE miejsce. Wbudowany `str.replace` konczy sie sukcesem takze przy
+	# ZERZE trafien, wiec scenariusz zaliczal sie nie zmieniwszy niczego —
+	# ta sama klasa co surowy `sed`, tylko w Pythonie. Ponizej podmiana
+	# PRZERYWA BLEDEM, gdy wzorca nie ma albo jest wiecej niz raz.
+	local rejestr="backend/app/Retencja/RejestrRetencji.php"
 	zachowaj "$rejestr"
 
 	python3 - "$rejestr" <<'PYTON'
 import io, sys
 p = sys.argv[1]
 s = io.open(p, encoding='utf-8').read()
+_szukane = "            'pacjenci' => [\n                'kolumna_pochodzenia' => 'created_at',"
+_ile = s.count(_szukane)
+if _ile != 1:
+    sys.exit("PERTURBACJA NIEUDANA: wzorzec rejestru wystepuje %d razy w %s" % (_ile, p))
 s = s.replace(
-    "    'pacjenci' => [\n        'kolumna_pochodzenia' => 'created_at',",
-    "    'pacjenci' => [\n        'kolumna_pochodzenia' => 'kolumna_ktorej_nie_ma',",
+    "            'pacjenci' => [\n                'kolumna_pochodzenia' => 'created_at',",
+    "            'pacjenci' => [\n                'kolumna_pochodzenia' => 'kolumna_ktorej_nie_ma',",
     1,
 )
 io.open(p, 'w', encoding='utf-8', newline='\n').write(s)
@@ -1250,7 +1260,16 @@ p_uniewaznienie_sid() {
 	# Mutacja zdejmuje sprawdzanie unieważnienia po `sid` — czyli jedyny
 	# mechanizm odporny na tę rotację.
 	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	# ZACHOWUJEMY OBA PLIKI, bo mutacja dotyka OBU (12.08).
+	#
+	# Rozszerzylem mutacje na middleware i NIE rozszerzylem zachowania —
+	# zestaw zostawil ZYWA MUTACJE w drzewie roboczym. To jest mechanizm
+	# N-10: zepsuta regula bezpieczenstwa czekajaca na commit. Zlapane
+	# przegladem stanu drzewa po przebiegu, a nie kontrola — czyli
+	# przypadkiem, dokladnie tak samo jak wtedy.
+	local middleware="backend/app/Http/Middleware/SprawdzUniewaznienie.php"
 	zachowaj "$plik"
+	zachowaj "$middleware"
 
 	perturbuj uniewaznienie-po-sid
 
@@ -1259,11 +1278,22 @@ p_uniewaznienie_sid() {
 
 	# ALLOWLISTA przyczyny, nie podłoga: to tożsamość, więc fałszywe zielone
 	# kosztuje tu najwięcej. Fragment skopiowany DOSŁOWNIE z komunikatu Pesta.
-	oczekuj_czerwone "test pozytywny wykrywa konsumenta serwującego po wylogowaniu" \
-		--przyczyna "Logout nie trafił w sesję tego użytkownika" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="POZYTYWNY"
+	# PRZECELOWANE 12.08 na SWIADKA MECHANIZMU, nie na test POZYTYWNY.
+	#
+	# Test POZYTYWNY dostal tego dnia pelna granice procesu i jawne ciasteczko
+	# (naprawa R6A-1/R6B-2). Skutek uboczny: jego 401 pochodzi teraz ze
+	# SKASOWANEJ SESJI, bo kasowanie po zapamietanym identyfikatorze TRAFIA —
+	# klient niesie dokladnie ten identyfikator. Zdjecie znacznika po `sid`
+	# przestalo byc w nim widoczne; zmierzone pelnym przebiegiem.
+	#
+	# Sedno BLK-22 zachodzi dopiero po ROTACJI identyfikatora: rejestr zna
+	# stary, kasowanie chybia, ratuje wylacznie znacznik po `sid`.
+	oczekuj_czerwone "swiadek BLK-22 wykrywa konsumenta serwujacego po wylogowaniu" \
+		--przyczyna "KONSUMENT SERWUJE PO WYLOGOWANIU" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="BLK-22 SEDNO"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+	cp "$KOPIE/$(printf '%s' "$middleware" | tr '/' '_')" "$middleware"
 
 	# Kierunek odwrotny: po przywróceniu kontrola wraca na zielone.
 	if dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php >/dev/null 2>&1; then
@@ -1417,7 +1447,13 @@ p_puls() {
 	# naruszenie przeżywa tak długo, jak trzeba.
 	dc stop scheduler >/dev/null 2>&1
 
-	dc exec -T app php artisan tinker --execute="Cache::forget('gabinet:puls-harmonogramu');" >/dev/null 2>&1
+	# MAGAZYNEM PULSU JEST DZIS BAZA, NIE CACHE (R6B-10, 12.08).
+	#
+	# Kasowanie klucza z cache przestalo cokolwiek lamac, wiec kontrola
+	# slusznie przechodzila — a scenariusz przestal cokolwiek mierzyc.
+	# To jest ta sama klasa co N-3: przeniesienie mechanizmu unieważnia
+	# perturbacje, ktore go cytuja, i robi to PO CICHU.
+	dc exec -T app php artisan tinker --execute="DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->delete();" >/dev/null 2>&1
 
 	# Dowód mutacji: puls NAPRAWDĘ zniknął, a nie „pewnie zniknął".
 	#
@@ -1427,13 +1463,13 @@ p_puls() {
 	# przyrząd, nie system — i znowu wykryte dopiero uruchomieniem.
 	local stan_pulsu
 	stan_pulsu="$(dc exec -T app php artisan tinker \
-		--execute="echo Cache::has('gabinet:puls-harmonogramu') ? 'JEST' : 'BRAK';" 2>/dev/null \
+		--execute="echo DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->exists() ? 'JEST' : 'BRAK';" 2>/dev/null \
 		| tr -d '[:space:]')"
 
 	if [ "$stan_pulsu" = "BRAK" ]; then
-		printf '    · dowód mutacji: wpis pulsu zniknął z cache’u\n'
+		printf '    · dowód mutacji: wpis pulsu zniknął z magazynu trwałego\n'
 	else
-		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: puls nadal w cache’u (%s) — perturbacja nierozstrzygająca\n' "$stan_pulsu"
+		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: puls nadal w magazynie trwałym (%s) — perturbacja nierozstrzygająca\n' "$stan_pulsu"
 		NIEUDANE=$((NIEUDANE + 1))
 		dc start scheduler >/dev/null 2>&1
 
@@ -1631,6 +1667,36 @@ if ! srodowisko_zamontowane; then
 	dc down -v --remove-orphans >/dev/null 2>&1 || true
 	dc up -d >/dev/null 2>&1 || true
 	czekaj_na_zdrowie || exit 2
+	dc exec -T app php artisan migrate --force >/dev/null 2>&1
+fi
+
+# ZDROWIE PO PRZYGOTOWANIU SRODOWISKA — druga, NIEZALEZNA wlasnosc.
+#
+# Zgodny skrot pliku `.env` dowodzi, ze APLIKACJA ma nasz plik. NIE dowodzi,
+# ze stos jako calosc jest z nim spojny: postgres ustawia haslo WYLACZNIE
+# przy inicjalizacji klastra, wiec wolumen z poprzedniego zycia stosu niesie
+# STARE haslo przy nowym pliku. Wniosek o calym stosie wyciagany z wlasnosci
+# jednego kontenera to ta sama wada, ktora ten zestaw bada gdzie indziej.
+#
+# Zmierzone 12.08: `password authentication failed for user gabinet` przy
+# ZGODNYM skrocie pliku. Wszystkie scenariusze dotykajace bazy padaly wtedy
+# na polaczeniu, a allowlisty meldowaly „czerwien nie zawiera oczekiwanej
+# przyczyny" — takze te, ktore dzien wczesniej rozrozanialy poprawnie.
+# Zestaw wyprodukowal 17 czerwieni, z ktorych ZADNA nie dotyczyla badanych regul.
+if ! czekaj_na_zdrowie; then
+	echo "Stos '$PROJEKT' nie zglasza zdrowia mimo wlasciwego pliku srodowiska —" >&2
+	echo "najczestsza przyczyna: wolumen bazy sprzed izolacji, z innym haslem. Stawiam od nowa." >&2
+
+	dc down -v --remove-orphans >/dev/null 2>&1 || true
+	dc up -d >/dev/null 2>&1 || true
+
+	if ! czekaj_na_zdrowie; then
+		echo "ODMOWA: stos nie zglasza zdrowia takze po odtworzeniu od zera." >&2
+		echo "Bez zdrowego stosu KAZDY wynik tego zestawu jest nieprawdziwy:" >&2
+		echo "czerwien pochodzi wtedy z polaczenia, a nie z badanej reguly." >&2
+		exit 2
+	fi
+
 	dc exec -T app php artisan migrate --force >/dev/null 2>&1
 fi
 
