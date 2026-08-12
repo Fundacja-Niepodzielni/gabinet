@@ -45,7 +45,11 @@ use Illuminate\Support\Facades\File;
  * źródła niż lista długu — nowe wywołanie `--przyczyna` liczy się samo, bez
  * niczyjego wpisu.
  */
-const SUFIT_NIEROZROZNIAJACYCH = 7;
+// ZJECHANY 7 -> 2 dnia 12.08. Cztery wzorce przestaly byc nazwami testow
+// i staly sie KOMUNIKATAMI ASERCJI — a zeby to bylo mozliwe, cztery asercje
+// w `OcenaAnulacjiTest` i `OdebranieRoliTest` musialy w ogole DOSTAC komunikat.
+// Sufit ma zjezdzac razem z dlugiem; sufit z zapasem jest atrapa zapadki.
+const SUFIT_NIEROZROZNIAJACYCH = 2;
 
 /** @return list<array{wzorzec: string, filtr: ?string, linia: int}> */
 function wywolaniaZPrzyczyna(string $skrypt): array

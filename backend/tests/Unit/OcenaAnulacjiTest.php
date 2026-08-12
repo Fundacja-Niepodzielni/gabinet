@@ -47,9 +47,25 @@ it('rozstrzyga granicę okna bezpłatnego odwołania co do minuty', function (
         kwotaZamrozonaGr: 14500,
     );
 
-    expect($werdykt->sytuacja->value)->toBe($oczekiwanaSytuacja)
-        ->and($werdykt->kwotaZwrotuGr)->toBe($oczekiwanyZwrot ? 14500 : 0)
-        ->and($werdykt->wOknieBezplatnym)->toBe($oczekiwanyZwrot);
+    // KOMUNIKAT JEST CZĘŚCIĄ PRZYRZĄDU, nie ozdobnikiem (R6B-15).
+    // Perturbacja `p_testy` psuje granicę okna i musi umieć wskazać,
+    // ŻE CZERWIEŃ POCHODZI STĄD — a allowlista `--przyczyna` może być
+    // wyłącznie komunikatem asercji: nazwę testu Pest wypisuje w KAŻDYM
+    // przebiegu, także zielonym, więc jako zawężenie nie znaczy nic.
+    expect($werdykt->sytuacja->value)->toBe(
+        $oczekiwanaSytuacja,
+        "GRANICA OKNA ROZSTRZYGNIĘTA ŹLE dla {$ileZostalo} przed wizytą."
+    );
+
+    expect($werdykt->kwotaZwrotuGr)->toBe(
+        $oczekiwanyZwrot ? 14500 : 0,
+        "GRANICA OKNA ROZSTRZYGNIĘTA ŹLE: kwota zwrotu nie zgadza się dla {$ileZostalo}."
+    );
+
+    expect($werdykt->wOknieBezplatnym)->toBe(
+        $oczekiwanyZwrot,
+        "GRANICA OKNA ROZSTRZYGNIĘTA ŹLE: flaga okna bezpłatnego dla {$ileZostalo}."
+    );
 })->with([
     // Zostało DUŻO ponad okno — bezspornie bezpłatnie.
     '48 h przed' => ['48 hours', true, 'pacjent_odwoluje_wczesniej'],
@@ -165,8 +181,21 @@ it('stosuje regułę ZAMROŻONĄ, a nie bieżącą konfigurację', function (): 
     $poNowemu = OcenaAnulacji::oceń($nowa, Sytuacja::PacjentOdwolujeWczesniej, termin(), $chwila, 14500);
 
     // 30 h > 24 h → zwrot; 30 h < 48 h → brak zwrotu. Ta sama chwila, dwa wyniki.
-    expect($poStaremu->kwotaZwrotuGr)->toBe(14500)
-        ->and($poNowemu->kwotaZwrotuGr)->toBe(0);
+    // Komunikat nazywa REGUŁĘ, nie liczbę — bo to jej dotyczy CLAUDE.md §4,
+    // i bo perturbacja `p_zamrozenie` musi mieć czym zawęzić swoją czerwień.
+    // Tu fałszywe zielone kosztuje PIENIĄDZE PACJENTA, więc allowlista jest
+    // wymagana, a nie zalecana (WYTYCZNE-PRACY.md, dowód mutacji).
+    expect($poStaremu->kwotaZwrotuGr)->toBe(
+        14500,
+        'ZASTOSOWANO REGUŁĘ BIEŻĄCĄ ZAMIAST ZAMROŻONEJ: rezerwacja z oknem 24 h '.
+        'została rozliczona po nowemu. Zmiana cennika albo reguł NIGDY nie działa wstecz.'
+    );
+
+    expect($poNowemu->kwotaZwrotuGr)->toBe(
+        0,
+        'ZASTOSOWANO REGUŁĘ BIEŻĄCĄ ZAMIAST ZAMROŻONEJ: nowa reguła 48 h nie zadziałała '.
+        'na nowej rezerwacji, więc test nie rozróżnia dwóch zestawów reguł.'
+    );
 });
 
 // ---------------------------------------------------------------------------

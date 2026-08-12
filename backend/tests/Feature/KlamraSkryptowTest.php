@@ -124,3 +124,78 @@ it('bramka NIE podmienia kluczy środowiska gołym `sed -i` — bez odczytu zwro
     expect(str_contains($kod, 'NIE MA klucza'))->toBeTrue('Pomocnik nie odmawia przy braku klucza.');
     expect(str_contains($kod, 'występuje'))->toBeTrue('Pomocnik nie odmawia przy kluczu zwielokrotnionym.');
 });
+
+// ---------------------------------------------------------------------------
+// R6A-10 i R6B-16 — środowisko pomiaru jest częścią pomiaru
+// ---------------------------------------------------------------------------
+
+it('R6A-10: nazwa pliku środowiska liczona PO sparsowaniu --projekt', function (): void {
+    // Znalezisko: `bramka.sh` składała `PLIK_ENV` w linii 73, a `--projekt`
+    // parsowała w 98 — więc nazwa pliku IGNOROWAŁA projekt. Dwa równoległe
+    // przebiegi o różnych projektach dzieliły JEDEN plik z wygenerowanym
+    // `APP_KEY` i `DB_PASSWORD`, a zamek (liczony per projekt) ich nie rozdzielał.
+    //
+    // Naprawę wykonano 09.08, ale bez kontroli — `KLASY-I-NAPRAWY.md` mówiło
+    // „NAPRAWIONE, z dowodem", nie nazywając dowodu, a w tym pliku nie było
+    // ani jednej asercji o `PLIK_ENV`. Kolejność w skrypcie da się odwrócić
+    // jednym przeniesieniem linii i nic by tego nie złapało.
+    $linie = explode("\n", (string) file_get_contents(base_path('../skrypty/bramka.sh')));
+
+    $petla = null;
+    $plikEnv = null;
+
+    foreach ($linie as $nr => $linia) {
+        if ($petla === null && str_contains($linia, 'while [ $# -gt 0 ]')) {
+            $petla = $nr;
+        }
+
+        if ($plikEnv === null && preg_match('/^\s*PLIK_ENV=/', $linia) === 1) {
+            $plikEnv = $nr;
+        }
+    }
+
+    expect($petla)->not->toBeNull('Nie znalazłem pętli parsującej argumenty — kontrola mierzy pustkę.');
+    expect($plikEnv)->not->toBeNull('Nie znalazłem przypisania `PLIK_ENV` — kontrola mierzy pustkę.');
+
+    expect($plikEnv)->toBeGreaterThan(
+        (int) $petla,
+        'Nazwa pliku środowiska jest liczona PRZED sparsowaniem `--projekt`. Dwa przebiegi '.
+        'o różnych projektach dzielą wtedy jeden plik z `APP_KEY` i `DB_PASSWORD`, '.
+        'a zamek liczony per projekt ich nie rozdziela (R6A-10).'
+    );
+});
+
+it('R6B-16: perturbacje NIE MOGĄ wołać docker compose bez własnego pliku środowiska', function (): void {
+    // Znalezisko: `bramka.sh` buduje własny plik z `.env.example` i podaje
+    // `--env-file`, a `perturbacje.sh` nie robiła ani jednego — więc
+    // `docker-compose.yml` montował `./.env` DEWELOPERA, z prawdziwymi sekretami.
+    // Łamało to regułę „klon weryfikatora NIGDY nie trzyma prawdziwych sekretów"
+    // i unieważniało porównywalność wyników między maszyną wykonawcy a czystym
+    // klonem. V-2 zamknięto wtedy tylko po jednej stronie narzędzi.
+    //
+    // Komentarze odfiltrowane: wzmianka o `--env-file` w prozie nie jest
+    // podaniem `--env-file` (R6A-6, ta sama klasa).
+    $kod = (string) preg_replace(
+        '/^\s*#.*$/m',
+        '',
+        (string) file_get_contents(base_path('../skrypty/perturbacje.sh'))
+    );
+
+    expect(str_contains($kod, '--env-file'))->toBeTrue(
+        'Perturbacje wołają `docker compose` bez `--env-file`, więc montują `.env` DEWELOPERA '.
+        'z prawdziwymi sekretami (R6B-16).'
+    );
+
+    expect(str_contains($kod, 'GABINET_PLIK_ENV'))->toBeTrue(
+        'Brak podstawienia `GABINET_PLIK_ENV` — `docker-compose.yml` montuje wtedy domyślne `./.env`.'
+    );
+
+    // DOWÓD, NIE DEKLARACJA. Podanie `--env-file` mówi o ZAMIARZE; dopiero
+    // porównanie skrótu pliku na hoście ze skrótem w kontenerze mówi, że
+    // kontener NAPRAWDĘ dostał nasz plik. Bez tego zostaje nam wiara.
+    expect(str_contains($kod, 'srodowisko_zamontowane'))->toBeTrue(
+        'Brak sprawdzenia, czy kontener naprawdę ma nasz plik środowiska. `--env-file` bez '.
+        'weryfikacji jest deklaracją: stos podniesiony wcześniej wozi stary plik, a skrypt '.
+        'o tym nie wie.'
+    );
+});

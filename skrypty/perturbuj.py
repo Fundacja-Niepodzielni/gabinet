@@ -35,6 +35,10 @@ WYLOGOWANIE = KORZEN / "backend/app/Http/Controllers/BackchannelLogoutController
 KONTROLER = KORZEN / "backend/app/Http/Controllers/LogowanieController.php"
 WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 ZADANIE = KORZEN / "backend/app/Retencja/ZadanieRetencji.php"
+TYPY = KORZEN / "backend/app/Wsparcie/Typy.php"
+BRAMKI = KORZEN / "backend/app/Tozsamosc/Bramki.php"
+GABINET = KORZEN / "backend/config/gabinet.php"
+PRZYKLAD_ENV = KORZEN / ".env.example"
 
 
 def czytaj(sciezka: Path) -> str:
@@ -55,6 +59,34 @@ def podmien(sciezka: Path, stare: str, nowe: str) -> None:
 
     if stare not in tresc:
         raise SystemExit(f"PERTURBACJA NIEUDANA: nie znaleziono wzorca w {sciezka.name}:\n{stare[:120]}")
+
+    pisz(sciezka, tresc.replace(stare, nowe, 1))
+
+
+def podmien_jedyne(sciezka: Path, stare: str, nowe: str) -> None:
+    """Podmiana, ktora krzyczy w OBIE strony: przy zerze i przy zwielokrotnieniu.
+
+    `podmien()` broni tylko przed brakiem trafienia. Wzorzec trafiajacy WIECEJ
+    niz raz jest osobna wada: zmieniamy wtedy cos innego, niz zamierzono, i tez
+    po cichu (to jest „kierunek 0" z naprawy R6B-7 w `bramka.sh`).
+
+    Uzywaja tego mutacje przeniesione tutaj z surowego `sed -i` w
+    `perturbacje.sh` (R6B-17 / N-9): `sed`, ktory nie trafil, konczy sie
+    SUKCESEM, wiec przez nieznany czas `p_statyka` mutowala widmo — jej wzorzec
+    szukal `string $domyslny = .."..): string`, a sygnatura brzmi
+    `string $domyslny = ''): string`.
+    """
+    tresc = czytaj(sciezka)
+    ile = tresc.count(stare)
+
+    if ile == 0:
+        raise SystemExit(f"PERTURBACJA NIEUDANA: nie znaleziono wzorca w {sciezka.name}:\n{stare[:120]}")
+
+    if ile > 1:
+        raise SystemExit(
+            f"PERTURBACJA NIEUDANA: wzorzec wystepuje {ile} razy w {sciezka.name} — "
+            f"podmiana zmienilaby WIECEJ, niz zamierzono:\n{stare[:120]}"
+        )
 
     pisz(sciezka, tresc.replace(stare, nowe, 1))
 
@@ -412,6 +444,94 @@ def uniewaznienie_po_sid() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# MUTACJE PRZENIESIONE Z SUROWEGO `sed -i` (R6B-17 / N-9).
+#
+# Do 12.08 osiem podmian robil `sed -i` wprost w `perturbacje.sh`. `sed`, ktory
+# nie trafil, konczy sie KODEM 0 i nie zmienia nic — czyli „podmiana weszla"
+# i „podmiana nie trafila" dawaly identyczny sygnal. Jedna z nich (`p_statyka`)
+# byla udowodnionym cichym no-opem: szukala `string $domyslny = .."..): string`,
+# a `Typy.php` ma `string $domyslny = ''): string`. Scenariusz swiecil zielono
+# wylacznie dzieki DRUGIEJ mutacji, dopisanej obok.
+#
+# Tutaj kazda z nich idzie przez `podmien_jedyne()`, ktore podnosi blad przy
+# zerze i przy zwielokrotnieniu, a `perturbuj()` w skrypcie sprawdza kod
+# wyjscia i ustawia `MUTACJA_ZERWANA`.
+# ---------------------------------------------------------------------------
+
+def granica_24h() -> None:
+    """Przesuwa granice okna bezplatnego odwolania o JEDNA SEKUNDE.
+
+    Najmniejsza mozliwa zmiana zachowania: `>=` na `>`. Jesli suita jej nie
+    lapie, testy granicy 23:59 / 24:00 / 24:01 sa dekoracja.
+    """
+    podmien_jedyne(
+        OCENA,
+        "$sekundDoWizyty >= $sekundOkna",
+        "$sekundDoWizyty > $sekundOkna",
+    )
+
+
+def zamrozenie_biezace() -> None:
+    """Czyta okno z wartosci BIEZACEJ zamiast z reguly ZAMROZONEJ (CLAUDE.md §4)."""
+    podmien_jedyne(
+        OCENA,
+        "$sekundOkna = $reguly->oknoBezplatnegoOdwolaniaGodzin * 3600;",
+        "$sekundOkna = 48 * 3600;",
+    )
+
+
+PERTURBACJA_TYPU = '\n// perturbacja\nfunction perturbacja_typu(): int { return "napis"; }\n'
+
+
+def typ_zerwany() -> None:
+    """Wstrzykuje DWA bledy typu: zla wartosc domyslna i zly typ zwracany.
+
+    Pierwsza czesc to wlasnie ta, ktora przez nieznany czas byla widmem
+    (patrz naglowek sekcji). Druga — dopisana funkcja — dzialala zawsze
+    i maskowala brak pierwszej.
+    """
+    podmien_jedyne(
+        TYPY,
+        "public static function napis(mixed $wartosc, string $domyslny = ''): string",
+        "public static function napis(mixed $wartosc, string $domyslny = 0): string",
+    )
+    pisz(TYPY, czytaj(TYPY) + PERTURBACJA_TYPU)
+
+
+def sekret_keycloak() -> None:
+    """Wpisuje WARTOSC do pliku wzorcowego — sekret w repozytorium."""
+    podmien_jedyne(
+        PRZYKLAD_ENV,
+        "\nKEYCLOAK_CLIENT_SECRET=\n",
+        "\nKEYCLOAK_CLIENT_SECRET=aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA\n",
+    )
+
+
+def sekret_smsapi() -> None:
+    """Drugi kierunek: `SekretyTest` pyta o SEMANTYKE („ta zmienna ma byc PUSTA")."""
+    podmien_jedyne(PRZYKLAD_ENV, "\nSMSAPI_TOKEN=\n", "\nSMSAPI_TOKEN=cokolwiek\n")
+
+
+def znacznik_obcy() -> None:
+    """Podszywa usluge pod cudza — HTTP 200 to NIE tozsamosc."""
+    podmien_jedyne(GABINET, "'znacznik' => 'gabinet-api-v1',", "'znacznik' => 'cudza-usluga',")
+
+
+def biala_lista_zdjeta() -> None:
+    """Zdejmuje filtr bialej listy rol.
+
+    Dokladnie ten blad wpuszcza marker `wymaga-2fa` i role wbudowane Keycloaka
+    do uprawnien. Wzorzec celuje w `$biala`, a nie w `$znane` — druga linia
+    w tym samym pliku robi co innego i nie wolno jej ruszyc.
+    """
+    podmien_jedyne(
+        BRAMKI,
+        "return array_values(array_intersect($roleZTokenu, $biala));",
+        "return $roleZTokenu;",
+    )
+
+
 POLECENIA = {
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
@@ -432,6 +552,13 @@ POLECENIA = {
     "logout-niezweryfikowany-sid": logout_na_niezweryfikowanym_sid,
     "obietnica-sprzataj": obietnica_sprzataj,
     "suita-pominieta-sprzataj": suita_pominieta_sprzataj,
+    "granica-24h": granica_24h,
+    "zamrozenie-biezace": zamrozenie_biezace,
+    "typ-zerwany": typ_zerwany,
+    "sekret-keycloak": sekret_keycloak,
+    "sekret-smsapi": sekret_smsapi,
+    "znacznik-obcy": znacznik_obcy,
+    "biala-lista-zdjeta": biala_lista_zdjeta,
 }
 
 

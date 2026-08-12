@@ -5,6 +5,11 @@
 #   ./skrypty/bramka.sh              # pełny przebieg na czystym stosie
 #   ./skrypty/bramka.sh --zostaw     # nie sprzątaj po sobie (debugowanie)
 #   ./skrypty/bramka.sh --tylko-kod  # bez stawiania stosu (stos już stoi)
+#   ./skrypty/bramka.sh --projekt X --przygotuj-srodowisko
+#                                    # zbuduj plik środowiska efemerycznego dla
+#                                    # projektu X, wypisz jego ścieżkę i wyjdź
+#   ./skrypty/bramka.sh --projekt X --pokaz-srodowisko
+#                                    # sama ścieżka tego pliku, nic nie buduje
 #
 # CI (.github/workflows/ci.yml) woła DOKŁADNIE ten skrypt — dzięki temu bramka
 # lokalna i bramka na GitHubie nie mogą się rozjechać. Reguła przejęta z repo
@@ -82,69 +87,24 @@ PORT_REDIS="${GABINET_BRAMKA_PORT_REDIS:-56390}"
 # Definicja przeniesiona POD pętlę parsującą argumenty.
 
 ZNACZNIK_APLIKACJI="gabinet-api-v1"
-# Podłoga liczby testów. Rośnie razem z suitą — obniżenie MUSI być świadomą
-# zmianą w repozytorium (zasada D-0013: pusta suita to zielone CI bez testów).
+
+# PODŁOGI — JEDNO ŹRÓDŁO dla bramki I dla perturbacji (R6B-12).
 #
-# STAŁA, nie zmienna środowiskowa (U-2/U-6 z rundy 3): dopóki dało się ustawić
-# `GABINET_MINIMUM_TESTOW=0`, kontrolę wyłączało się bez śladu w repozytorium —
-# a kontrola, którą można wyłączyć niewidocznie, nie jest kontrolą. Obniżenie
-# podłogi ma być widoczne w `git diff` i przejść przez przegląd.
-#
-# V-10 z rundy 5: komentarz twierdził „rośnie razem z suitą", a nie rósł —
-# 100 przy 174 testach. Weryfikator zmierzył, że w tym zapasie mieści się
-# SKASOWANIE CAŁEGO pliku kontroli CLAUDE.md §2 (7 testów, 21 asercji) przy
-# w pełni zielonej bramce. Podłoga ma siedzieć TUŻ POD stanem bieżącym, żeby
-# każde zniknięcie kontroli było widoczne — a jej podniesienie to jedna linia
-# w tym pliku, świadoma i w `git diff`.
-#
-# PODNIESIENIE 08.08 w nocy, NAPRAWA PRZYRZĄDU. V-10 zostało zamknięte tylko
-# na chwilę: podłoga 170 przy 181 wykonanych testach dawała 11 testów zapasu,
-# a w tym zapasie mieści się SKASOWANIE W CAŁOŚCI dziesięciu z siedemnastu
-# plików kontrolnych — w tym `ObietniceKomentarzyTest` (2 testy), czyli
-# kontroli NAD KONTROLAMI. Zmierzone: `pest` → 181 wykonanych / 640 asercji;
-# rozkład na pliki od 2 do 36. Komentarz obiecywał „TUŻ POD stanem bieżącym"
-# i był nieprawdziwy wobec własnej wartości — dokładnie ta klasa, przed którą
-# ostrzega `ObietniceKomentarzyTest`.
-#
-# Zapas zostaje CELOWO minimalny: każde zniknięcie choćby jednego testu ma
-# zapalić bramkę. Gdy suita urośnie, ta liczba rośnie razem z nią — w tym samym
-# commicie, świadomie i w `git diff`.
-#
-# PODNIESIENIE 09.08 (runda 1, przyrząd): 180/635 → 183/647. Powód: doszły trzy
-# kontrole (klamra perturbacji + dwie kontrole twierdzeń w komentarzach), więc
-# stan wynosi 184 testy / 652 asercje. Podnoszę razem z suitą, w tym samym
-# commicie — inaczej ten komentarz zacząłby kłamać o własnej wartości, czyli
-# popełniłby klasę D3, którą właśnie tą suitą zamykam.
-#
-# PODNIESIENIE 09.08 (weryfikacja krzyżowa rundy 1): 183/647 → 186/656. Powód:
-# doszła ZAPADKA POKRYCIA dla allowlist przyczyny czerwieni
-# (`PrzyczynyPerturbacjiTest`, 3 kontrole), więc stan wynosi 187 testów
-# (186 zielonych + noga 1) i 661 asercji.
-#
-# PODNIESIENIE 09.08 (ZLECENIE-008): 186/656 → 187/659. Doszedł świadek dla
-# `Typy::napis` (3 kontrole), a DWIE kontrole twierdzeń w komentarzach zostały
-# POMINIĘTE — helpdesk zmierzył na nich 14 obejść na 15. Pominięte nie liczą się
-# do podłogi, więc podłoga NIE rośnie o nie; stan: 187 zielonych, 2 pominięte,
-# 1 czerwony (noga 1), 664 asercje.
-#
-# PODNIESIENIE 09.08 (runda 2, R6A-11): 187/659 → 195/683. Doszło sześć kontroli
-# harmonogramu retencji (uruchomienie, kierunek 0, fail-closed przy nieustalonym
-# okresie, para z klamrą w obie strony, ślad przy pustym przebiegu).
-# Doszedł też skan wstępny klamry pytający o WŁASNOŚĆ, nie o nazwę (ZLECENIE-011),
-# z kontrolą w obie strony.
-#
-# PODNIESIENIE 09.08 (ZLECENIE-012/014): 195/683 -> 199/695. Doszła kontrola klucza
-# retencji + naprawa (wariant A). Stan: 199 zielonych, 2 pominięte, JEDEN czerwony
-# (noga 1 — przyrząd). Czerwień klucza ZNIKNĘŁA po naprawie, z tego samego powodu.
-# 700 asercji.
-MINIMUM_TESTOW=236
-# Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
-# choćby liczba testów wyglądała dobrze. Podniesione 08.08 wraz z podłogą
-# testów: 640 zmierzonych, podłoga 635.
-MINIMUM_ASERCJI=1936
+# Do 12.08 liczby stały tutaj, a `perturbacje.sh` dowodziły podłogi o INNEJ,
+# niższej wartości (100 testów / 300 asercji). Perturbacja dowodziła więc
+# czegoś o liczbie 100, a nie o kontroli, którą ten skrypt wykonuje. Rozjazd
+# urósł po podniesieniu podłóg 09.08 — naprawa jednej kontroli powiększyła
+# lukę w drugiej. Wartości i cała historia ich podnoszenia: `podlogi.sh`.
+. "$KORZEN/skrypty/podlogi.sh"
 ZOSTAW=0
 TYLKO_KOD=0
 POKAZ_ZAMEK=0
+# R6B-16: `perturbacje.sh` montowało `./.env` DEWELOPERA (z prawdziwymi
+# sekretami), bo nie budowało własnego pliku środowiska ani nie podawało
+# `--env-file`. Zamiast pisać tam DRUGI opis tej samej rzeczy — dwa opisy
+# jednej rzeczy rozjeżdżają się po cichu — perturbacje wołają TEN mechanizm.
+PRZYGOTUJ_SRODOWISKO=0
+POKAZ_SRODOWISKO=0
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -152,7 +112,9 @@ while [ $# -gt 0 ]; do
 		--tylko-kod) TYLKO_KOD=1; ZOSTAW=1; shift ;;
 		--projekt) PROJEKT="$2"; shift 2 ;;
 		--pokaz-zamek) POKAZ_ZAMEK=1; shift ;;
-		-h|--help) sed -n '2,33p' "$0"; exit 0 ;;
+		--przygotuj-srodowisko) PRZYGOTUJ_SRODOWISKO=1; shift ;;
+		--pokaz-srodowisko) POKAZ_SRODOWISKO=1; shift ;;
+		-h|--help) sed -n '2,36p' "$0"; exit 0 ;;
 		*) echo "nieznany argument: $1" >&2; exit 2 ;;
 	esac
 done
@@ -189,6 +151,14 @@ ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka.${PROJEKT}.zamek"
 # Osobny kod wyjścia dla zajętego zamka. Bez niego perturbacja stwierdzała
 # tylko „bramka czerwona" — a czerwona bywa z kilkunastu powodów naraz.
 KOD_ZAMEK_ZAJETY=3
+
+# Ta sama zasada co przy zamku: ścieżkę pliku środowiska wypisuje SAM SKRYPT,
+# nikt jej nie składa drugi raz ręcznie. Przy zamku ręczne składanie dało U-2
+# (perturbacja zajmowała plik, o który nikt nie pytał).
+if [ "$POKAZ_SRODOWISKO" -eq 1 ]; then
+	printf '%s\n' "$PLIK_ENV"
+	exit 0
+fi
 
 if [ "$POKAZ_ZAMEK" -eq 1 ]; then
 	printf '%s\n' "$ZAMEK"
@@ -352,6 +322,37 @@ przygotuj_env() {
 	ustaw_w_env GABINET_PORT_POSTGRES "$PORT_PG"
 	ustaw_w_env GABINET_PORT_REDIS    "$PORT_REDIS"
 }
+
+# ---------------------------------------------------------------------------
+# TRYB „TYLKO ZBUDUJ ŚRODOWISKO" — punkt wejścia dla `perturbacje.sh` (R6B-16).
+#
+# Wypisuje na STDOUT wyłącznie ŚCIEŻKĘ zbudowanego pliku; cała gadanina idzie
+# na STDERR, żeby wołający mógł podstawić wynik wprost do zmiennej.
+#
+# Werdykt bierzemy z LICZNIKA `NIEUDANE`, nie z kodu wyjścia `przygotuj_env`:
+# ten ostatni jest kodem OSTATNIEGO `ustaw_w_env`, więc odmowa przy
+# `DB_PASSWORD` byłaby niewidoczna, gdyby pozostałe klucze przeszły.
+#
+# Zamek bramki jest już w tym miejscu zdobyty i zwolni go `trap` przy wyjściu.
+# Świadomie nie omijam zamka: budowa pliku środowiska nadpisuje poświadczenia
+# tego projektu, więc równoległy przebieg TEGO SAMEGO projektu ma zostać
+# odrzucony tak samo jak przy pełnej bramce.
+if [ "$PRZYGOTUJ_SRODOWISKO" -eq 1 ]; then
+	przygotuj_env >&2
+
+	if [ "$NIEUDANE" -ne 0 ]; then
+		echo "ODMOWA: nie udało się zbudować pliku środowiska ($NIEUDANE odmów)." >&2
+		exit 2
+	fi
+
+	if [ ! -s "$PLIK_ENV" ]; then
+		echo "ODMOWA: $PLIK_ENV nie powstał albo jest pusty." >&2
+		exit 2
+	fi
+
+	printf '%s\n' "$PLIK_ENV"
+	exit 0
+fi
 
 # ---------------------------------------------------------------------------
 

@@ -46,15 +46,56 @@ fi
 
 # --- 2. każde wywołanie `perturbuj X` wskazuje na istniejące polecenie -----
 # To jest sedno: literówki w nazwie polecenia `bash -n` przepuszcza.
+#
+# DOPASOWANIE DOKŁADNE, NIE PODCIĄGIEM (R6B-8). Poprzednia wersja robiła
+# `grep -q -- "$POLECENIE"` na całym wierszu użycia, więc wywołanie
+# `perturbuj hasla` przechodziło dzięki obecności `hasla-podloz`, a
+# `perturbuj sesja` dzięki `sesja-jawna`. Kontrola literówek przepuszczała
+# każdą literówkę będącą PREFIKSEM istniejącej nazwy — czyli najczęstszą.
+#
+# Lista poleceń pochodzi z tego, co `perturbuj.py` wypisuje SAM O SOBIE:
+# `użycie: perturbuj.py [a | b | c]`. Wyłuskujemy wnętrze nawiasu i rozbijamy
+# po ` | `, zamiast szukać podciągu w całym wierszu.
+ZNANE_POLECENIA="$(printf '%s' "$UZYCIE" | sed -n 's/.*\[\(.*\)\].*/\1/p' | tr '|' '\n' | tr -d ' ')"
+
+if [ -z "$ZNANE_POLECENIA" ]; then
+	zle_ "nie udało się wyłuskać listy poleceń z wyjścia perturbuj.py — kontrola mierzyłaby pustkę"
+fi
+
 WOLANE="$(grep -oE '\bperturbuj [a-z0-9-]+' skrypty/perturbacje.sh | awk '{print $2}' | sort -u)"
 
+if [ -z "$WOLANE" ]; then
+	zle_ "nie znaleziono ANI JEDNEGO wywołania 'perturbuj X' w perturbacje.sh — parser się rozjechał"
+fi
+
 for POLECENIE in $WOLANE; do
-	if printf '%s' "$UZYCIE" | grep -q -- "$POLECENIE"; then
+	ZNANE=0
+
+	for KANDYDAT in $ZNANE_POLECENIA; do
+		[ "$POLECENIE" = "$KANDYDAT" ] && ZNANE=1
+	done
+
+	if [ "$ZNANE" -eq 1 ]; then
 		ok_ "perturbuj.py zna polecenie '$POLECENIE'"
 	else
 		zle_ "perturbacje.sh woła 'perturbuj $POLECENIE', a perturbuj.py takiego polecenia NIE MA"
 	fi
 done
+
+# KIERUNEK ODWROTNY dla samego dopasowania: bez niego „wszystko się zgadza"
+# przechodzi także wtedy, gdy porównanie nigdy nikogo nie odrzuca.
+NIEISTNIEJACE="polecenie-ktorego-nigdy-nie-bylo"
+ODRZUCONE=1
+
+for KANDYDAT in $ZNANE_POLECENIA; do
+	[ "$NIEISTNIEJACE" = "$KANDYDAT" ] && ODRZUCONE=0
+done
+
+if [ "$ODRZUCONE" -eq 1 ]; then
+	ok_ "porównanie odrzuca nazwę spoza listy (kontrola pozytywna dopasowania)"
+else
+	zle_ "porównanie przyjmuje nazwę, której nie ma — dopasowanie nie rozstrzyga niczego"
+fi
 
 # --- 3. perturbacje.sh startuje i wypisuje swoją listę ---------------------
 LISTA="$(bash skrypty/perturbacje.sh --lista 2>&1)"
@@ -87,13 +128,38 @@ for NAZWA in $NAZWY; do
 done
 
 # --- 5. nieznana nazwa NIE MOŻE przejść po cichu --------------------------
+#
+# ROZSTRZYGNIĘCIE WŁASNE, NIE CUDZY KOD WYJŚCIA (R6B-8). Poprzednia wersja
+# przyjmowała „cokolwiek niezerowego" jako dowód odrzucenia — a `perturbacje.sh`
+# wraca niezerowo także wtedy, gdy nie ma Dockera, gdy stos nie wstaje albo gdy
+# w indeksie gita czekają zmiany. Kontrola świeciła zielono na czerwieni, która
+# z nią nie miała nic wspólnego: jedna wartość, wiele światów.
+#
+# Teraz wymagamy DOKŁADNIE tego kodu, który `perturbacje.sh` rezerwuje dla
+# nieznanej nazwy, ORAZ jego diagnozy w wyjściu. Oba sygnały pochodzą z TEJ
+# kontroli, nie z otoczenia.
+KOD_NIEZNANA_NAZWA=4
 KOD=0
-bash skrypty/perturbacje.sh nazwa-ktorej-nigdy-nie-bylo >/dev/null 2>&1 || KOD=$?
+WYJSCIE_NIEZNANEJ="$(bash skrypty/perturbacje.sh nazwa-ktorej-nigdy-nie-bylo 2>&1)" || KOD=$?
 
-if [ "$KOD" -eq 0 ]; then
-	zle_ "perturbacje.sh przyjmuje nieznaną nazwę scenariusza bez protestu"
+if [ "$KOD" -ne "$KOD_NIEZNANA_NAZWA" ]; then
+	zle_ "perturbacje.sh na nieznaną nazwę zwrócił kod $KOD zamiast $KOD_NIEZNANA_NAZWA (kod może być CUDZY: brak Dockera, niezdrowy stos)"
+elif ! printf '%s' "$WYJSCIE_NIEZNANEJ" | grep -q 'NIEZNANA PERTURBACJA'; then
+	zle_ "kod wyjścia się zgadza, ale nie ma diagnozy 'NIEZNANA PERTURBACJA' — nie wiadomo, co go wywołało"
 else
-	ok_ "perturbacje.sh odrzuca nieznaną nazwę scenariusza (kod $KOD)"
+	ok_ "perturbacje.sh odrzuca nieznaną nazwę WŁASNYM kodem $KOD_NIEZNANA_NAZWA i mówi dlaczego"
+fi
+
+# KIERUNEK ODWROTNY: nazwa ZNANA nie może dostać kodu „nieznana nazwa".
+# Bez tego „kod 4 przy literówce" przechodzi także dla skryptu, który zwraca
+# 4 zawsze. `--lista` nie dotyka Dockera, więc kontrola nie mierzy otoczenia.
+KOD_LISTY=0
+bash skrypty/perturbacje.sh --lista >/dev/null 2>&1 || KOD_LISTY=$?
+
+if [ "$KOD_LISTY" -eq "$KOD_NIEZNANA_NAZWA" ]; then
+	zle_ "perturbacje.sh zwraca kod nieznanej nazwy także dla poprawnego wywołania — kod nie rozstrzyga niczego"
+else
+	ok_ "poprawne wywołanie NIE dostaje kodu nieznanej nazwy (kod $KOD_LISTY)"
 fi
 
 printf '\n'

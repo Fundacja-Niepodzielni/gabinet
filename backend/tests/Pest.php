@@ -149,6 +149,29 @@ function zdekodowaneLadunki(string $tresc): string
         }
     }
 
+    // DRUGA WARSTWA: ZWYKLY base64 NAD CALOSCIA (znalezisko 12.08).
+    //
+    // Wzorzec wyzej wymaga DWOCH KROPEK, wiec ladunek zakodowany jeszcze raz
+    // (`base64_encode($idToken)` — kropek nie zawiera) byl dla tego skanera
+    // NIEWIDOCZNY. Skutek zmierzony przy przegladzie perturbacji: mutacja
+    // `id-token-zakodowany` podmienia szyfrowanie na zwykle KODOWANIE,
+    // a asercja o odzyskiwalnosci e-maila z zapisanego ID tokenu
+    // PRZECHODZILA — czerwien przynosil dopiero kierunek odwrotny, wyjatkiem
+    // deszyfrowania. Krok deklarowal dowod po ZDEKODOWANIU, nie po roznicy
+    // napisow — i tego NIE dowodzil.
+    //
+    // To jest P25 po stronie ZIELENI: kontrola nie widziala zjawiska, ktore
+    // nazywa. Kodowanie nie jest szyfrowaniem — i skaner ma to widziec.
+    if (preg_match_all('/[A-Za-z0-9_\\/+=-]{40,}/', $tresc, $dlugie) !== 0) {
+        foreach ($dlugie[0] as $kandydat) {
+            $rozkodowany = base64_decode(strtr($kandydat, '-_', '+/'), false);
+
+            if (is_string($rozkodowany) && $rozkodowany !== '') {
+                $zdekodowane .= $rozkodowany;
+            }
+        }
+    }
+
     return $zdekodowane;
 }
 

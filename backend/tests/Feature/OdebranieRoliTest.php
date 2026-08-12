@@ -248,8 +248,19 @@ it('odbiera dostęp, gdy Keycloak odbierze rolę — najpóźniej w oknie access
     // Ta sama sesja, to samo żądanie — uprawnienie ma zniknąć.
     $po = test()->get('/auth/ja')->assertOk();
 
-    expect($po->json('role'))->toBe([])
-        ->and($po->json('bramki')['panel.koordynacji'])->toBeFalse();
+    // Ten test NIE MIAŁ ANI JEDNEGO komunikatu asercji, więc perturbacja
+    // `p_role_zamrozone` nie miała czym zawęzić swojej czerwieni i zaliczała
+    // dowolną czerwień z tego pliku (R6B-15).
+    expect($po->json('role'))->toBe(
+        [],
+        'ROLE ZAMROŻONE NA CAŁĄ SESJĘ: odebranie roli w Keycloaku nie dotarło do konsumenta '.
+        'w oknie access tokenu. W systemie, w którym rola otwiera dostęp do kartotek, '.
+        'to jest wada bezpieczeństwa, nie niedogodność.'
+    );
+
+    expect($po->json('bramki')['panel.koordynacji'])->toBeFalse(
+        'ROLE ZAMROŻONE NA CAŁĄ SESJĘ: bramka koordynatora nadal otwarta po odebraniu roli.'
+    );
 });
 
 it('NIE traci dostępu, dopóki access token jest ważny — okno jest oknem, nie losowaniem', function (): void {
@@ -397,10 +408,24 @@ it('NIE kasuje sesji, gdy podpisu nie da się sprawdzić — i mówi o tym gło�
 
     $odp = test()->postJson('/oidc/backchannel-logout', ['logout_token' => logoutTokenDla($sid)]);
 
-    expect($odp->status())->toBe(503)
-        ->and($odp->json('skasowane_sesje'))->toBe(0)
-        ->and(SladWylogowania::odmowy())->toBe(1, 'Odmowa nie została odnotowana — cisza zamiast sygnału.')
-        ->and(sesjaWMagazynie($idSesji))->not->toBe('');
+    // Komunikat jest tu przyrzadem: perturbacja `p_logout_failsafe` usuwa blok
+    // awaryjny i musi umiec wskazac, ZE CZERWIEN POCHODZI STAD. Bez komunikatu
+    // allowlista `--przyczyna` nie ma z czego powstac (R6B-15).
+    expect($odp->status())->toBe(
+        503,
+        'FAIL-SAFE WYLOGOWANIA ZDJETY: handler nie odmowil, choc podpisu tokenu NIE DA SIE '.
+        'sprawdzic. Konczenie sesji po `sid` z niezweryfikowanego tokenu jest furtka na '.
+        'WYMUSZONE WYLOGOWANIE — napastnik znajacy `sid` ofiary wyrzuca ja z systemu.'
+    );
+
+    expect($odp->json('skasowane_sesje'))->toBe(
+        0,
+        'FAIL-SAFE WYLOGOWANIA ZDJETY: skasowano sesje na podstawie tokenu, ktorego podpisu '.
+        'nie dalo sie sprawdzic.'
+    );
+
+    expect(SladWylogowania::odmowy())->toBe(1, 'Odmowa nie została odnotowana — cisza zamiast sygnału.');
+    expect(sesjaWMagazynie($idSesji))->not->toBe('');
 });
 
 it('ADWERSARIALNY: napastnik z cudzym sid i wymuszoną awarią NIE wylogowuje ofiary', function (): void {

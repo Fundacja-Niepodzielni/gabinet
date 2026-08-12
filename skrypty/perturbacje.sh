@@ -110,6 +110,10 @@ sciezka_hosta() {
 	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$KORZEN/$1"; else echo "$KORZEN/$1"; fi
 }
 
+sciezka_hosta_pliku() {
+	if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi
+}
+
 # Własny PREFIKS nazw i własne porty — bez nich stos perturbacji zderza się
 # z zasobami dewelopera PO NAZWIE mimo innego projektu, a alias `postgres`
 # rozwiązuje się losowo na jeden z dwóch serwerów (ta sama pułapka, którą
@@ -121,8 +125,60 @@ PORT_HTTP="${GABINET_PERTURBACJE_PORT_HTTP:-8097}"
 PORT_PG="${GABINET_PERTURBACJE_PORT_POSTGRES:-55444}"
 PORT_REDIS="${GABINET_PERTURBACJE_PORT_REDIS:-56391}"
 
+# Ustawiane niżej, tuż przed pierwszym użyciem `dc` — `set -u` nie wybacza.
+PLIK_ENV=""
+
 dc() {
-	GABINET_PREFIX="$PROJEKT" 	GABINET_PORT_HTTP="$PORT_HTTP" 	GABINET_PORT_POSTGRES="$PORT_PG" 	GABINET_PORT_REDIS="$PORT_REDIS" 		docker compose -p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
+	GABINET_PREFIX="$PROJEKT" \
+	GABINET_PORT_HTTP="$PORT_HTTP" \
+	GABINET_PORT_POSTGRES="$PORT_PG" \
+	GABINET_PORT_REDIS="$PORT_REDIS" \
+	GABINET_PLIK_ENV="$(sciezka_hosta_pliku "$PLIK_ENV")" \
+		docker compose --env-file "$(sciezka_hosta_pliku "$PLIK_ENV")" \
+			-p "$PROJEKT" -f "$(sciezka_hosta docker-compose.yml)" "$@"
+}
+
+# DOWÓD, że kontener ma NASZ plik — nie deklaracja, tylko porównanie treści.
+#
+# Sam fakt podania `--env-file` nie wystarcza: gdy stos już stoi z poprzedniego
+# przebiegu, compose montuje to, co było w chwili jego utworzenia. „Podałem
+# flagę" i „kontener ma mój plik" to dwa różne zdania.
+#
+# Porównujemy SKRÓTY, nie obecność jakiegoś klucza: skrót ma dokładnie jeden
+# świat zgodny z wartością „równe". Gdy skrótu nie da się policzyć po którejś
+# stronie, wynik brzmi NIEROZSTRZYGNIĘTE i traktujemy go jak niezgodność —
+# kontrola bezpieczeństwa, której NIE WYKONANO, nie jest kontrolą zdaną.
+srodowisko_zamontowane() {
+	local na_hoscie w_kontenerze
+
+	na_hoscie="$(sha256sum "$PLIK_ENV" 2>/dev/null | cut -d' ' -f1)"
+	w_kontenerze="$(dc exec -T app sha256sum /srv/gabinet/.env 2>/dev/null | tr -d '\r' | cut -d' ' -f1)"
+
+	if [ -z "$na_hoscie" ] || [ -z "$w_kontenerze" ]; then
+		printf 'NIEROZSTRZYGNIĘTE: nie policzono skrótu pliku środowiska (host: %s, kontener: %s)\n' \
+			"${na_hoscie:-brak}" "${w_kontenerze:-brak}" >&2
+
+		return 1
+	fi
+
+	[ "$na_hoscie" = "$w_kontenerze" ]
+}
+
+# O gotowości rozstrzyga SONDA pytająca o STAN, nie kod wyjścia `up`.
+czekaj_na_zdrowie() {
+	local _
+
+	for _ in $(seq 1 60); do
+		if dc exec -T app php artisan gabinet:zdrowie --cichy >/dev/null 2>&1; then
+			return 0
+		fi
+
+		sleep 2
+	done
+
+	echo "ODMOWA: stos '$PROJEKT' nie zgłosił zdrowia w 120 s." >&2
+
+	return 1
 }
 
 # Mutacje plików trzymamy w `perturbuj.py`, nie w heredokach basha —
@@ -159,6 +215,15 @@ perturbuj() {
 
 # Liczba testów — DOKŁADNIE ta sama procedura co w bramce, bo ten sam plik.
 . "$KORZEN/skrypty/licz-testy.sh"
+
+# PODŁOGI — DOKŁADNIE te same wartości, które egzekwuje bramka (R6B-12).
+#
+# Do 12.08 perturbacje miały tu wpisane 100 testów i 300 asercji, a bramka
+# egzekwowała 236/1936. Perturbacja dowodziła więc czegoś o liczbie 100
+# i NIE dowodziła niczego o kontroli, którą bramka wykonuje. Rozjazd urósł po
+# podniesieniu podłóg 09.08 — naprawa jednej kontroli powiększyła lukę
+# w drugiej. Teraz obie strony czytają `podlogi.sh`.
+. "$KORZEN/skrypty/podlogi.sh"
 
 # REGUŁA 4 (lekcja zespołu hubu, E2E logowania): KONTROLA, KTÓRA ZMIENIA STAN,
 # PSUJE GO SWOJEMU NASTĘPNEMU PRZEBIEGOWI. U nich kontrola E2E konfigurowała
@@ -309,9 +374,17 @@ export -f dc_wiek_pulsu 2>/dev/null || true
 # Odczyt bazowy bierzemy z kopii sprzed mutacji, którą i tak robi `zachowaj`.
 # Pytanie brzmi więc nie „czy tekstu nie ma", tylko **„czy tekst BYŁ, a potem
 # ZNIKNĄŁ"** — i to rozróżnia oba światy.
+#
+# Czwarty argument (opcjonalny) `linia` przełącza dopasowanie na CAŁĄ LINIĘ
+# (`grep -x`). Potrzebne dla kluczy `.env.example`: wzorzec `SMSAPI_TOKEN=`
+# jest PODCIĄGIEM zmutowanej linii `SMSAPI_TOKEN=cokolwiek`, więc dopasowanie
+# fragmentem meldowałoby „wzorzec nadal w pliku" przy poprawnej mutacji.
 dowod_zniknieciem() {
-	local opis="$1" wzorzec="$2" plik="$3"
+	local opis="$1" wzorzec="$2" plik="$3" tryb="${4:-fragment}"
 	local kopia="$KOPIE/$(printf '%s' "$plik" | tr '/' '_')"
+	local flagi='-qF'
+
+	[ "$tryb" = "linia" ] && flagi='-qxF'
 
 	if [ "${MUTACJA_ZERWANA:-0}" -eq 1 ]; then
 		printf '    ✗ DOWÓD MUTACJI POMINIĘTY: perturbacja nie weszła w życie (%s)\n' "$opis"
@@ -325,14 +398,14 @@ dowod_zniknieciem() {
 	fi
 
 	# ODCZYT BAZOWY: czy wzorzec w ogóle istniał PRZED mutacją.
-	if ! grep -qF "$wzorzec" "$kopia"; then
+	if ! grep $flagi -- "$wzorzec" "$kopia"; then
 		printf '    ✗ PERTURBACJA ROZJECHAŁA SIĘ Z KODEM: wzorca „%s" NIE BYŁO w %s przed mutacją\n' "$wzorzec" "$plik"
 		printf '      (dowód w formie „starego tekstu już nie ma" byłby tu PRAWDZIWY BEZ MUTACJI)\n'
 		NIEUDANE=$((NIEUDANE + 1))
 		return 1
 	fi
 
-	if grep -qF "$wzorzec" "$plik"; then
+	if grep $flagi -- "$wzorzec" "$plik"; then
 		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: %s — wzorzec nadal w pliku\n' "$opis"
 		NIEUDANE=$((NIEUDANE + 1))
 		return 1
@@ -380,9 +453,19 @@ p_testy() {
 	# Zmiana `>=` na `>` przesuwa granicę o jedną sekundę. To najmniejsza
 	# możliwa zmiana zachowania — jeśli suita jej nie łapie, testy granicy
 	# 23:59/24:00/24:01 są dekoracją.
-	sed -i 's/\$sekundDoWizyty >= \$sekundOkna/\$sekundDoWizyty > \$sekundOkna/' "$plik"
+	#
+	# R6B-17: mutacja idzie przez `perturbuj.py`, nie przez `sed -i`. `sed`,
+	# który nie trafił, kończy się SUKCESEM; `podmien_jedyne()` podnosi błąd
+	# przy zerze i przy zwielokrotnieniu, a `perturbuj()` czyta jego kod wyjścia.
+	perturbuj granica-24h
+
+	dowod_zniknieciem 'porównanie „>=" zniknęło z reguły granicy' \
+		'$sekundDoWizyty >= $sekundOkna' "$plik"
+
+	# Allowlista to KOMUNIKAT ASERCJI z `OcenaAnulacjiTest` (dopisany 12.08),
+	# a nie nazwa testu — nazwy Pest wypisuje w kazdym przebiegu, takze zielonym.
 	oczekuj_czerwone "Pest wykrywa przesunięcie granicy o 1 sekundę" \
-		--przyczyna "granicę okna" \
+		--przyczyna "GRANICA OKNA ROZSTRZYGNIĘTA ŹLE" \
 		dc exec -T app ./vendor/bin/pest --filter="granicę okna"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -411,11 +494,12 @@ p_pusta_suita() {
 	# obserwować dokładnie to, co obserwuje kontrola.
 	liczba="$(policz_testy "$wynik")"
 
-	if [ "$liczba" -lt 100 ]; then
-		printf '    ✓ podłoga 100 testów odrzuca pusty przebieg (policzono: %s)\n' "$liczba"
+	# PODŁOGA CZYTANA Z `podlogi.sh` — ta sama liczba, którą egzekwuje bramka.
+	if [ "$liczba" -lt "$MINIMUM_TESTOW" ]; then
+		printf '    ✓ podłoga %s testów odrzuca pusty przebieg (policzono: %s)\n' "$MINIMUM_TESTOW" "$liczba"
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ podłoga nie odrzuca pustego wyniku (policzono: %s)\n' "$liczba"
+		printf '    ✗ podłoga nie odrzuca pustego wyniku (policzono: %s przy podłodze %s)\n' "$liczba" "$MINIMUM_TESTOW"
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 
@@ -425,11 +509,13 @@ p_pusta_suita() {
 	pelny="$(dc exec -T app ./vendor/bin/pest 2>&1)"
 	pelna_liczba="$(policz_testy "$pelny")"
 
-	if [ "$pelna_liczba" -ge 100 ]; then
-		printf '    ✓ parser widzi pełny przebieg (%s testów) — nie zwraca zawsze zera\n' "$pelna_liczba"
+	if [ "$pelna_liczba" -ge "$MINIMUM_TESTOW" ]; then
+		printf '    ✓ parser widzi pełny przebieg (%s testów ≥ podłoga %s) — nie zwraca zawsze zera\n' \
+			"$pelna_liczba" "$MINIMUM_TESTOW"
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ parser NIE widzi pełnego przebiegu (policzył: %s)\n' "$pelna_liczba"
+		printf '    ✗ parser NIE widzi pełnego przebiegu (policzył: %s przy podłodze %s)\n' \
+			"$pelna_liczba" "$MINIMUM_TESTOW"
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 }
@@ -439,8 +525,19 @@ p_statyka() {
 	local plik="backend/app/Wsparcie/Typy.php"
 	zachowaj "$plik"
 
-	sed -i 's/public static function napis(mixed \$wartosc, string \$domyslny = .."..): string/public static function napis(mixed $wartosc, string $domyslny = 0): string/' "$plik"
-	printf '\n// perturbacja\nfunction perturbacja_typu(): int { return "napis"; }\n' >> "$plik"
+	# R6B-17 / N-9 — TA PODMIANA BYŁA CICHYM NO-OPEM OD NIEZNANEGO CZASU.
+	# Stary `sed` szukał `string $domyslny = .."..): string`, a rzeczywista
+	# sygnatura brzmi `string $domyslny = ''): string`. Zmierzone: `sed` nie
+	# zmieniał ani jednego bajtu i kończył się KODEM 0. Scenariusz świecił
+	# zielono wyłącznie dzięki DRUGIEJ mutacji (dopisana funkcja obok), więc
+	# nikt tego nie widział.
+	#
+	# Obie mutacje robi teraz `perturbuj.py`; pierwsza przechodzi przez
+	# `podmien_jedyne()`, które podnosi błąd, gdy wzorzec nie trafi.
+	perturbuj typ-zerwany
+
+	dowod_zniknieciem "sygnatura z domyślnym pustym napisem zniknęła z Typy.php" \
+		"string \$domyslny = ''): string" "$plik"
 
 	oczekuj_czerwone "Larastan wykrywa zwrot napisu z funkcji zwracającej int" \
 		dc exec -T app ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
@@ -463,7 +560,13 @@ p_sekrety() {
 	local plik=".env.example"
 	zachowaj "$plik"
 
-	sed -i 's|^KEYCLOAK_CLIENT_SECRET=$|KEYCLOAK_CLIENT_SECRET=aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA|' "$plik"
+	# R6B-17: mutacja przez `perturbuj.py`, dowód w formie „był → zniknął".
+	# Dopasowanie CAŁEJ LINII (`linia`), bo `KEYCLOAK_CLIENT_SECRET=` jest
+	# podciągiem linii zmutowanej.
+	perturbuj sekret-keycloak
+
+	dowod_zniknieciem "pusta wartość KEYCLOAK_CLIENT_SECRET zniknęła z pliku wzorcowego" \
+		"KEYCLOAK_CLIENT_SECRET=" "$plik" linia
 
 	oczekuj_czerwone "gitleaks wykrywa sekret w pliku wzorcowym" \
 		docker run --rm -v "$(cygpath -w "$KORZEN" 2>/dev/null || echo "$KORZEN"):/repo" -w /repo \
@@ -473,7 +576,11 @@ p_sekrety() {
 
 	# Drugi kierunek: test `SekretyTest` też musi to złapać — gitleaks patrzy
 	# na kształt, test na semantykę („ta zmienna ma być PUSTA").
-	sed -i 's|^SMSAPI_TOKEN=$|SMSAPI_TOKEN=cokolwiek|' "$plik"
+	perturbuj sekret-smsapi
+
+	dowod_zniknieciem "pusta wartość SMSAPI_TOKEN zniknęła z pliku wzorcowego" \
+		"SMSAPI_TOKEN=" "$plik" linia
+
 	oczekuj_czerwone "SekretyTest wykrywa niepustą zmienną sekretną" \
 		dc exec -T app ./vendor/bin/pest --filter="bez ani jednej wartości sekretu"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -766,8 +873,13 @@ p_suita_pominieta() {
 	perturbuj suita-pominieta-sprzataj
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 
-	if [ "$pominiete" -lt 100 ]; then
-		printf '    ✗ mutacja nie pominęła suity (pominiętych: %s) — perturbacja nierozstrzygająca\n' "$pominiete"
+	# Dowód mutacji, nie podłoga: pytamy, czy mutacja NAPRAWDĘ pominęła suitę.
+	# Progiem jest ta sama podłoga, bo „pominiętych mniej niż podłoga testów"
+	# znaczy, że `beforeEach` nie objął całej suity — czyli mierzymy nie to
+	# zjawisko.
+	if [ "$pominiete" -lt "$MINIMUM_TESTOW" ]; then
+		printf '    ✗ mutacja nie pominęła suity (pominiętych: %s przy podłodze %s) — perturbacja nierozstrzygająca\n' \
+			"$pominiete" "$MINIMUM_TESTOW"
 		NIEUDANE=$((NIEUDANE + 1))
 		return
 	fi
@@ -797,13 +909,15 @@ p_suita_pominieta() {
 	local zdrowy
 	zdrowy="$(dc exec -T app ./vendor/bin/pest 2>&1)"
 
-	if [ "$(policz_testy "$zdrowy")" -ge 100 ] && [ "$(policz_asercje "$zdrowy")" -ge 300 ]; then
-		printf '    ✓ na zdrowej suicie oba liczniki wracają wysoko (%s testów, %s asercji)\n' \
-			"$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
+	# OBIE podłogi z `podlogi.sh` — te same, które egzekwuje bramka (R6B-12).
+	if [ "$(policz_testy "$zdrowy")" -ge "$MINIMUM_TESTOW" ] \
+		&& [ "$(policz_asercje "$zdrowy")" -ge "$MINIMUM_ASERCJI" ]; then
+		printf '    ✓ na zdrowej suicie oba liczniki wracają nad podłogi %s/%s (%s testów, %s asercji)\n' \
+			"$MINIMUM_TESTOW" "$MINIMUM_ASERCJI" "$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ liczniki nie wracają na zdrowej suicie (%s testów, %s asercji)\n' \
-			"$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
+		printf '    ✗ liczniki nie wracają nad podłogi %s/%s na zdrowej suicie (%s testów, %s asercji)\n' \
+			"$MINIMUM_TESTOW" "$MINIMUM_ASERCJI" "$(policz_testy "$zdrowy")" "$(policz_asercje "$zdrowy")"
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 }
@@ -840,25 +954,74 @@ p_obietnica() {
 }
 
 p_sesja_jawna() {
-	naglowek "magazyn sesji — dane osobowe bez szyfrowania"
+	naglowek "magazyn sesji — dane osobowe bez szyfrowania (dwie nogi)"
 	# Kontrola krzyżowa B7 z weryfikacji F1 huba, zmierzona u nas i potwierdzona:
 	# sesja trzyma e-mail, login i CAŁY ID token, sterownik `redis` utrwala dane
 	# na dysku, a `SESSION_ENCRYPT` miało domyślnie `false`.
+	#
+	# R6B-4 — SCENARIUSZ ZALICZAŁ SIĘ Z INNEJ PRZYCZYNY, NIŻ DEKLAROWAŁ.
+	#
+	# Miał JEDNĄ nogę: podmieniał WARTOŚĆ DOMYŚLNĄ w `config/session.php`
+	# i oczekiwał czerwieni od „testu, który znajduje e-mail JAWNIE w Redisie".
+	# Tyle że o zachowaniu przebiegu rozstrzyga `SESSION_ENCRYPT` z pliku
+	# środowiska, a ten ma `true` (`.env.example:59`). Mutacja wartości
+	# domyślnej NIE ZMIENIA więc ani jednego bajtu w Redisie — czerwień, jeśli
+	# przychodziła, to z kontroli TEKSTOWEJ czytającej treść pliku, czyli
+	# z innego zjawiska niż nazwane w opisie.
+	#
+	# Rozdzielamy więc dwa RÓŻNE pytania i dowodzimy ich osobno:
+	#   NOGA 1 — „czy jest bezpiecznie DOMYŚLNIE" (mutacja wartości domyślnej),
+	#   NOGA 2 — „czy jest bezpiecznie TUTAJ"     (mutacja środowiska przebiegu).
 	local plik="backend/config/session.php"
 	zachowaj "$plik"
 
+	# --- NOGA 1: wartość domyślna w kodzie -----------------------------------
 	perturbuj sesja-jawna
 
-	dowod_mutacji "szyfrowanie sesji wyłączone w konfiguracji" \
-		grep -q "SESSION_ENCRYPT', false" "$plik"
+	dowod_zniknieciem "domyślne szyfrowanie sesji zniknęło z konfiguracji" \
+		"'encrypt' => env('SESSION_ENCRYPT', true)," "$plik"
 
-	oczekuj_czerwone "test znajduje e-mail i ID token JAWNIE w Redisie" \
+	# ALLOWLISTA = KOMUNIKAT ASERCJI, skopiowany dosłownie z
+	# `backend/tests/Feature/SesjaBezJawnychDanychTest.php` („ma szyfrowanie
+	# sesji włączone DOMYŚLNIE"). To jest kontrola, która realnie reaguje na tę
+	# mutację — i dlatego opis mówi teraz o wartości domyślnej, a nie o Redisie.
+	oczekuj_czerwone "kontrola wykrywa wyłączone szyfrowanie DOMYŚLNE (treść pliku, nie env)" \
+		--przyczyna "Wartość DOMYŚLNA szyfrowania sesji nie jest" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/SesjaBezJawnychDanychTest.php
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 
+	# --- NOGA 2: to, co realnie rozstrzyga w środowisku przebiegu ------------
+	#
+	# Bez mutacji pliku: wstrzykujemy `SESSION_ENCRYPT=false` do środowiska
+	# procesu. Ta sama droga, którą `p_sonda_bazy` podstawia `DB_HOST` —
+	# zmienna procesu trafia do `$_SERVER`, a ten adapter ma w Laravelu
+	# pierwszeństwo przed `.env`.
+	local stan_szyfrowania
+	stan_szyfrowania="$(dc exec -T -e SESSION_ENCRYPT=false app \
+		php artisan tinker --execute="echo config('session.encrypt') ? 'TAK' : 'NIE';" 2>/dev/null \
+		| tr -d '[:space:]')"
+
+	if [ "$stan_szyfrowania" = "NIE" ]; then
+		printf '    · dowód mutacji: w środowisku przebiegu szyfrowanie sesji jest WYŁĄCZONE\n'
+
+		# Komunikat asercji z pierwszego testu tego pliku — czerwień pochodzi
+		# wtedy z ODCZYTANIA e-maila w magazynie, a nie z treści pliku.
+		oczekuj_czerwone "kontrola znajduje e-mail pacjenta w magazynie, gdy środowisko wyłącza szyfrowanie" \
+			--przyczyna "E-mail pacjenta odczytywalny w magazynie sesji" \
+			dc exec -T -e SESSION_ENCRYPT=false app ./vendor/bin/pest tests/Feature/SesjaBezJawnychDanychTest.php
+	else
+		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: config(session.encrypt) daje „%s" mimo SESSION_ENCRYPT=false\n' \
+			"${stan_szyfrowania:-brak odczytu}"
+		printf '      (bez tego odczytu noga 2 mierzyłaby nie to zjawisko — patrz R6B-4)\n'
+		NIEUDANE=$((NIEUDANE + 1))
+	fi
+
+	# Kierunek odwrotny: bez mutacji i bez wstrzyknięcia kontrola MUSI być
+	# zielona, inaczej „czerwono przy mutacji" przechodzi także dla kontroli
+	# zawsze czerwonej.
 	if dc exec -T app ./vendor/bin/pest tests/Feature/SesjaBezJawnychDanychTest.php >/dev/null 2>&1; then
-		printf '    ✓ po włączeniu szyfrowania kontrola wraca na zielone\n'
+		printf '    ✓ po przywróceniu szyfrowania kontrola wraca na zielone\n'
 		UDANE=$((UDANE + 1))
 	else
 		printf '    ✗ kontrola pozostaje czerwona mimo włączonego szyfrowania\n'
@@ -880,7 +1043,10 @@ p_role_zamrozone() {
 	dowod_zniknieciem "sprawdzanie wieku access tokenu zniknęło z kodu" \
 		'if (! $this->wymagaOdswiezenia($tozsamosc)) {' "$plik"
 
-	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" --przyczyna "odbiera dostęp" \
+	# Allowlista to KOMUNIKAT ASERCJI z `OdebranieRoliTest` (dopisany 12.08).
+	# Ten test nie mial wczesniej ANI JEDNEGO komunikatu, wiec nie bylo z czego
+	# zbudowac zawezenia — to bylo sedno dlugu, nie jego objaw.
+	oczekuj_czerwone "test wykrywa, że odebranie roli nie dociera do aplikacji" --przyczyna "ROLE ZAMROŻONE NA CAŁĄ SESJĘ" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="odbiera dostęp"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -900,8 +1066,33 @@ p_logout_failsafe() {
 	dowod_zniknieciem "awaryjne zakończenie sesji zniknęło z handlera" \
 		'} catch (Throwable $blad) {' "$plik"
 
-	oczekuj_czerwone "test wykrywa sesję, która przeżyła awarię wylogowania" --przyczyna "niedostępnym IdP" \
-		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="niedostępnym IdP"
+	# ⚠ DWIE WADY NARAZ, obie do naprawy poza tym plikiem:
+	#
+	# 1. R6B-15: „niedostępnym IdP" to NAZWA TESTU, więc allowlista nie zawęża
+	#    niczego, a ten test nie ma komunikatu przy pierwszej asercji
+	#    (`expect($odp->status())->toBe(200)`).
+	# 2. GROŹNIEJSZE — MUTACJA NIE MA WPŁYWU NA WYBRANY TEST. Zmierzone
+	#    czytaniem kodu 12.08: test „kończy sesję przy niedostępnym IdP, gdy
+	#    klucze są w cache" ASERUJE `SladWylogowania::awarie() === 0`, czyli
+	#    jawnie NIE wchodzi w blok `catch`. Usunięcie `catch` nie zmienia więc
+	#    w nim niczego. Ścieżkę awaryjną wykonują testy „NIE kasuje sesji, gdy
+	#    podpisu nie da się sprawdzić" oraz „ADWERSARIALNY". Filtra NIE
+	#    przestawiam, bo nie mogę tu uruchomić perturbacji, a przestawienie bez
+	#    pomiaru byłoby zgadywaniem — propozycja jest w raporcie.
+	# PRZECELOWANE 12.08 — poprzedni cel NIE WCHODZIL w mutowany blok.
+	#
+	# Celowalismy w test o niedostepnym IdP przy kluczach w cache. Ten test
+	# JAWNIE asertuje, ze licznik awarii wynosi ZERO — czyli deklaruje, ze
+	# w blok ratunkowy NIE WCHODZI: przy znanym kid klucze ida z cache,
+	# a discovery nie jest wolane. Usuniecie bloku nie zmienialo w nim NICZEGO,
+	# wiec czerwien musiala przyjsc skadinad — perturbacja zaliczala sie
+	# z innej przyczyny niz badana (P25).
+	#
+	# Blok ratunkowy wykonuje test o niesprawdzalnym podpisie (kasuje discovery
+	# ORAZ jwks) i to jest wlasciwy cel. Allowlista to komunikat jego asercji.
+	oczekuj_czerwone "test wykrywa konsumenta kasujacego sesje bez weryfikacji podpisu" \
+		--przyczyna "FAIL-SAFE WYLOGOWANIA ZDJETY" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="podpisu nie da"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -920,6 +1111,11 @@ p_zrodlo_rol() {
 	dowod_mutacji "wszystkie trzy odczyty ról idą teraz z ID tokenu" \
 		bash -c "[ \"\$(grep -c 'roleZAccessTokenu(\$claimsId)' '$plik')\" = '3' ]"
 
+	# ⚠ DŁUG NAZWANY (R6B-15): „ACCESS TOKENU" to NAZWA TESTU. Komunikaty
+	# asercji w tym teście ISTNIEJĄ („Role czytane z ID TOKENU."), ale pada
+	# przed nimi asercja BEZ komunikatu (`toBe(['koordynator'])`), więc do
+	# wyjścia nie docierają. Naprawa: komunikat przy PIERWSZEJ asercji
+	# w `backend/tests/Feature/OdebranieRoliTest.php` — opisane w raporcie.
 	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" --przyczyna "ACCESS TOKENU" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ACCESS TOKENU"
 
@@ -966,7 +1162,13 @@ p_id_token_w_sesji() {
 	dowod_zniknieciem "kontroler zapisuje ID token bez szyfrowania" \
 		'Crypt::encryptString($idToken)' "$plik"
 
-	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" --przyczyna "ZASZYFROWANY" \
+	# ALLOWLISTA = KOMUNIKAT ASERCJI (R6B-15). „ZASZYFROWANY" było NAZWĄ TESTU
+	# i zarazem wartością `--filter`, więc spełniało się przez sam fakt
+	# uruchomienia testu — także w przebiegu zielonym. Fragment poniżej
+	# skopiowany DOSŁOWNIE z `OdebranieRoliTest`: to asercja, która pada
+	# dokładnie przy tej mutacji (ID token zapisany bez szyfrowania).
+	oczekuj_czerwone "kontrola wykrywa ID token zapisany JAWNIE" \
+		--przyczyna "ID token zapisany JAWNIE w sesji" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ZASZYFROWANY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -976,6 +1178,22 @@ p_id_token_w_sesji() {
 	dowod_mutacji "kontroler koduje ID token zamiast go szyfrować" \
 		grep -q "base64_encode(\$idToken)" "$plik"
 
+	# ⚠ DŁUG NAZWANY, DWIE WADY NARAZ — obie wymagają zmiany w `backend/`:
+	#
+	# 1. „ZASZYFROWANY" to NAZWA TESTU i wartość `--filter`, więc jako
+	#    allowlista nie zawęża niczego (R6B-15).
+	# 2. GORSZE: opis tego kroku jest NIEPRAWDZIWY. Zmierzone 12.08 na
+	#    odtworzeniu logiki `zdekodowaneLadunki()` (`backend/tests/Pest.php:138`):
+	#    jej wyrażenie wymaga DWÓCH KROPEK, a `base64_encode($idToken)` kropek
+	#    nie zawiera — więc dla tej mutacji funkcja zwraca pusty napis
+	#    i asercja „E-mail pacjenta odzyskiwalny z zapisanego ID tokenu"
+	#    PRZECHODZI. Czerwień przynosi dopiero kierunek odwrotny
+	#    (`Crypt::decryptString`) wyjątkiem deszyfrowania — czyli z innej
+	#    przyczyny niż badana (P25).
+	#
+	# Nie wpisuję tu wzorca z wyjątku deszyfrowania: utrwaliłby czerwień
+	# pochodzącą z niewłaściwego ogniwa. Naprawa należy do `backend/` i jest
+	# opisana w raporcie.
 	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" --przyczyna "ZASZYFROWANY" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ZASZYFROWANY"
 
@@ -1121,7 +1339,10 @@ p_licznik_testow() {
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
 	zachowaj "$plik"
 
-	sed -i 's/\$sekundDoWizyty >= \$sekundOkna/\$sekundDoWizyty > \$sekundOkna/' "$plik"
+	perturbuj granica-24h
+
+	dowod_zniknieciem 'porównanie „>=" zniknęło z reguły granicy' \
+		'$sekundDoWizyty >= $sekundOkna' "$plik"
 
 	local wynik liczba
 	wynik="$(dc exec -T app ./vendor/bin/pest 2>&1)"
@@ -1137,11 +1358,13 @@ p_licznik_testow() {
 		return
 	fi
 
-	if [ "$liczba" -ge 100 ]; then
-		printf '    ✓ licznik widzi %s wykonanych testów mimo niezaliczonych — podłoga nie kłamie\n' "$liczba"
+	if [ "$liczba" -ge "$MINIMUM_TESTOW" ]; then
+		printf '    ✓ licznik widzi %s wykonanych testów mimo niezaliczonych (podłoga %s) — podłoga nie kłamie\n' \
+			"$liczba" "$MINIMUM_TESTOW"
 		UDANE=$((UDANE + 1))
 	else
-		printf '    ✗ licznik zgubił się na wyniku z niezaliczonymi testami (policzył: %s)\n' "$liczba"
+		printf '    ✗ licznik zgubił się na wyniku z niezaliczonymi testami (policzył: %s przy podłodze %s)\n' \
+			"$liczba" "$MINIMUM_TESTOW"
 		NIEUDANE=$((NIEUDANE + 1))
 	fi
 }
@@ -1168,7 +1391,10 @@ p_tozsamosc() {
 	local plik="backend/config/gabinet.php"
 	zachowaj "$plik"
 
-	sed -i "s|'znacznik' => 'gabinet-api-v1',|'znacznik' => 'cudza-usluga',|" "$plik"
+	perturbuj znacznik-obcy
+
+	dowod_zniknieciem "własny znacznik usługi zniknął z konfiguracji" \
+		"'znacznik' => 'gabinet-api-v1'," "$plik"
 
 	oczekuj_czerwone "test tożsamości wykrywa obcy znacznik" \
 		dc exec -T app ./vendor/bin/pest --filter="WŁASNYM znacznikiem"
@@ -1247,7 +1473,10 @@ p_biala_lista() {
 
 	# Zdejmujemy filtr białej listy — dokładnie ten błąd, który wpuszcza
 	# marker `wymaga-2fa` i role wbudowane Keycloaka do uprawnień.
-	sed -i 's/return array_values(array_intersect(\$roleZTokenu, \$biala));/return $roleZTokenu;/' "$plik"
+	perturbuj biala-lista-zdjeta
+
+	dowod_zniknieciem "filtr białej listy zniknął z Bramki.php" \
+		'return array_values(array_intersect($roleZTokenu, $biala));' "$plik"
 
 	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" --przyczyna "Bramki|marker" 		dc exec -T app ./vendor/bin/pest --filter="marker"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -1260,10 +1489,16 @@ p_zamrozenie() {
 
 	# Podmiana zamrożonego okna na wartość „bieżącą" — dokładnie ten błąd,
 	# przed którym chroni CLAUDE.md §4.
-	sed -i 's/\$sekundOkna = \$reguly->oknoBezplatnegoOdwolaniaGodzin \* 3600;/\$sekundOkna = 48 * 3600;/' "$plik"
+	perturbuj zamrozenie-biezace
 
+	dowod_zniknieciem "odczyt okna z reguły ZAMROŻONEJ zniknął z kodu" \
+		'$sekundOkna = $reguly->oknoBezplatnegoOdwolaniaGodzin * 3600;' "$plik"
+
+	# Allowlista to KOMUNIKAT ASERCJI z `OcenaAnulacjiTest` (dopisany 12.08).
+	# Tu falszywe zielone kosztuje PIENIADZE PACJENTA (CLAUDE.md §4), wiec
+	# allowlista jest wymagana, a nie zalecana.
 	oczekuj_czerwone "test zamrażania wykrywa użycie innej reguły niż zamrożona" \
-		--przyczyna "ZAMROŻONĄ" \
+		--przyczyna "ZASTOSOWANO REGUŁĘ BIEŻĄCĄ ZAMIAST ZAMROŻONEJ" \
 		dc exec -T app ./vendor/bin/pest --filter="ZAMROŻONĄ"
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
@@ -1279,6 +1514,83 @@ fi
 
 WYBRANE="${*:-$WSZYSTKIE}"
 
+# NIEZNANA NAZWA JEST BŁĘDEM WYWOŁANIA I ROZSTRZYGA SIĘ TUTAJ (R6B-8).
+#
+# Do 12.08 literówka wychodziła dopiero w rozdzielaczu, PO postawieniu stosu —
+# czyli po kilku minutach — a `skrypty-uruchamialne.sh` przyjmował „cokolwiek
+# niezerowego" jako dowód odrzucenia. Kod wyjścia bywa wtedy CUDZY: brak
+# Dockera, zajęty port, niezdrowy stos. Kontrola „nieznana nazwa nie przechodzi
+# po cichu" świeciła zielono na czerwieni, która z nią nie miała nic wspólnego.
+#
+# Od tej zmiany: sprawdzenie nazw idzie PRZED dotknięciem Dockera i ma WŁASNY
+# kod wyjścia. „Odrzucono nieznaną nazwę" i „przewróciło się środowisko" to
+# odtąd dwie różne wartości, nie jedna.
+KOD_NIEZNANA_NAZWA=4
+NIEZNANE=""
+
+for NAZWA in $WYBRANE; do
+	ZNANA=0
+
+	for KANDYDAT in $WSZYSTKIE; do
+		[ "$NAZWA" = "$KANDYDAT" ] && ZNANA=1
+	done
+
+	[ "$ZNANA" -eq 1 ] || NIEZNANE="$NIEZNANE $NAZWA"
+done
+
+if [ -n "$NIEZNANE" ]; then
+	# V-5 z rundy 5: literówka w nazwie dawała „PERTURBACJE OK — 0 kontroli"
+	# i kod wyjścia 0. To jest awaria D-0013 („pusta suita = zielone CI")
+	# odtworzona w runnerze, który D-0013 egzekwuje.
+	printf 'NIEZNANA PERTURBACJA:%s — literówka albo usunięty scenariusz\n' "$NIEZNANE" >&2
+	printf 'Znane scenariusze: %s\n' "$WSZYSTKIE" >&2
+	exit "$KOD_NIEZNANA_NAZWA"
+fi
+
+# ---------------------------------------------------------------------------
+# ŚRODOWISKO PRZEBIEGU — R6B-16 / G-1.
+#
+# Do 12.08 `dc()` nie podawało ani `--env-file`, ani `GABINET_PLIK_ENV`, więc
+# `docker-compose.yml` montował do kontenera wartość domyślną — `./.env`, czyli
+# plik DEWELOPERA z PRAWDZIWYMI SEKRETAMI. V-2 zamknięto tylko po stronie
+# bramki; reguła „klon weryfikatora NIGDY nie trzyma prawdziwych sekretów"
+# obowiązywała u nas w połowie narzędzi.
+#
+# Plik budujemy TYM SAMYM mechanizmem co bramka (`--przygotuj-srodowisko`),
+# a jego ŚCIEŻKĘ podaje sama bramka (`--pokaz-srodowisko`). Świadomie nie
+# powstaje tu druga kopia `przygotuj_env()` ani drugi wzór na nazwę pliku:
+# dwa opisy jednej rzeczy rozjeżdżają się po cichu (to jest lekcja
+# `licz-testy.sh` i pułapka U-2 przy zamku).
+#
+# PLIK JEST TRWAŁY MIĘDZY PRZEBIEGAMI — i to jest decyzja, nie przeoczenie.
+# `przygotuj_env()` losuje nowe `DB_PASSWORD` przy każdym wywołaniu, a stos
+# perturbacji NIE jest kasowany z wolumenami między przebiegami. Świeże hasło
+# przy starym woluminie postgresa daje „password authentication failed"
+# i 120 s czekania na zdrowie — dokładnie awaria opisana w nagłówku bramki.
+# Dlatego: budujemy, gdy pliku NIE MA; gdy jest — używamy istniejącego.
+# Wymuszenie odbudowy: skasuj plik i uruchom perturbacje ponownie.
+PLIK_ENV="$(bash "$KORZEN/skrypty/bramka.sh" --projekt "$PROJEKT" --pokaz-srodowisko)"
+
+if [ -z "$PLIK_ENV" ]; then
+	echo "ODMOWA: bramka nie potrafi podać ścieżki pliku środowiska." >&2
+	exit 2
+fi
+
+if [ ! -s "$PLIK_ENV" ]; then
+	echo "Buduję plik środowiska przebiegu z .env.example: $(basename "$PLIK_ENV")" >&2
+
+	PLIK_ENV="$(GABINET_BRAMKA_PORT_HTTP="$PORT_HTTP" \
+		GABINET_BRAMKA_PORT_POSTGRES="$PORT_PG" \
+		GABINET_BRAMKA_PORT_REDIS="$PORT_REDIS" \
+		bash "$KORZEN/skrypty/bramka.sh" --projekt "$PROJEKT" --przygotuj-srodowisko)"
+fi
+
+if [ -z "$PLIK_ENV" ] || [ ! -s "$PLIK_ENV" ]; then
+	echo "ODMOWA: nie ma pliku środowiska dla projektu '$PROJEKT'." >&2
+	echo "Bez niego compose zamontowałby './.env' — plik DEWELOPERA z sekretami." >&2
+	exit 2
+fi
+
 if ! dc ps --status running --services 2>/dev/null | grep -q '^app$'; then
 	echo "Stos '$PROJEKT' nie stoi — stawiam go." >&2
 
@@ -1290,26 +1602,46 @@ if ! dc ps --status running --services 2>/dev/null | grep -q '^app$'; then
 	# `Healthy`, skryptowe → „nie udało się postawić stosu".
 	dc up -d >/dev/null 2>&1 || true
 
-	# O gotowości rozstrzyga sonda pytająca o STAN.
-	GOTOWY=0
-
-	for _ in $(seq 1 60); do
-		if dc exec -T app php artisan gabinet:zdrowie --cichy >/dev/null 2>&1; then
-			GOTOWY=1
-			break
-		fi
-
-		sleep 2
-	done
-
-	if [ "$GOTOWY" -ne 1 ]; then
-		echo "ODMOWA: stos '$PROJEKT' nie zgłosił zdrowia w 120 s." >&2
-		exit 2
-	fi
+	czekaj_na_zdrowie || exit 2
 
 	dc exec -T app php artisan migrate --force >/dev/null 2>&1
 	echo "Stos '$PROJEKT' gotowy." >&2
 fi
+
+# R6B-16 — KONTROLA, NIE DEKLARACJA: czy kontener ma NASZ plik środowiska.
+#
+# Stos podniesiony przed tą zmianą (albo z inną wartością `GABINET_PLIK_ENV`)
+# ma zamontowane to, co było w chwili jego utworzenia — czyli `./.env`
+# DEWELOPERA. Samo podanie `--env-file` niczego by tu nie zmieniło.
+if ! srodowisko_zamontowane; then
+	echo "Stos '$PROJEKT' ma zamontowany INNY plik .env niż plik tego przebiegu — stawiam go od nowa." >&2
+
+	# `down -v`, nie samo `--force-recreate`: nowy plik niesie nowe
+	# `DB_PASSWORD`, a postgres ustawia hasło WYŁĄCZNIE przy inicjalizacji
+	# klastra. Odtworzenie samego kontenera nad starym woluminem daje
+	# „password authentication failed" w pętli aż do wyczerpania limitu —
+	# ta sama awaria, którą opisuje nagłówek bramki, tylko bez komunikatu
+	# o przyczynie.
+	#
+	# Wolno tu kasować wolumeny, bo: (a) projekt NIGDY nie jest `gabinet`
+	# (odmowa na początku pliku), (b) nazwy wolumenów są scope'owane przez
+	# `GABINET_PREFIX=$PROJEKT`, (c) perturbacje haseł i tak wołają
+	# `migrate:fresh --force` cztery razy. `down -v` NIE rusza obrazu, więc
+	# ponowny start nie wymaga przebudowy.
+	dc down -v --remove-orphans >/dev/null 2>&1 || true
+	dc up -d >/dev/null 2>&1 || true
+	czekaj_na_zdrowie || exit 2
+	dc exec -T app php artisan migrate --force >/dev/null 2>&1
+fi
+
+if ! srodowisko_zamontowane; then
+	echo "ODMOWA: nie potwierdzono, że kontener ma plik środowiska tego przebiegu." >&2
+	echo "Bez tego dowodu perturbacje mielą '.env' DEWELOPERA — z prawdziwymi sekretami." >&2
+	echo "Naprawa: GABINET_PREFIX=$PROJEKT docker compose -p $PROJEKT down -v, potem uruchom ponownie." >&2
+	exit 2
+fi
+
+echo "Środowisko przebiegu potwierdzone: $(basename "$PLIK_ENV") (skrót zgodny z plikiem w kontenerze)." >&2
 
 for NAZWA in $WYBRANE; do
 	case "$NAZWA" in
