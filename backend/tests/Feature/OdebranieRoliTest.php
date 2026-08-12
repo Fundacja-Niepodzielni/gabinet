@@ -617,6 +617,12 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
     // Identyfikator sesji LOKALNEJ — potrzebny, żeby zapytać magazyn wprost.
     $idSesji = RejestrSesji::odczytaj($sid)[0];
 
+    // ODCZYT BAZOWY na TEJ SAMEJ drodze, którą mierzymy niżej: to samo
+    // ciasteczko, ta sama granica procesu. Bez tego 200 tutaj i 401 tam
+    // pochodziłyby z dwóch różnych przyrządów, więc ich różnica nie mówiłaby
+    // nic o wylogowaniu.
+    granicaProcesu($idSesji);
+
     // Stan wyjściowy: sesja ŻYJE i otwiera bramkę koordynatora.
     expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
     expect(sesjaWMagazynie($idSesji))->not->toBe('', 'Sesji nie ma w magazynie PRZED wylogowaniem — test nie ma czego zabijać.');
@@ -655,8 +661,13 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
     // `CacheBasedSessionHandler` (redis), a `skasowane_sesje` = 1 — magazyn
     // był pusty, a mimo to żądanie dostawało 200. Nie sterownik, tylko
     // singleton. Odtwarzamy więc granicę procesu jawnie.
-    app()->forgetInstance('session');
-    app()->forgetInstance('session.store');
+    //
+    // ⛔ GRANICA BYŁA POŁOWICZNA DO 12.08 — ta sama wada, co w nodze 1.
+    // Reset dwóch singletonów bez `StartSession` i bez ciasteczka sprawiał,
+    // że kolejne żądanie dostawało NOWY, losowy identyfikator sesji. Jego 401
+    // było więc zgodne z dwoma światami: „wylogowanie zadziałało" ORAZ
+    // „to po prostu inna, pusta sesja". Teraz jeden mechanizm dla obu testów.
+    granicaProcesu($idSesji);
 
     // SEDNO BLK-22: kolejne żądanie MUSI dostać 401. Konsument, który dalej
     // serwuje po zamknięciu sesji w IdP, jest dokładnie tym defektem.
