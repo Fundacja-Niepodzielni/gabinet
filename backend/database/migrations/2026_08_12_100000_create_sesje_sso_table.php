@@ -30,13 +30,15 @@ use Illuminate\Support\Facades\Schema;
  * nie nazywa, więc i nie obejmuje wymaganiami. Zapisali to jako znalezisko
  * przeciwko sobie.
  *
- * ── `sygnaly_zdrowia` (R6B-10) ──
+ * `sygnaly_zdrowia` NIE POWSTAJE — i to jest wynik pomiaru, nie zmiana zdania.
  *
- * Puls harmonogramu — sygnał zdrowia — siedział w tym samym cache'u.
- * Waga jest niższa niż przy mapie i mówię to wprost: utrata pulsu daje
- * healthcheck CZERWONY, czyli FAIL-CLOSED. Kosztem nie jest dziura, tylko
- * FAŁSZYWY ALARM przy każdym `cache:clear` — a fałszywy alarm uczy ludzi
- * ignorować alarm, więc ma być usunięty, a nie tolerowany.
+ * Puls harmonogramu (R6B-10) mial tu zamieszkac. Wlasna bramka to OBALILA:
+ * krok [5] meldowal `scheduler=starting`, bo sonda kontenera wola
+ * `gabinet:puls --sprawdz`, a migracje ida dopiero w kroku [13] — sonda
+ * pytala o tabele, ktorej jeszcze nie ma. SYGNAL ZDROWIA NIE MOZE ZALEZEC
+ * OD SCHEMATU, ktorego powstanie sam poprzedza. Puls mieszka w PLIKU
+ * (patrz `App\Console\Commands\Puls`), co spelnia caly model zagrozen
+ * R6B-10 i nie wprowadza tej zaleznosci.
  *
  * ── Cztery wymagania, które obie tabele spełniają ──
  *
@@ -70,17 +72,10 @@ return new class extends Migration
             // Zapamiętanie tej samej sesji dwa razy nie ma tworzyć duplikatu.
             $table->unique(['sid_skrot', 'id_sesji']);
         });
-
-        Schema::create('sygnaly_zdrowia', function (Blueprint $table): void {
-            $table->string('klucz', 64)->primary();
-            $table->string('wartosc', 191);
-            $table->timestampTz('zapisany_at');
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('sygnaly_zdrowia');
         Schema::dropIfExists('sesje_sso');
     }
 };

@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Wsparcie\Typy;
-use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 /**
  * Puls harmonogramu — dowód, że pętla `schedule:work` realnie WYKONAŁA zadanie.
@@ -22,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  * przypomnienia i termin, który nigdy nie wraca do puli.
  */
 /*
- * MAGAZYNEM JEST BAZA, NIE CACHE (R6B-10, zamkniete 12.08).
+ * MAGAZYNEM JEST PLIK, NIE CACHE ANI BAZA (R6B-10, zamkniete 12.08).
  *
  * Puls siedzial w cache'u — magazynie, ktory `cache:clear`, deploy i restart
  * Redisa czyszcza rutynowo. Waga jest NIZSZA niz przy mapie `sid -> sesje`
@@ -30,7 +29,20 @@ use Illuminate\Support\Facades\DB;
  * fail-CLOSED. Kosztem nie jest dziura, tylko FALSZYWY ALARM przy kazdym
  * czyszczeniu cache'u — a falszywy alarm uczy ludzi ignorowac alarm.
  *
- * @dowod: PulsPrzezywaCacheTest — puls PRZEZYWA `Cache::flush()`.
+ * Baza byla PIERWSZYM wyborem i BYLA ZLYM WYBOREM — obalone wlasna bramka:
+ * krok [5] meldowal `scheduler=starting`, bo sonda kontenera wola
+ * `gabinet:puls --sprawdz`, a migracje ida dopiero w kroku [13]. Sonda
+ * pytala wiec o tabele, ktorej jeszcze nie ma, i harmonogram nie mial jak
+ * zglosic zdrowia. Sygnal zdrowia NIE MOZE zalezec od schematu, ktorego
+ * powstanie sam poprzedza.
+ *
+ * PLIK spelnia caly model zagrozen R6B-10 (`cache:clear`, restart Redisa,
+ * eksmisja), nie wymaga schematu, a jego utrata razem z kontenerem jest
+ * POPRAWNA: nowy harmonogram ma sie wykazac od nowa. To ten sam mechanizm,
+ * ktorego uzywa `SladWylogowania`, i z tego samego powodu — sygnal nie
+ * moze dzielic magazynu ze swoim przedmiotem (regula C1).
+ *
+ * @dowod: TrwaloscMagazynowTest — puls PRZEZYWA `Cache::flush()`.
  */
 final class Puls extends Command
 {
@@ -39,7 +51,11 @@ final class Puls extends Command
 
     protected $description = 'Zapisuje puls harmonogramu albo sprawdza jego świeżość';
 
-    private const KLUCZ = 'gabinet:puls-harmonogramu';
+    /** Sciezka pliku pulsu. Jedno miejsce, zeby zapis i odczyt nie rozjechaly sie. */
+    private static function plik(): string
+    {
+        return storage_path('puls-harmonogramu');
+    }
 
     /** Ile sekund puls jest uznawany za świeży. Zadanie chodzi co minutę. */
     private const SWIEZOSC_SEKUND = 180;
@@ -50,21 +66,21 @@ final class Puls extends Command
             return $this->sprawdz();
         }
 
-        DB::table('sygnaly_zdrowia')->upsert([[
-            'klucz' => self::KLUCZ,
-            'wartosc' => (string) time(),
-            'zapisany_at' => CarbonImmutable::now(),
-        ]], ['klucz'], ['wartosc', 'zapisany_at']);
+        File::ensureDirectoryExists(dirname(self::plik()));
+        File::put(self::plik(), (string) time());
+
+        // Prawa jak przy sladzie wylogowania i z tej samej przyczyny (N-14):
+        // zapisuje harmonogram, a czytac musi takze sonda kontenera.
+        @chmod(self::plik(), 0666);
 
         return self::SUCCESS;
     }
 
     private function sprawdz(): int
     {
-        $zapisany = Typy::liczba(
-            DB::table('sygnaly_zdrowia')->where('klucz', self::KLUCZ)->value('wartosc'),
-            0
-        );
+        $zapisany = File::exists(self::plik())
+            ? Typy::liczba(trim(File::get(self::plik())))
+            : 0;
 
         if ($zapisany === 0) {
             $this->error('[BŁĄD] harmonogram nie zapisał jeszcze ani jednego pulsu');

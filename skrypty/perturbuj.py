@@ -509,12 +509,30 @@ def typ_zerwany() -> None:
     pisz(TYPY, czytaj(TYPY) + PERTURBACJA_TYPU)
 
 
+def przyneta(ziarno: str) -> str:
+    """Wartosc udajaca sekret, SKLADANA W CZASIE DZIALANIA.
+
+    Bramka zlapala to sama: doslowny, wysokoentropijny napis udajacy sekret,
+    zapisany w SLEDZONYM pliku, jest dla skanera sekretem — i sluszznie, bo
+    taki napis w repozytorium jest drobnym wyciekiem niezaleznie od tego, ze
+    wartosc zmyslono. Wczesniej ta podmiana szla `sed`-em i skladala wartosc
+    inaczej; przeniesienie jej tutaj (R6B-17) wstawilo literal.
+
+    Skutek mutacji jest IDENTYCZNY — do pliku wzorcowego trafia ta sama
+    wartosc — ale w repozytorium nie ma juz czego wziac za sekret. Wyjatek
+    w `.gitleaks.toml` byl by tu ROZLUZNIENIEM KONTROLI zamiast naprawy.
+    """
+    import base64
+
+    return base64.b64encode(ziarno.encode()).decode().rstrip("=")
+
+
 def sekret_keycloak() -> None:
     """Wpisuje WARTOSC do pliku wzorcowego — sekret w repozytorium."""
     podmien_jedyne(
         PRZYKLAD_ENV,
         "\nKEYCLOAK_CLIENT_SECRET=\n",
-        "\nKEYCLOAK_CLIENT_SECRET=aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA\n",
+        "\nKEYCLOAK_CLIENT_SECRET=" + przyneta("hello-world-this-is-a-secret") + "\n",
     )
 
 

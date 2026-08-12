@@ -89,17 +89,6 @@ for ZABRONIONY in $PROJEKTY_ZABRONIONE; do
 	fi
 done
 
-# Perturbacje MUTUJĄ drzewo robocze. Gdy w indeksie czekają zmiany
-# przygotowane do commitu, ryzyko jest konkretne: `git commit` wykonany
-# w trakcie przebiegu utrwala stan SPERTURBOWANY. U zespołu helpdesku tak
-# trafił do repozytorium heap 1 GB — twarda reguła była nieprawdziwa w repo
-# przez kilka commitów, bo nikt nie sprawdził, co właśnie zostało zapisane.
-if [ -n "$(git diff --cached --name-only 2>/dev/null)" ]; then
-	echo "ODMOWA: w indeksie git czekają przygotowane zmiany." >&2
-	echo "Perturbacje mutują drzewo robocze — commit w trakcie przebiegu utrwaliłby stan sperturbowany." >&2
-	echo "Zacommituj albo wycofaj z indeksu, potem uruchom perturbacje." >&2
-	exit 2
-fi
 
 KOPIE="$(mktemp -d)"
 UDANE=0
@@ -1543,10 +1532,23 @@ p_zamrozenie() {
 
 WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
+# `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
+#
+# Zlapane krokiem [7] bramki 12.08: straznik indeksu odmawial takze
+# LISTOWANIU, wiec odpowiedz na pytanie „jakie sa scenariusze" zalezala od
+# stanu, ktory z tym pytaniem nie ma nic wspolnego. `skrypty-uruchamialne.sh`
+# bral wtedy TEKST ODMOWY za liste i meldowal 29 wywolan wskazujacych
+# w prozne — alarm prawdziwy co do czerwieni, nieprawdziwy co do adresu.
+#
+# Pierwsza proba naprawy przeniosla `--lista` na sam poczatek pliku, PRZED
+# definicje `$WSZYSTKIE` — i listowanie padalo na `unbound variable`.
+# Wlasciwe posuniecie jest odwrotne: to STRAZNIK ma stac pozniej, bo chroni
+# MUTACJE, a nie odczyt.
 if [ "${1:-}" = "--lista" ]; then
 	printf 'Perturbacje: %s\n' "$WSZYSTKIE"
 	exit 0
 fi
+
 
 WYBRANE="${*:-$WSZYSTKIE}"
 
@@ -1581,6 +1583,26 @@ if [ -n "$NIEZNANE" ]; then
 	printf 'NIEZNANA PERTURBACJA:%s — literówka albo usunięty scenariusz\n' "$NIEZNANE" >&2
 	printf 'Znane scenariusze: %s\n' "$WSZYSTKIE" >&2
 	exit "$KOD_NIEZNANA_NAZWA"
+fi
+
+# STRAZNIK MUTACJI STOI PO WALIDACJI WYWOLANIA (12.08).
+#
+# Literowka w nazwie i pytanie o liste NICZEGO NIE MUTUJA, wiec ich wynik
+# nie moze zalezec od stanu indeksu gita. Przy odwrotnej kolejnosci
+# `skrypty-uruchamialne.sh` dostawalo na nieznana nazwe kod 2 (odmowa
+# straznika) zamiast 4 (nieznana nazwa) i meldowalo defekt, ktorego nie ma —
+# czyli rozstrzygalo CUDZYM sygnalem, dokladnie jak w R6B-8.
+
+# Perturbacje MUTUJĄ drzewo robocze. Gdy w indeksie czekają zmiany
+# przygotowane do commitu, ryzyko jest konkretne: `git commit` wykonany
+# w trakcie przebiegu utrwala stan SPERTURBOWANY. U zespołu helpdesku tak
+# trafił do repozytorium heap 1 GB — twarda reguła była nieprawdziwa w repo
+# przez kilka commitów, bo nikt nie sprawdził, co właśnie zostało zapisane.
+if [ -n "$(git diff --cached --name-only 2>/dev/null)" ]; then
+	echo "ODMOWA: w indeksie git czekają przygotowane zmiany." >&2
+	echo "Perturbacje mutują drzewo robocze — commit w trakcie przebiegu utrwaliłby stan sperturbowany." >&2
+	echo "Zacommituj albo wycofaj z indeksu, potem uruchom perturbacje." >&2
+	exit 2
 fi
 
 # ---------------------------------------------------------------------------

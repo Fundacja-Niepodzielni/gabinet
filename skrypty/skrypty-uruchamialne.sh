@@ -98,7 +98,24 @@ else
 fi
 
 # --- 3. perturbacje.sh startuje i wypisuje swoją listę ---------------------
-LISTA="$(bash skrypty/perturbacje.sh --lista 2>&1)"
+# KOD WYJSCIA LISTOWANIA JEST CZESCIA POMIARU (12.08).
+#
+# Bez tego kontrola brala TEKST ODMOWY za liste scenariuszy: gdy w indeksie
+# gita czekaly przygotowane zmiany, `perturbacje.sh` odmawialo, a ten skrypt
+# rozbijal komunikat odmowy na slowa i meldowal 29 wywolan wskazujacych
+# w prozne. Diagnoza byla nieprawdziwa co do jednego slowa, a czerwien
+# prawdziwa — czyli najgorszy uklad: alarm bez adresu.
+#
+# To ta sama wada, ktora naprawiono przy nieznanej nazwie (R6B-8), tylko
+# o jedno wywolanie dalej: wynik rozstrzygany CUDZYM sygnalem.
+KOD_WYPISU=0
+LISTA="$(bash skrypty/perturbacje.sh --lista 2>&1)" || KOD_WYPISU=$?
+
+if [ "$KOD_WYPISU" -ne 0 ]; then
+	zle_ "perturbacje.sh --lista zakonczylo sie kodem $KOD_WYPISU — listy NIE MA,"
+	zle_ "wiec wszystko ponizej mierzyloby tekst bledu. Wyjscie: $LISTA"
+	LISTA=""
+fi
 
 if printf '%s' "$LISTA" | grep -q '^Perturbacje: '; then
 	ok_ "perturbacje.sh startuje i wypisuje listę scenariuszy"

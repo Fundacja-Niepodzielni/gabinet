@@ -6,7 +6,6 @@ use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\SladWylogowania;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -101,16 +100,17 @@ it('R6B-10: puls harmonogramu PRZEŻYWA wyczyszczenie cache', function (): void 
         'Puls przestał być widziany po `Cache::flush()` — czyli nadal mieszka w pamieci podrecznej.'
     );
 
-    expect(DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->exists())->toBeTrue(
-        'Puls nie mieszka w magazynie trwałym. Po `cache:clear` healthcheck zapala się '.
-        'na czerwono bez żadnej awarii harmonogramu — a fałszywy alarm uczy ignorować alarm.'
+    expect(file_exists(storage_path('puls-harmonogramu')))->toBeTrue(
+        'Puls nie mieszka w magazynie odpornym na `cache:clear`. Po wyczyszczeniu pamięci '.
+        'podręcznej healthcheck zapalałby się na czerwono bez żadnej awarii harmonogramu — '.
+        'a fałszywy alarm uczy ludzi ignorować alarm.'
     );
 });
 
 it('R6B-10 KONTROLA NEGATYWNA: BRAK pulsu nadal daje czerwone', function (): void {
     // Bez tego „puls przeżywa flush" przechodzi także wtedy, gdy `--sprawdz`
     // zwraca zero ZAWSZE — a to jest zdrowie mierzone stałą.
-    DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->delete();
+    @unlink(storage_path('puls-harmonogramu'));
 
     expect(Artisan::call('gabinet:puls', ['--sprawdz' => true]))->toBe(1);
 });

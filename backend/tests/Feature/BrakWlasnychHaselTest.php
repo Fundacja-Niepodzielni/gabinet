@@ -75,8 +75,6 @@ const OCZEKIWANY_SCHEMAT = [
     // ZERO kolumn nadajacych sie na poswiadczenie: skrot `sid`, identyfikator
     // sesji frameworka i dwie daty.
     'sesje_sso' => ['id', 'id_sesji', 'sid_skrot', 'wygasa_at', 'zapamietana_at'],
-    // Sygnaly zdrowia (puls harmonogramu) — R6B-10. Klucz techniczny i liczba.
-    'sygnaly_zdrowia' => ['klucz', 'wartosc', 'zapisany_at'],
     'zgody' => [
         'created_at', 'id', 'ip', 'pacjent_id', 'rodzaj', 'rozstrzygnieta_at',
         'udzielona', 'wersja_dokumentu',
