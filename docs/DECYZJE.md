@@ -1443,3 +1443,81 @@ to nie jest metoda.**
 ze specyfikacją co do jednej. **Jedyną rzeczą, która groziła rozjazdem, było wycofane polecenie.**
 Architekt odnotował, że dało się to sprawdzić w pięć minut, **bo komentarz przy każdej liczbie
 podaje jej źródło** — ta sama praktyka co przy pomiarach, zastosowana do konfiguracji.
+
+---
+
+## D-2026-08-12-01 · Kontrole bezpieczeństwa: zbiór zakazany pochodzi z RUNTIME'U, nie z pamięci autora
+
+**Data:** 12.08.2026 · **Kontekst:** naprawa R6A-4 (waga krytyczna, CLAUDE.md §2).
+
+**Decyzja.** Tam, gdzie da się odpytać środowisko o pełny zbiór możliwości, kontrola
+bezpieczeństwa **wyprowadza zbiór zakazany z runtime'u**, a ręcznie utrzymuje wyłącznie
+**allowlistę**. Ręczna lista zakazanych jest dopuszczalna tylko tam, gdzie takiego odpytania
+nie ma — i wtedy **musi to o sobie napisać w kodzie**.
+
+**Uzasadnienie — zmierzone, nie teoretyczne.** `BrakWlasnychHaselTest` wyliczał zakazane
+prymitywy poświadczeń. Weryfikator rundy 6 zbudował kompletny mechanizm własnych haseł na
+`hash('sha256', …)` — prymitywie spoza listy — i kontrola przeszła: **7 passed**. To była
+**czwarta** przegrana tej samej klasy w tym repozytorium.
+
+Nowa postać pyta `get_defined_functions()` o funkcje rodzin kryptograficznych tej instalacji
+PHP. Nowa funkcja w rozszerzeniu `hash`, `openssl` czy `sodium` wchodzi w sieć **sama**, bez
+niczyjej pamięci.
+
+**Drugi wymóg, bez którego pierwszy jest pozorny: DOPUSZCZENIE MA ZAKRES.** Allowlista wiąże
+funkcję z **listą plików**, w których wolno jej wystąpić. Dopuszczenie `hash` globalnie
+odtwarzałoby dokładnie atak weryfikatora — czyli allowlista bez zakresu jest denylistą
+w przebraniu.
+
+**Granica naprawy, zapisana wprost:** mechanizmu haseł da się napisać bez funkcji
+kryptograficznej, samym `===`. Łapie to **druga, niezależna sieć** — allowlista schematu bazy
+(`OCZEKIWANY_SCHEMAT`), przez którą kolumna na sekret nie ma jak powstać.
+
+**Powiązane:** rdzeń wspólny „Kontrole bezpieczeństwa: allowlisty, nie denylisty"
+(`WYTYCZNE-PRACY.md`); wycofane zalecenie z rundy 6 (test liczący pisarzy **przepuściłby tę samą
+mutację**).
+
+---
+
+## D-2026-08-12-02 · Magazyn niosący asercję bezpieczeństwa: baza, nie cache — i odczyt oddaje „nie wiem"
+
+**Data:** 12.08.2026 · **Kontekst:** naprawa R6B-9, R6B-10, N-14 (klasa 4).
+
+**Decyzja.** Każdy magazyn, od którego zależy asercja bezpieczeństwa albo sygnał zdrowia,
+mieszka w **bazie**, nie w cache'u. Odczyt z magazynu, który nie spełnia czterech wymagań
+trwałości, **zwraca stan „nie wiem", a nie liczbę** — i wołający musi obsłużyć oba stany.
+
+**Uzasadnienie.** Cztery wymagania trwałości zastosowaliśmy 09.08 do znacznika unieważnienia
+i **nie zastosowaliśmy ich do trzech rzeczy obok** — naprawa miała zasięg tego, co pokazał
+weryfikator. Mapa `sid → sesje` żyła w cache'u; bez niej back-channel logout nie znajduje
+**żadnej** sesji, a `skasowane_sesje = 0` przychodzi **bez jednego komunikatu**. Fail-open
+w wylogowaniu, wyzwalany przez `cache:clear`.
+
+**Trzecie pytanie przy dodawaniu kontroli — nowe od dziś.** Do „czy sterownik jest prawdziwy"
+i „czy plik środowiska pochodzi z repo" dochodzi: **czy kontrola biegnie jako TEN SAM
+UŻYTKOWNIK, co proces obsługujący żądanie?** Zmierzone (N-14): testy idą jako `root`, żądania
+obsługuje `www-data`, więc zapis śladu cicho nie dochodził, a odczyt **udawał się** i oddawał
+nieświeżą liczbę z innego procesu.
+
+**Sposób egzekwowania:** kontrola porzuca uprawnienia w procesie potomnym (`pcntl_fork` +
+`posix_setuid`). Odrzucone świadomie: `->skip()` przy przebiegu jako root — dawałby pominięcie
+**zawsze**, czyli zero pokrycia pod etykietą uczciwości.
+
+---
+
+## D-2026-08-12-03 · Liczba stanu poza sekcją `CURRENT WORK` musi być zakotwiczona w przeszłym zdarzeniu
+
+**Data:** 12.08.2026 · **Kontekst:** naprawa R6A-9.
+
+**Decyzja.** `PLAN-FAZ.md` ma **dokładnie jedną** sekcję `CURRENT WORK` — egzekwuje to test,
+nie zwyczaj. Wynik bramki i liczby testów wolno wymienić poza tą sekcją **wyłącznie z kotwicą
+w przeszłym zdarzeniu** (skrót commita albo data). Bez kotwicy liczba jest twierdzeniem
+o „teraz", a dwa miejsca trzymające ten sam stan zawsze się rozjadą.
+
+**Uzasadnienie.** Poprawkę R6A-9 zrobiono 09.08 **redakcyjnie** — przemianowano nagłówek.
+Nic nie broniło przed ponownym rozdwojeniem, a to defekt podatny na nawrót w najczystszej
+postaci. Sama kontrola przy pierwszym uruchomieniu złapała żywą instancję: `BRAMKA OK —
+18 kroków` stało w rozpisce F0 bez kotwicy, przy bramce mającej dziś 22 kroki.
+
+**Świadome rozróżnienie:** identyfikator nazywający **zdarzenie** się nie starzeje, więc zakaz
+wszystkich liczb kasowałby historię i sprostowania — czyli dokładnie to, co ma tam zostać.
