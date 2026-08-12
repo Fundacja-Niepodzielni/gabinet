@@ -72,14 +72,33 @@ STREFA_SYS    := Europe/Warsaw
 ```
 fixtureS1():
     S1 := specjalista(strefa: Europe/Warsaw)
-    usluga(KONS_PELNA,  dlugosc: 50, cena_gr: 14500, kategoria: PELNOPLATNE)
-    usluga(KONS_NISKA,  dlugosc: 50, cena_gr:  5500, kategoria: NISKOPLATNE)
-    usluga(ADHD,        dlugosc: 90, cena_gr: 35000, kategoria: PELNOPLATNE, uprawnienie: nadane)
-    usluga(ASYSTENT,    dlugosc: 50, cena_gr:     0, kategoria: NISKOPLATNE)
+    #                                     OŚ ROZLICZENIOWA     OŚ DOSTĘPOWA
+    #                                     (które konto Stripe)  (czy zużywa pulę 10)
+    usluga(KONS_PELNA, dlugosc: 50, cena_gr: 14500, konto: KOMERCJA,  pula_niskoplatna: NIE)
+    usluga(KONS_NISKA, dlugosc: 50, cena_gr:  5500, konto: FUNDACJA,  pula_niskoplatna: TAK)
+    usluga(ADHD,       dlugosc: 90, cena_gr: 35000, konto: KOMERCJA,  pula_niskoplatna: NIE,
+                                                    uprawnienie: nadane)
+    usluga(ASYSTENT,   dlugosc: 50, cena_gr:     0, konto: FUNDACJA,  pula_niskoplatna: NIE)
     RYTM.zapisz(S1, PELNOPLATNE, pon–pt, 09:00–13:00)
     RYTM.zapisz(S1, NISKOPLATNE, wt,     15:00–17:00)
     # bez urlopów, bez poprawek, bez rezerwacji
 ```
+
+> **⚠ POPRAWKA 12.08 — `Q-23` ROZSTRZYGNIĘTE (`ODPOWIEDZ-055` §3). To był MÓJ błąd
+> modelowania, nie luka w regule.** Pierwsza wersja fixture'u miała **jedno pole
+> `kategoria`** i wsadziłem w nie dwie różne rzeczy:
+> **oś ROZLICZENIOWĄ** (`fundacja/komercja` — które konto Stripe, `CLAUDE.md` §3)
+> i **oś DOSTĘPOWĄ** (czy usługa zużywa pulę 10 dofinansowanych konsultacji).
+> Asystent zdrowienia jest **fundacyjny rozliczeniowo** i **nie zużywa puli** — przy jednym
+> polu wychodziło, że **bezpłatna usługa odbiera dostęp do dofinansowanej terapii**.
+> **Dwa pola zamiast jednego.** Wartość osi dostępowej zostaje **parametrem konfiguracji** —
+> gdyby Fundacja zdecydowała inaczej, zmienia się konfiguracja, nie kod.
+>
+> **Skutek dla liczb: ŻADEN.** Rytmy i długości bez zmian, więc wszystkie liczby slotów
+> w grupach A–D, H, I zostają. Zmienia się wyłącznie to, co liczy `LIMIT.pacjent`
+> (grupa F, `SZK-J-08`). **Dopisz do grupy F kontrolę:** `REZERWACJA.utworz(P, ASYSTENT)`
+> przy `pozostale == 0` → **przyjęte**, `pozostale` **nadal 0** (asystent nie zużywa
+> i nie odblokowuje puli).
 
 **Liczby pochodne — kontrola samego fixture'u.** Uruchamiana **przed** grupami A i B;
 jej czerwień znaczy „zepsuty przyrząd", nie „zepsuty silnik":
@@ -164,6 +183,15 @@ PERT     raster := dlugosc bez bufora → starty == [09:00, 09:50, 10:40, 11:30]
 OBS      starty z SLOTY; niezależnie: suma_zajetych_minut(2026-09-22) z bazy == 240
 KOTWICE  KONF-BUFOR, KONF-DL-KONS
 ```
+> **⚠ RACHUNEK 12.08 — `R-01`, POPRAWIONE. Zła WIELKOŚĆ pod właściwą liczbą.**
+> W tym szkielecie **nie ma ani jednej rezerwacji**, więc `suma_zajetych_minut` wynosi
+> **0**, a nie 240. Liczba `240` jest poprawna dla **minut pokrytych przez sloty
+> OFEROWANE** (4 × 60) — to inna wielkość i inna nazwa.
+> **Poprawka:** `OBS: suma_minut_oferowanych(2026-09-22) == 240`.
+> **Dlaczego to nie jest czepianie się nazwy:** `suma_zajetych_minut` występuje w `B-02`
+> (== 100), `C-04` (== 60), `G-05` (== 60), `I-05` (∈ 100/60) i **wszędzie tam znaczy
+> „wizyta + bufor"**. Ta sama nazwa dla dwóch wielkości daje kontrolę, która przy jednej
+> implementacji mierzy ofertę, przy drugiej zajętość — i obie „przechodzą".
 
 #### SZK-A-02 → `F2-A-02` · Poprawka wyłączająca jest jednorazowa
 ```
@@ -555,6 +583,15 @@ KOTWICE  KONF-CENY, KONF-OKNO-24H
 > kwotę do zapłaty w linku, a zwrot ma się równać temu, co naprawdę zapłacił
 > (`CLAUDE.md` §4). Przy ścieżce własnej oba momenty i tak się zbiegają.
 > **Wymaga jednej linijki w kontrakcie operacji** — `ZLECENIE-055` §3.
+>
+> **✅ `P-08` ROZSTRZYGNIĘTE (`ODPOWIEDZ-055` §2): zamrożenie w chwili ZAŁOŻENIA BLOKADY.**
+> Uzasadnienie architekta: zamraża się w momencie, w którym system **komunikuje pacjentowi
+> zobowiązanie** — a tym momentem jest blokada, bo to link płatności niesie kwotę.
+> **Poprawka w tym szkielecie:** `ARRANGE` zakłada blokady, nie rezerwacje —
+> `BLOKADA.zaloz(WLASNA, …)` przed każdą podwyżką cennika; `kwota_zamrozona` mierzona
+> **na blokadzie**, `REZERWACJA.utworz` tylko domyka płatność. Wartości `14500` / `16500`
+> **bez zmian** — zmienia się moment, nie liczba.
+> **Zapis wiążący idzie do wymagań kontraktowych** (`WYMAGANIA-KONTRAKTOWE-F2.md`, `W-07`).
 
 #### SZK-G-02 → `F2-G-02` · Reguła anulacji zamrożona jako pełny zrzut
 ```
@@ -748,6 +785,24 @@ KOTWICE  —
 ```
 > `NEG` rozróżnia **konflikt** od **zwrotu**. Bez tego „suma == 100" przechodzi także
 > wtedy, gdy 99 pacjentów dostaje zadanie zwrotu za płatność, której nigdy nie wykonali.
+>
+> **⚠ RACHUNEK 12.08 — `R-03`, POPRAWIONE. Jeden szkielet, DWA różne scenariusze.**
+> „100 żądań »płatność zaksięgowana«" nie mówi, czy to **100 płatności różnych pacjentów**,
+> czy **100 duplikatów jednego webhooka**. To są dwie różne reguły i dwie różne liczby:
+>
+> | scenariusz | rezerwacje | zadania zwrotu | zignorowane | co bada |
+> |---|---|---|---|---|
+> | **A · 100 różnych płatności** | **1** | **99** | 0 | wyścig o slot |
+> | **B · 100 duplikatów jednej** | **1** | **0** | **99** | **idempotencja po ID zdarzenia** |
+>
+> Mój `ASSERT` (`rezerwacje + zadania == 100`) opisuje **A**, a `PERT` („brak idempotencji
+> po identyfikatorze zdarzenia") celuje w **B** — w scenariuszu A idempotencja nie ma nic
+> do roboty, bo zdarzenia są różne. **Perturbacja mierzyła co innego niż asercja.**
+> **Poprawka — rozdzielić na dwa przebiegi tego samego szkieletu:**
+> `SZK-I-06a` (100 różnych płatności) → `1 + 99 + 0`, `PERT`: kontrola zajętości poza
+> transakcją → 2 rezerwacje;
+> `SZK-I-06b` (100 duplikatów) → `1 + 0 + 99`, `PERT`: idempotencja zdjęta → rezerwacji > 1
+> **albo** zadań > 0. Niezmiennik wspólny: **suma trzech liczb == 100** w obu.
 
 ---
 
@@ -1204,6 +1259,15 @@ PERT     liczenie w oknie 12 miesięcy → pozostale == 7
 OBS      LIMIT.pacjent przy dwóch różnych zegarach
 KOTWICE  —
 ```
+> **⚠ RACHUNEK 12.08 — `R-04`, POPRAWIONE.** `PERT` oczekuje `pozostale == 7`, czyli
+> zakłada, że w ostatnich 12 miesiącach mieszczą się **dokładnie 3** wizyty. Ale `ARRANGE`
+> mówi tylko „**≈3 rocznie**" — przy rozkładzie `4/3/3` wychodzi 7, przy `3/3/4` wychodzi
+> **6**. **Liczba wygląda na wyliczoną, a jest zgadnięta z rozkładu, którego nie przypiąłem.**
+> **Poprawka — daty co do dnia:** 4 wizyty w `2023-10`…`2023-12`, 3 w `2024-06`…`2024-08`,
+> **3 w `2025-10-01`, `2025-11-01`, `2025-12-01`** (czyli **przed** oknem 12 miesięcy
+> liczonym od `T0 = 2026-09-15`) oraz — żeby okno w ogóle coś złapało — **3 w `2026-02`,
+> `2026-04`, `2026-06`**. Przy tak przypiętym rozkładzie `PERT` daje **7** deterministycznie.
+> To ta sama klasa co `P-14`: wejście nieprzypięte daje liczbę, która **brzmi** wyliczona.
 
 #### SZK-F-03 → `F2-F-03` · Limit liczy WYŁĄCZNIE niskopłatne
 ```
@@ -1253,6 +1317,14 @@ PERT     bramka zamieniona na ostrzeżenie → rezerwacja przechodzi przy pozost
 OBS      LIMIT.pacjent + count wierszy dziennika (tabela append-only, F5 — granica faz)
 KOTWICE  —
 ```
+> **⚠ RACHUNEK 12.08 — `R-02`, POPRAWIONE. Złamałem własną konwencję `K-2`.**
+> Próg uzasadnienia to **„< 40 znaków → do uzupełnienia"** (spec s. 51), a ja podałem
+> **41** i **39** — czyli **granicy `40` nie dotknąłem**. `K-2` mówi: każda granica ma
+> **trzy** wartości, sekunda przed · dokładnie · sekunda po. Tutaj: **39 · 40 · 41**.
+> **Poprawka:** `p1` z uzasadnieniem **40 znaków** → **przyjęte** (40 nie jest „< 40");
+> `p2` z **39** → odrzucone; `p3` z **41** → przyjęte.
+> Bez wartości `40` test przechodzi także przy progu `≤ 40` — czyli przy regule
+> przesuniętej o jeden znak.
 
 #### SZK-F-06 → `F2-F-06` · Limit podażowy 4/tydzień ISO — przy WYSTAWIANIU
 ```
@@ -1651,3 +1723,40 @@ prawa być cytowany jako „szkielety zweryfikowane". Znalazłem 14 rzeczy w **s
 pracy, więc znalazłem te, które umiem zobaczyć. Klasy, których nie umiem zobaczyć,
 zostają — i to jest powód, dla którego etap B pisze się **przeciw kontraktowi**,
 a rundę weryfikacyjną prowadzi ktoś, kto tego nie pisał (`WYTYCZNE-PRACY.md` §2).
+
+---
+
+## 11 · Przeliczenie arytmetyki — wynik
+
+**Zlecone w `ODPOWIEDZ-055` §4.1.** Przegląd z §10 pytał o **konstrukcję** przypadku;
+ten pyta o **liczbę**. Metoda: każda wartość wyprowadzona **od zera z reguł**
+(raster `50+10` / `90+10`, próg 2 h, granice okien, przeliczenia UTC, tygodnie ISO),
+**bez patrzenia na to, co w szkielecie napisano** — dopiero potem porównanie.
+
+**Przeliczono: 68/68. Znalezisk: 4.**
+
+| # | szkielet | co się nie zgadzało | klasa |
+|---|---|---|---|
+| `R-01` | `A-01` | `suma_zajetych_minut == 240` przy **zerze rezerwacji**; `240` to minuty **oferowane**, nie zajęte — a ta sama nazwa znaczy „wizyta + bufor" w `B-02`, `C-04`, `G-05`, `I-05` | jedna nazwa, dwie wielkości |
+| `R-02` | `F-05` | granica uzasadnienia sprawdzona na `41` i `39` — **wartości `40` brak**, wbrew własnej konwencji `K-2` | granica bez trzeciej wartości |
+| `R-03` | `I-06` | `ASSERT` opisuje **100 różnych płatności**, `PERT` celuje w **idempotencję**, czyli w 100 duplikatów jednej — **perturbacja mierzy inny scenariusz niż asercja** | dwa scenariusze w jednym szkielecie |
+| `R-04` | `F-02` | `pozostale == 7` wymaga **dokładnie 3** wizyt w oknie 12 miesięcy, a rozkład opisany jako „≈3 rocznie" — przy `3/3/4` wychodzi **6** | wejście nieprzypięte |
+
+**Co przeliczenie POTWIERDZIŁO** (bo to też jest wynik): rastry i liczby slotów we
+wszystkich grupach, komplet przeliczeń UTC w grupie H (doby 23- i 25-godzinne, oba
+kierunki), granice okna 24 h w `E` i `J` wraz z oboma przesunięciami DST, arytmetyka
+`min/max` okien blokady w `D` (w tym `172800` / `176400` / `169200` s w `D-09`),
+tygodnie ISO w `F-06`/`F-07` i przeliczenie strefy `America/New_York` na granicę
+poniedziałku. **Ani jedna z tych liczb się nie posypała** — cztery znaleziska dotyczą
+**nazw, granic i przypięcia wejścia**, nie samego rachunku.
+
+### Wniosek: dwa przeglądy znalazły dwa rozłączne zbiory
+
+`R-01`…`R-04` **nie pokrywają się** z `P-01`…`P-14` ani w jednej pozycji. Przegląd
+konstrukcji patrzył na `A-01` i uznał go za czysty — bo **konstrukcja jest czysta**,
+zła jest nazwa wielkości. Przegląd rachunku nie zobaczyłby `P-03`, bo `[4, 0, 0, 0, 4]`
+**liczy się poprawnie** dla dat, które tam stoją; złe były daty względem zegara.
+
+**To jest argument za tym, żeby nie łączyć tych dwóch przebiegów w jeden „przegląd
+jakości".** Jedno pytanie na przebieg znajduje jedną klasę; dwa pytania naraz znajdują
+mniej niż suma.
