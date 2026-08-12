@@ -7,88 +7,79 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > (aktualizuj na koniec każdej sesji: bieżąca faza, zadania w toku, blokery, następny krok)
 
 - **Faza: F1 w toku.** F0 i F1 formalnie OTWARTE do rundy z zerem znalezisk.
+  **Fazy nie zamyka sesja kodująca — zamyka ją runda.**
 - **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
-  Bez SHA — patrz sprostowanie w PROMPT-START; stan czytaj z `git log`.
-- **Bramka: CZERWONA — 1 nieudany krok z 22** (zmierzone przez weryfikatora rundy 6
-  na czystym klonie: `BRAMKA CZERWONA — 1 nieudanych kroków z 22`, krok `[19] testy`).
-- **Testy — LICZBA Z DATĄ, NIE STAŁA: 236 zielonych, 1 czerwony (noga 1), 2 POMINIĘTE,
-  1936 asercji — zmierzone 09.08 o 23:0x**, `docker compose exec -T app ./vendor/bin/pest`.
-  Podłogi bramki tego samego wieczoru: **236/1936**. **Nie cytuj tych liczb jako stanu
-  bieżącego — zmierz je.** Tego dnia rosły trzykrotnie (223 → 232 → 236).
-- **Klasa 3 (wynik zgodny z więcej niż jednym światem) — zamknięte 09.08:** `R6B-11`
-  (sonda portów pytała HTTP-em o Postgresa), `R6B-7` (sześć `sed -i` bez odczytu zwrotnego),
-  `R6B-2`/`R6A-1` (test „POZYTYWNY" dowodził znacznika, nie kasowania sesji) oraz członek
-  znaleziony tego dnia (kontrola tekstowa zaspokojona KOMENTARZEM cytującym usunięty kod).
-  **Otwarte: `R6B-8`, `R6B-6`; `R6B-1` i `N-12` zależą od nogi 1.**
-- **`D-EKO-012` domknięte u siebie:** `RejestrSesji::uniewazniona()` rozstrzyga OBECNOŚCIĄ
-  wiersza, wiek jest wyłącznie progiem sprzątania, a próg pochodzi z KONTRAKTU
-  (`konta.sso_session_max_s`) — **bez wartości domyślnej**, brak konfiguracji rzuca wyjątek.
-- **ZAMKNIĘTE 09.08 w nocy (`ODPOWIEDZ-032`): kontrola unieważnienia JEST middlewarem.**
-  Było: pusty `withMiddleware`, **jedna trasa z 34**. Jest: `SprawdzUniewaznienie`
-  w grupach `web` i `api`, wyjątki jako DANE (`App\Tozsamosc\WyjatkiUniewaznienia`,
-  8 wpisów z powodem i warunkiem znoszącym). Okno dla trasy nieobjętej było
-  **nieograniczone**; dziś to jedno żądanie.
-  **Niezmierzone, odnotowane jako dług:** `up` i `storage/{path}` rejestrują się POZA
-  grupami (**zero** middleware'ów) — są wyjątkami WYMUSZONYMI przez framework, nie
-  wybranymi; `horizon` i `docs/api` są **NIEZMIERZONE, nie czyste**; nie sprawdzone,
-  czy `web` i `api` to jedyne grupy.
-- **ZWOLNIENIA Z RETENCJI PRZEPISANE 09.08 (`ODPOWIEDZ-042`) — pomiar obalił 4 z 10.**
-  `sessions` ma `ip_address` (dana osobowa), `failed_jobs` ma `payload` **i** `exception`
-  bezterminowo, `jobs` ma `payload`, `konfiguracja_regul` ma `autor` (identyfikuje
-  pracownika). **Zwolnienia zostały, ale z warunkiem znoszącym mówiącym prawdę.**
-  **Przeniesienie ich do rejestru retencji CZEKA NA WŁAŚCICIELA** — najpilniej `failed_jobs`.
-- **Domyślka `SESSION_DRIVER` zmieniona 09.08 z `database` na `redis`** (`config/session.php`).
-  Brak jednej linijki w `.env` wystarczał, żeby aplikacja **cicho** zaczęła zapisywać adresy IP
-  do tabeli zwolnionej z retencji. Pilnuje tego `ZwolnieniaRetencjiTest`.
-- **SMSAPI — studium wykonalności gotowe 09.08 (`ODPOWIEDZ-041`), nic nie zbudowane.**
-  Twarde: nazwa **„Niepodzielni" (12 znaków) NIE PRZEJDZIE** (limit 11, bez polskich liter) —
-  **blokuje wniosek właściciela**; `ERROR:103` (brak środków) wraca **synchronicznie**, więc
-  wysyłka nie umiera po cichu, ale alarm musi być nasz; `ERROR:53` odrzuca powtórzony `idx`
-  w 24 h, więc `idx` **nie może** nieść tożsamości rezerwacji; **`test=1` nie wysyła, więc
-  NIE POWSTAJE raport doręczenia** — jedyna rzecz krytyczna dla logowania jest jedyną,
-  której tryb testowy nie obejmuje. **SMS Authenticator generuje, przechowuje i sprawdza kod
-  po stronie operatora — łamie `D-EKO-001`; rozstrzygnięcie czeka na architekta.**
-- **Pominięte to kontrola D3 (`TwierdzeniaKomentarzyTest`)** — zdjęta z bramki 09.08 po
-  weryfikacji helpdesku: 14 obejść na 15 prób. Zielone z niej było FAŁSZYWYM ZAPEWNIENIEM.
-  Przeprojektowanie (wymóg świadka wiązany z ROLĄ TEKSTU, nie ze słowami) czeka.
-- **RETENCJA MA WYWOŁUJĄCEGO od 09.08** (`gabinet:retencja`, codziennie 3:10) — ale
-  **kasuje dziś ZERO tabel**, bo okresy czekają na IOD (D-EKO-009). Zamknięty jest
-  MECHANIZM, nie POKRYCIE. Zadanie odmawia i wypisuje dług.
-- **Allowlisty przyczyny czerwieni: 7 z 13 NIE ROZRÓŻNIA** (wzorzec równy nazwie testu
-  spełnia się w każdym przebiegu, także zielonym). **Pięć z tych siedmiu wprowadziła
-  runda 1**, która twierdziła, że tę klasę zamyka — sprostowanie w `ZNALEZISKA.md`.
-  Dług pilnuje zapadka `PrzyczynyPerturbacjiTest` (sufit 7, ma zjeżdżać); **naprawa
-  siedmiu wzorców to runda 2.**
-- **NOGA 1 — PRZYCZYNA USTALONA 09.08 W NOCY: to wada PRZYRZĄDU, nie systemu.**
-  Zmierzone niezależnie przez DWÓCH weryfikatorów, trzema metodami. Tożsamość niesie
-  middleware `StartSession`, który sam jest singletonem kontenera i trzyma referencję
-  do menedżera sesji sprzed `forgetInstance` — więc `forgetInstance('session')` nie ma
-  jak go dosięgnąć, a klient testowy Pesta nie odsyła ciasteczka sesji. Po dołożeniu
-  `forgetInstance(StartSession::class)` **i** jawnego ciasteczka: baza (tożsamość
-  nietknięta) = 200, po usunięciu tożsamości = **401**, jedno żądanie do punktu tokenów.
-  **Wskrzeszenie jest dziś NIEMOŻLIWE KONSTRUKCYJNIE — wymóg nogi 1 standardu B8
-  jest SPEŁNIONY.** Sprostowane 09.08 po weryfikacji krzyżowej Kont: pisałem wcześniej
-  „system NIE wskrzesza", co sugeruje OBRONĘ. Powód jest inny: **refresh token mieszka
-  wewnątrz tożsamości, a tożsamość wewnątrz sesji** — skasowanie sesji zabiera token
-  razem z nią, więc odświeżanie **nie ma z czego** wskrzesić. **Ta własność zniknie,
-  gdy ktokolwiek przeniesie refresh token poza sesję** (odświeżanie w tle, z kolejki),
-  nie tykając kodu logowania — i nic tego nie złapie.
-  Dowody: `docs/noc-2026-08-08/ZNALEZISKA.md` (R6A-2, R6B-1).
-  **Test zostaje CZERWONY do naprawy z rundą** — nie naprawiałem go w nocy jako autor.
-- **Perturbacje: 30 scenariuszy, ale POKRYCIE JEST MNIEJSZE, NIŻ TA LICZBA SUGERUJE.**
-  Zmierzone w nocy: 2 mutacje były MARTWE (naprawione), a **5 scenariuszy celujących
-  w `OdebranieRoliTest.php` nie może dziś paść**, bo plik jest trwale czerwony przez
-  nogę 1 i `oczekuj_czerwone` bez `--przyczyna` przyjmuje tę czerwień (R6A-5, R6B-13).
-  Ponadto 6 z 8 allowlist `--przyczyna` nic nie zawęża (R6B-15).
-  **Nie cytuj „30 scenariuszy" jako miary pokrycia.**
-- **Pełny przebieg zestawu (09.08, noc): `PERTURBACJE CZERWONE — 1 kontroli NIE
-  zareagowało (udanych: 45)`, 30 scenariuszy, drzewo czyste.** Ta jedna czerwona
-  jest **OCZEKIWANA i przewidziana** (R6B-13, potwierdzone pomiarem N-12): to
-  kierunek odwrotny scenariusza BLK-22, który przywraca mechanizm i oczekuje
-  zielonego `OdebranieRoliTest.php` — a tam siedzi noga 1. **Zniknie sama po
-  naprawie nogi 1; nie ścigaj jej jako osobnego defektu.**
+  Bez SHA — stan czytaj z `git log`.
+- **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
+  Zmierzone 12.08 na przebiegu OD ZERA, we własnym środowisku efemerycznym
+  (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
+- **Testy — LICZBA Z DATĄ, NIE STAŁA: 260 zielonych, 0 czerwonych, 2 POMINIĘTE,
+  2010 asercji — zmierzone 12.08.** Podłogi bramki: **258 / 2008**
+  (`skrypty/podlogi.sh` — JEDNO źródło dla bramki i perturbacji).
+  **Nie cytuj tych liczb jako stanu bieżącego — zmierz je.**
+- **Perturbacje: `PERTURBACJE OK` na sześciu naprawionych scenariuszach (12.08).**
+  Pełny zestaw 30 scenariuszy przebiegł dwukrotnie; wynik rozstrzygający pochodzi
+  z przebiegu na ZDROWYM stosie — patrz niżej.
+
+### Co zamknęła sesja KOD-F1 dnia 12.08
+
+**Wszystkie 29 znalezisk rundy 6** plus N-14 z tego samego rejestru. Każde z dowodem
+pomiarowym; naprawy pogrupowane wg klas z `KLASY-I-NAPRAWY.md`:
+
+- **klasa 1** (kontrola bez środowiska): R6B-14 mierzy atomowość na PRAWDZIWYM
+  Redisie; N-14 biegnie jako `www-data` (`pcntl_fork` + `posix_setuid`).
+- **klasa 2** (dowód na nieobecności napisu): osiem podmian `sed` przeniesionych pod
+  `podmien_jedyne()`, które podnosi błąd przy ZERZE i przy ZWIELOKROTNIENIU trafień;
+  R6A-6 przez parser (`Tests\Wsparcie\Zrodlo`), nie wyrażenie regularne.
+- **klasa 3** (wynik zgodny z wieloma światami): odczyty bazowe i tabele światów
+  w nodze 1, teście POZYTYWNYM i teście odmowy IdP; allowlisty `--przyczyna` jako
+  KOMUNIKATY ASERCJI (dług 7 → **2**, sufit zapadki zjechany).
+- **klasa 4** (zapis o nierozstrzygniętym losie): mapa `sid → sesje` w bazie
+  (`sesje_sso`) + drugi sygnał `znanychPrzyOstatnimZakonczeniu()`; ślad wylogowania
+  oddaje `null` zamiast nieświeżej liczby.
+- **klasa 5** (denylista): **R6A-4** — zbiór zakazany pochodzi z `get_defined_functions()`,
+  a allowlista wiąże funkcję z ZAKRESEM PLIKÓW. Perturbacja odtwarzająca dokładnie atak
+  weryfikatora (`hash('sha256', $haslo)`) zapala kontrolę; stara dawała `7 passed`.
+- **klasa 6** (twierdzenie bez egzekutora): zasięg `ObietniceKomentarzyTest` rozszerzony
+  o siedem pominiętych rodzin znaczników; `JednoZrodloStanuTest` pilnuje JEDNEJ sekcji
+  `CURRENT WORK` i zakazuje liczb stanu bez kotwicy w przeszłym zdarzeniu.
+
+### ⚠ CZEGO SESJA NIE ZROBIŁA — czytaj przed resztą
+
+- **KLASA 7 NIETKNIĘTA.** Strażnik `pre-commit` (odmowa commita w trakcie przebiegu
+  pomiarowego i w cudzym repozytorium) NIE POWSTAŁ. W tej sesji ta klasa złamała się
+  **pięć razy**: komunikat commita przez `-m` z odwrotnymi apostrofami (dwukrotnie),
+  `git add` wciągający pliki dwóch innych sesji, `git checkout --` zamiast `cp`,
+  perturbacja zostawiona w drzewie przez niepełne zachowanie plików.
+  **Rekomendacja twarda: reguła łamana pięć razy mimo pełnej świadomości nie jest
+  regułą, tylko życzeniem.**
+- **Dwie allowlisty `--przyczyna` nadal nie rozróżniają** (dług 2, sufit zapadki 2,
+  `PrzyczynyPerturbacjiTest`). Blokuje je brak komunikatów asercji w dwóch testach.
+- **`TwierdzeniaKomentarzyTest` nadal zdjęty z bramki** (kontrola D3, 14 obejść na 15).
+- **Odczyt DYNAMICZNY nowych wzorców `--przyczyna`** — niezmierzony (statycznie rozróżniają).
+- **Wyjątek w `.gitleaks.toml` z warunkiem znoszącym**: przy scalaniu F1 do `main`
+  historię zakresu należy przepisać i wpis USUNĄĆ. Kopia: `kopia-przed-filtrem-12-08`.
+
+### ⚠ SPROSTOWANIA — poprzednie wersje tego pliku podawały nieprawdę
+
+1. **„Bramka CZERWONA — 1 nieudany krok z 22" było NIEAKTUALNE.** Pomiar 12.08:
+   czerwone były DWA kroki — `[19] testy` (noga 1) ORAZ `[20] statyka`
+   (**34 błędy Larastana** w plikach powstałych 09.08). Liczba „1" pochodziła z rundy 6
+   i była starsza niż cała doba pracy z 09.08. Instancja reguły „trzy zielone narzędzia
+   to nie zielona bramka": doba napraw nie puściła pełnej bramki ani razu.
+2. **„Noga 1 ma zostać CZERWONA do naprawy z rundą" — wykonane.** Naprawa jest w TEŚCIE:
+   granica procesu odtwarzana w pełni (`StartSession` też jest singletonem) plus jawne
+   ciasteczko sesji. Falsyfikowalność zmierzona trzema perturbacjami, każda czerwona
+   z innej i właściwej przyczyny.
+3. **„PERTURBACJE CZERWONE — 1, oczekiwana" — nieaktualne.** Ta czerwień zniknęła sama
+   po naprawie nogi 1, dokładnie jak przewidywał R6B-13.
 
 ### Do rozstrzygnięcia w następnej sesji
+
+**Runda 7 — DO WYKONANIA.** Meldunek gotowości: `docs/ZLECENIA/ZLECENIE-048.md`.
+Historia rund (każda nazywa PRZESZŁE ZDARZENIE, więc się nie starzeje):
+runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15,
+runda 5 na `b2084fc` — 12, **runda 6 na `49131d8` — 29 (wszystkie zamknięte 12.08)**.
 
 > **SPROSTOWANIE (09.08, noc).** Ta sekcja kierowała sesję do „ODCZYTU
 > ROZSTRZYGAJĄCEGO dla nogi 1", pisząc „przyczyna NIE JEST znana".
@@ -106,64 +97,30 @@ Raporty w całości: `docs/noc-2026-08-08/RUNDA-6-A-RAPORT.md` (bramka na żywym
 stosie, 12 znalezisk) i `RUNDA-6-B-RAPORT.md` (analiza dyskryminatorów
 i sterowników, 17 znalezisk). Streszczenie z wagami: `ZNALEZISKA.md`.
 
-Historia rund (każda nazywa PRZESZŁE ZDARZENIE, więc się nie starzeje):
-runda 3 na `a660753` — 11 znalezisk, runda 4 na `1417ad8` — 15,
-runda 5 na `b2084fc` — 12 (8 zamkniętych), **runda 6 na `49131d8` — 29**.
+**Stan tych 29 znalezisk czytaj z `CURRENT WORK` na górze pliku** — wszystkie
+zostały zamknięte 12.08. Historii rund NIE POWTARZAM tutaj drugi raz: dwa opisy
+jednej rzeczy rozjeżdżają się po cichu (klasa P3), a to jest dokładnie ten plik,
+w którym już raz się rozjechały (R6A-9).
 
-### PIERWSZE ZADANIA NASTĘPNEJ SESJI — w tej kolejności
+### PIERWSZE ZADANIA NASTĘPNEJ SESJI
 
-**Kolejność wynika z jednej zasady: najpierw przywróć zdolność przyrządu do
-świecenia czerwono, potem mierz nim cokolwiek.** Naprawianie systemu narzędziem,
-o którym wiemy, że mówi „zdaliśmy" bez względu na stan, jest pracą bez pokrycia.
+> **SPROSTOWANIE 12.08 — stała tu lista DZIEWIĘCIU zadań, dziś nieprawdziwa.**
+> Kierowała następną sesję do: przeniesienia ośmiu podmian `sed`, naprawy
+> allowlist `--przyczyna`, naprawy nogi 1, domknięcia §2, `RejestrSesji`
+> w cache'u, podpięcia retencji i `.env` perturbacji. **Wszystkie te pozycje
+> zostały wykonane 12.08** — lista wysyłałaby na front, którego już nie ma.
+> Zostawiam ślad po starej treści, bo ktoś mógł ją przeczytać, a cicha
+> podmiana do niego nie dotrze. Pełna treść: `git show` tego commita.
 
-1. ~~Sprawdź pozostałe wzorce `perturbuj.py`~~ — **ZROBIONE w nocy (N-9):
-   16/16 mutacji TRAFIA, zero martwych.** Zamiast tego: **8 podmian robionych
-   surowym `sed`-em wprost w `perturbacje.sh`** (linie 383, 442, 466, 476, 1124,
-   1171, 1250, 1263) nie ma ani `podmien()`, które krzyczy, ani dowodu mutacji —
-   a `sed`, który nie trafił, **kończy się sukcesem**. Jedna z nich jest już
-   cichym no-opem: `p_statyka:442` (potwierdzone pomiarem, R6B-17). Przenieś je
-   do `perturbuj.py` albo obłóż `dowod_zniknieciem`.
-2. **PRZYRZĄD — `--przyczyna` tam, gdzie plik już jest czerwony** (R6A-5, R6B-13,
-   R6B-15). Pięć scenariuszy celujących w `OdebranieRoliTest.php` nie może dziś
-   paść. Allowlisty mają być KOMUNIKATAMI ASERCJI, nie nazwami testów ani
-   wartościami `--filter` — dwie takie już są (`WYMUSZONE WYLOGOWANIE`,
-   `PRZEŻYŁ zadanie retencyjne`) i one jedne realnie zawężają.
-3. **NOGA 1 — naprawa TESTU, nie systemu.** Przyczyna znana i zmierzona.
-   Dołóż `forgetInstance(\Illuminate\Session\Middleware\StartSession::class)`
-   obok dwóch istniejących oraz jawne niesienie ciasteczka sesji
-   (`withCookie(config('session.cookie'), $idSesji)`). **Po naprawie ZMIERZ
-   PONOWNIE** — noga 1 ma zzielenieć, a test POZYTYWNY ma ZOSTAĆ zielony.
-   To samo dotyczy `:568-569` w teście POZYTYWNYM (R6A-1, R6B-2): dziś jego
-   401 pochodzi ze znacznika w bazie, nie z kasowania sesji.
-4. **§2 — domknij STRUKTURALNIE (R6A-3).** `TozsamoscSesji::zMagazynu()` jest
-   publiczną fabryką przyjmującą dowolną tablicę; weryfikator wytworzył przez nią
-   tożsamość koordynatora bez logowania (a także przez `Reflection`
-   i `unserialize`). Moje twierdzenie „NIEWYWOŁYWALNE" było za mocne — warunek
-   przeniósł się o poziom wyżej. Naprawa: `zMagazynu()` prywatne, jedyne wejście
-   przez `SesjaKonta::odczytaj(Request)`.
-5. **R6A-4 (waga KRYTYCZNA) — mechanizm własnych haseł przechodzi `BrakWlasnychHaselTest`
-   (7 passed), zapisując tożsamość PRZEZ wąskie gardło.**
-   ~~Naprawa: zbudować kontrolę „liczność zbioru pisarzy = 1" z D-2026-08-08-24.~~
-   **ZALECENIE WYCOFANE 09.08** (weryfikacja krzyżowa Kont): ten test **przepuściłby
-   tę samą mutację** — szła przez zadeklarowaną trasę, zadeklarowaną kolumnę i przez
-   jedynego pisarza, więc licznik pokazałby jeden i zaświecił zielono. Przyczyną
-   pierwotną jest to, że `PRYMITYWY_POSWIADCZEN` to **DENYLISTA** (`hash('sha256', …)`
-   ją omija). **Nowego zalecenia nie wpisuję** — kierunek to allowlista, ale to projekt
-   na własną rundę, a nie jedna linia. Szczegóły: `ZNALEZISKA.md`, blok werdyktów.
-6. **`RejestrSesji` — fail-open (R6B-9).** Mapa `sid → sesje`, bez której
-   back-channel logout nie znajdzie ŻADNEJ sesji, mieszka w cache'u z TTL 86400 s.
-   Zastosowaliśmy cztery wymagania trwałości do znacznika unieważnienia i NIE
-   zastosowaliśmy ich tutaj. Utrata rejestru = `skasowane_sesje = 0`, po cichu.
-7. **Retencja nie jest podpięta (R6A-11)** — `ZadanieRetencji` nie ma ani jednego
-   wywołującego; `routes/console.php` ma tylko `gabinet:puls`. Na gałęzi
-   `faza-1-retencja`. Rozstrzygnąć: podpiąć czy jawnie zapisać, że czeka na IOD.
-8. **Perturbacje mielą `.env` DEWELOPERA (R6B-16).** V-2 zamknięto tylko po
-   stronie bramki. `perturbacje.sh` nie podaje `--env-file`, więc
-   `docker-compose.yml` montuje `./.env` z prawdziwymi sekretami.
-9. Reszta znalezisk wg wag w `ZNALEZISKA.md`.
+**Następny krok to RUNDA 7 — niezależna weryfikacja, nie kolejna partia napraw.**
+Stan wejściowy dla niej: sekcja `CURRENT WORK` na górze tego pliku
+oraz meldunek `docs/ZLECENIA/ZLECENIE-048.md` (co zamknięte, czego NIE zrobiono,
+co zostaje otwarte i z jakim warunkiem znoszącym).
 
 **Czego NIE robić:** nie ścigaj hipotezy „odświeżanie wskrzesza tożsamość" —
-obalona dwukrotnie, ostatnio pomiarem rozstrzygającym z odczytem bazowym.
+obalona trzykrotnie, ostatnio 12.08 pomiarem niezależnego weryfikatora, który
+pokazał przy okazji, że wartość `(200, licznik +1)` ma DWA światy, dopóki
+granica procesu jest odtwarzana połowicznie.
 
 ---
 
