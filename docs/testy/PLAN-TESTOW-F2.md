@@ -1080,9 +1080,14 @@ i nie liczy się do sumy 75.
   wartości / do decyzji**; wysłanych linków płatności do pacjenta = **0** (spec s. 10:
   *„pacjent nie dostaje w tym momencie żadnego linku ani informacji"*).
 - **Poz.:** 3 i 0.
-- **Neg.:** po **zgodzie** koordynatora: rezerwacja = 1, kwota = **0 gr**, wywołań Stripe
-  = **0**. Po **odmowie**: `Q-17` — slot zwolniony (`SLOTY` = 4) albo link wysłany
-  (linków = 1). Dwie liczby, jedna decyzja.
+- **Neg.:** po **zgodzie** koordynatora: rezerwacja = 1, **kwota zapłacona przez pacjenta
+  = 0 gr**, wywołań Stripe = **0**, oznaczenie „pokryta ze środków fundacji" obecne.
+  Po **odmowie**: `Q-17` — slot zwolniony (`SLOTY` = 4) albo link wysłany (linków = 1).
+  Dwie liczby, jedna decyzja.
+- **⚠ `Q-22` (dopisane 12.08 przy `SZK-J-07`):** „kwota = 0" jest **niejednoznaczne** —
+  `kwota_zaplacona` i `kwota_zamrozona` to dwie różne rzeczy i tu się rozjeżdżają.
+  Kandydaci na `kwota_zamrozona`: **5500** (cena usługi) albo **0**. Rozstrzyga kwotę
+  dopłaty fundacji w raporcie grantowym. Rekomendacja: **5500**. Piszę wg rekomendacji.
 - **Pert.:** wniosek nieblokujący terminu → 4, czerwony.
 - **Obserwacja:** `SLOTY` + liczba wysyłek ze śladu.
 
@@ -1333,6 +1338,7 @@ rozstrzygnięciem. **`J-02` pozostaje jedynym przypadkiem bez pełnej wartości 
 | **Q-18** | Usługa 0 zł — czy w ogóle występuje blokada? | **nie** — rezerwacja potwierdzana natychmiast, `kwota_zamrozona = 0` |
 | **Q-20** | Kierunek „konto zamiast gościa" (`D-2026-08-09-10`) — czy F2 ma go zakładać? | **nie zakładam**; grupa F pisana przeciw **pacjentowi jako bytowi**, więc przeżyje obie wersje |
 | **Q-21** | Kto i kiedy ustala **kontrakt API F2** (§4) — potrzebny na wejście etapu B | KOD-SILNIK, przed pierwszym testem etapu B |
+| **Q-22** | **Czym jest `kwota_zamrozona` przy wizycie zwolnionej z opłaty** (`J-07`)? Cena usługi (**5500**) czy tyle, ile pacjent zapłacił (**0**)? | **5500** — `kwota_zamrozona` opisuje **wartość usługi**, nie przelew. Przy `0` fundacja traci w sprawozdaniu z dotacji ślad po własnym wkładzie (raport liczy dopłatę z cennika z dnia wizyty, spec M4/8). Dopisane 12.08 przy `SZK-J-07` |
 
 **`Q-21` zamknięte w `ODPOWIEDZ-045` §1:** pierwsze zadanie F2 sesji KOD-SILNIK to
 **kontrakt operacji API**, drugie — **przestawienie kształtu zamrożonego zrzutu**

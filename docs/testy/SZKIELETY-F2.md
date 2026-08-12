@@ -11,16 +11,18 @@
 Plan mówi **co** ma być zmierzone i **jaką liczbą**. Ten dokument mówi **w jakiej
 kolejności i na jakim stanie**, tak żeby etap B był **przepisaniem**, nie projektowaniem.
 
-**Zakres: 62 szkielety.**
+**Zakres: 68 szkieletów.**
 
 | runda | grupy | ile |
 |---|---|---|
 | pierwsza (`ZLECENIE-047`) | **A** 10 · **B** 5 · **E** 4 · **G** 5 · **I** 6 | **30** |
-| druga (`ODPOWIEDZ-047` §5) | **H** 7 · **C** 5 · **D** 9 · **F** 10 · `SZK-J-02` | **32** |
+| druga (`ZLECENIE-052`) | **H** 7 · **C** 5 · **D** 9 · **F** 10 · `SZK-J-02` | **32** |
+| trzecia (`ODPOWIEDZ-052` §5) | **J** — `J-03`…`J-08` | **6** |
 
-Po drugiej rundzie **bez szkieletu zostają: `J-01` (odsyłacz), `J-03`…`J-08`, `K`, `L`**
-— powody w §8. `SZK-J-02` jest dopisany **na wyraźny wniosek** `ODPOWIEDZ-047` §5 („twarde
-liczby pisz teraz"), z częścią zgodową wstrzymaną na `Q-16`; nie oznacza otwarcia grupy J.
+**Bilans wobec planu:** 75 przypadków − 68 szkieletów = **7**, i są to dokładnie
+**`K` (4) + `L` (3)**, plus odsyłacz `J-01`, który nie jest przypadkiem. Powody w §8.
+`SZK-J-02` powstał w drugiej rundzie **na wyraźny wniosek** `ODPOWIEDZ-047` §5, z częścią
+zgodową wstrzymaną na `Q-16`.
 
 **Jeden punkt podstawienia w etapie B.** Operacje (`SLOTY`, `RYTM.zapisz`, …) to nazwy
 kontraktowe z planu §4. Gdy KOD-SILNIK poda kontrakt API (`Q-21`, pierwsze zadanie F2),
@@ -1227,12 +1229,162 @@ KOTWICE  —
 
 ---
 
+## 7g · Grupa J — przypadki brzegowe z decyzji
+
+**Wspólne przygotowanie grupy** (`fixtureJ()`): specjalista `S_J` z rytmem **pon–nd
+09:00–14:00** (5 slotów: `09:00`…`13:00`). Rytm siedmiodniowy z tego samego powodu co
+`fixtureH` — `J-03` i `J-04` badają **niedziele** przestawienia zegarów.
+
+#### SZK-J-03 → `F2-J-03` · Rezygnacja w oknie bezpłatnym, doba 25-godzinna
+```
+ARRANGE  zegar := 2026-10-20 08:00 ; fixtureJ()
+         R := REZERWACJA.utworz(pacjent, KONS_PELNA, 2026-10-25 12:00)   # niedziela, CET
+         kwota_zamrozona(R) == 14500 ; zrzut z oknem 86 400 s
+         # wizyta 12:00 CET == 11:00Z ; granica = 11:00Z − 24 h = 2026-10-24 11:00Z
+         #                                       == 13:00 CEST czasu lokalnego SOBOTY
+ACT      dla t ∈ [2026-10-24 12:59:59, 13:00:00, 13:00:01] CEST:
+             zegar := t ; w[t] := REZERWACJA.odwolaj(R).zwrot_gr        # świeża kopia R
+ASSERT   [w[t]] == [14500, 14500, 0]
+         data_graniczna_prezentowana(R) == "24.10.2026, 13:00"
+         count(różnych wartości daty granicznej w 3 miejscach prezentacji) == 1
+         # spec wypisuje ją w potwierdzeniu, przypomnieniu i na karcie wizyty
+NEG      zegar := 2026-10-24 12:30 CEST → zwrot_gr == 14500
+         # implementacja „ta sama godzina dzień wcześniej" dałaby TU 0 —
+         # granica wypadłaby o 12:00, a nie o 13:00
+PERT     okno liczone przez „−1 dzień" na etykiecie lokalnej
+         → [14500, 0, 0] oraz cztery różne stringi daty granicznej
+         ALLOWLISTA (ścieżka pieniędzy)
+OBS      zwrot_gr ×4 + trzy pola prezentacyjne — cztery drogi do jednej liczby
+KOTWICE  KONF-OKNO-24H, KONF-STREFA, KONF-CENY
+```
+> **Serwer i ekran muszą podać TĘ SAMĄ godzinę.** Sam poprawny zwrot nie wystarcza:
+> pacjent, któremu ekran obiecał 12:00, a serwer egzekwuje 13:00, dowiaduje się o różnicy
+> **po** utracie pieniędzy. Dlatego prezentacja jest tu asercją, nie dopiskiem.
+
+#### SZK-J-04 → `F2-J-04` · Ta sama rezygnacja, doba 23-godzinna
+```
+ARRANGE  zegar := 2026-03-24 08:00 ; fixtureJ()
+         R := REZERWACJA.utworz(pacjent, KONS_PELNA, 2026-03-29 12:00)   # niedziela, CEST
+         # wizyta 12:00 CEST == 10:00Z ; granica = 10:00Z − 24 h = 2026-03-28 10:00Z
+         #                                       == 11:00 CET czasu lokalnego SOBOTY
+ACT      dla t ∈ [2026-03-28 10:59:59, 11:00:00, 11:00:01] CET:
+             zegar := t ; w[t] := REZERWACJA.odwolaj(R).zwrot_gr
+ASSERT   [w[t]] == [14500, 14500, 0]
+         data_graniczna_prezentowana(R) == "28.03.2026, 11:00"
+         # GODZINĘ WCZEŚNIEJ niż godzina wizyty — i tak ma być napisane pacjentowi
+NEG      zegar := 2026-03-28 11:30 CET → zwrot_gr == 0        # zostało 23,5 h
+         # osoba odwołująca „dzień wcześniej o tej samej porze" PŁACI
+PERT     jak SZK-J-03 ; ALLOWLISTA
+OBS      zwrot_gr ×4 + pole prezentacyjne
+KOTWICE  KONF-OKNO-24H, KONF-STREFA, KONF-CENY
+```
+> **`J-03` i `J-04` odchylają się w PRZECIWNE strony** — raz granica przesuwa się w przód,
+> raz w tył. To jest argument, dla którego `Q-4` rozstrzygnięto na odczyt absolutny:
+> odczyt „ta sama godzina" daje raz 25 h, raz 23 h, czyli **reguła zmieniałaby wartość
+> dwa razy w roku**. Para tych szkieletów jest dowodem tej własności, nie ilustracją.
+
+#### SZK-J-05 → `F2-J-05` · Przełożenie: limit 2, płatność przechodzi, slot wraca od razu
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+         R := REZERWACJA.utworz(pacjent, KONS_PELNA, 2026-09-22 10:00)   # opłacona
+         count(platnosci(R)) == 1
+ACT      p1 := REZERWACJA.przeloz(R, 2026-09-22 11:00)
+         p2 := REZERWACJA.przeloz(R, 2026-09-22 12:00)
+         p3 := REZERWACJA.przeloz(R, 2026-09-23 09:00)
+ASSERT   [p1, p2, p3] == [przyjęte, przyjęte, odrzucone(422)]
+         licznik_przelozen(R) == 2
+         count(platnosci(R)) == 1            # bez zwrotu i bez ponownego pobrania
+         count(zadania_zwrotu(R)) == 0
+         po p1: 10:00 ∈ wolne(2026-09-22) ORAZ 11:00 ∉ wolne(2026-09-22)
+         count(wolne(2026-09-22)) == 3 przez cały czas
+NEG      po wyczerpaniu limitu ODWOŁANIE nadal działa:
+         REZERWACJA.odwolaj(R).zwrot_gr == 14500        # > 24 h do wizyty
+         # limit przełożeń nie zamyka drogi wyjścia
+PERT     przełożenie realizowane jako „odwołaj + zarezerwuj"
+         → count(platnosci) == 2 ORAZ count(zadania_zwrotu) == 1
+         ALLOWLISTA (ścieżka pieniędzy)
+OBS      licznik i płatności z bazy + zbiór wolnych slotów przed i po
+KOTWICE  KONF-DL-KONS, KONF-OKNO-24H, KONF-CENY
+```
+> **Sama liczba wolnych slotów nie odróżnia przełożenia od bezczynności** — przed i po
+> jest `3`. Dlatego asercja pyta o **zbiór**: stary termin ma wrócić, nowy zniknąć.
+
+#### SZK-J-06 → `F2-J-06` · Przełożenie tylko w oknie 24 h — egzekwowane w API
+```
+ARRANGE  zegar := 2026-09-21 10:00 ; fixtureS1()
+         RA := rezerwacja na 2026-09-22 09:00      # 23 h do wizyty
+         RB := rezerwacja na 2026-09-22 11:00      # 25 h do wizyty
+ACT      a := REZERWACJA.przeloz(RA, <inny termin>)
+         b := REZERWACJA.przeloz(RB, <inny termin>)
+ASSERT   a == odrzucone(422) ; licznik_przelozen(RA) == 0 ; termin(RA) niezmieniony
+         b == przyjęte       ; licznik_przelozen(RB) == 1
+NEG      REZERWACJA.odwolaj(RA).zwrot_gr == 0
+         # zamknięte okno to ROZSTRZYGNIĘCIE (zwrot 0), nie błąd operacji
+PERT     kontrola wyłącznie w warstwie prezentacji → a == przyjęte
+         (spec M1/13: „reguła egzekwowana wyłącznie w interfejsie jest do obejścia
+          zapytaniem do API — przy polityce, która decyduje o pieniądzach, to otwarta furtka")
+OBS      licznik i termin Z BAZY, nie z odpowiedzi operacji
+KOTWICE  KONF-OKNO-24H, KONF-CENY
+```
+
+#### SZK-J-07 → `F2-J-07` · Wniosek o zwolnienie z opłaty blokuje termin do decyzji
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      WNIOSEK.zloz(przez: PSYCHOLOG, S1, KONS_NISKA, 2026-09-22 10:00,
+                      uzasadnienie: <finansowe>)
+ASSERT   count(wolne(2026-09-22)) == 3                    # termin zablokowany
+         trzymane_do == BRAK WARTOŚCI                     # „do czasu decyzji", nie zegar
+         count(linki_platnosci wysłane do pacjenta) == 0
+         # spec s. 10: „pacjent nie dostaje w tym momencie żadnego linku ani informacji"
+POZ-2    po ZGODZIE koordynatora:
+         count(rezerwacje) == 1
+         kwota_zaplacona_przez_pacjenta == 0
+         count(wywołań operatora płatności) == 0
+         oznaczenie „pokryta ze środków fundacji" == obecne
+         count(wpisy_dziennika_decyzji) == 1
+NEG      po ODMOWIE koordynatora (Q-17, rekomendacja):
+         count(wolne(2026-09-22)) == 4                    # blokada zwolniona
+         count(linki_platnosci) == 0                      # link to OSOBNA decyzja
+PERT     wniosek nieblokujący terminu → count(wolne) == 4 od razu po złożeniu
+OBS      SLOTY + liczba wysyłek ze śladu + count wpisów dziennika (F5, granica faz)
+KOTWICE  KONF-DL-KONS
+```
+> **⚠ `Q-22` — NOWE, wyszło przy tym szkielecie.** Wizyta zwolniona z opłaty ma
+> `kwota_zaplacona == 0`, ale **czym jest wtedy `kwota_zamrozona`?**
+> Kandydaci: **`5500`** (cena usługi — raport grantowy liczy dopłatę fundacji z cennika
+> z dnia wizyty, spec M4/8) albo **`0`** (tyle, ile pacjent zapłacił).
+> Rozstrzyga **dwie** liczby: zwrot przy późniejszym odwołaniu (`0` w obu odczytach, ale
+> z różnych powodów) oraz **kwotę dopłaty w sprawozdaniu z dotacji**.
+> **Rekomendacja: `5500`** — `kwota_zamrozona` opisuje **wartość usługi**, a nie przelew;
+> przy `0` fundacja traci w raporcie ślad po własnym wkładzie. Piszę wg rekomendacji.
+
+#### SZK-J-08 → `F2-J-08` · Usługa 0 zł omija operatora płatności
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      r := REZERWACJA.utworz(pacjent, ASYSTENT, 2026-09-22 15:00)     # 0 zł
+ASSERT   count(rezerwacje potwierdzone natychmiast) == 1
+         count(wywołań operatora płatności)          == 0
+         count(blokad przejściowych)                  == 0
+         kwota_zamrozona(r) == 0        # pole ISTNIEJE i ma wartość 0, nie NULL
+NEG      rezerwacja KONS_PELNA → count(wywołań operatora) == 1
+                                  count(blokad przejściowych) == 1
+PERT     ścieżka 0 zł prowadzona przez operatora → count(wywołań) == 1
+OBS      liczba wywołań atrapy operatora + kwota_zamrozona z bazy
+KOTWICE  KONF-CENY
+```
+> **`J-07` i `J-08` różnią się rzeczą, którą łatwo skleić:** tu cena usługi **jest** zerem,
+> tam cena jest niezerowa, a **zeruje się przelew**. Implementacja, która utożsamia
+> „pacjent płaci 0" z `kwota_zamrozona == 0`, przechodzi `J-08` i psuje sprawozdanie
+> z dotacji (`Q-22`). Dlatego obie asercje stoją obok siebie w dwóch szkieletach.
+
+---
+
 ## 8 · Czego w tym dokumencie nie ma
 
 | co | dlaczego | warunek znoszący |
 |---|---|---|
-| `J-03`…`J-08` | grupa J zależy od `Q-16` (`J-02`) i od rozstrzygnięć nieblokujących `Q-17`, `Q-18`; `J-03`/`J-04` są **gotowe do napisania** — czekają wyłącznie na kolejność | następna runda; `J-03`/`J-04` biorę bez pytania (S-2) |
-| grupa `K` (kontrole nad kontrolami) | mierzą **zbiór szkieletów**, więc mają sens dopiero, gdy zbiór jest zamknięty — dziś rósłby pod nimi | domknięcie wszystkich grup |
+| część **zgodowa** `SZK-J-02` | `Q-16` u właściciela (spotkanie G7); kandydaci `0` i `2` zapisanych zgód | rozstrzygnięcie właściciela |
+| grupa `K` (kontrole nad kontrolami) | mierzą **zbiór szkieletów**, więc mają sens dopiero, gdy zbiór jest zamknięty — dziś rósłby pod nimi. **Zbiór domyka dopiero grupa `L`**, a ta czeka na kontrakt | kontrakt API → `L` → `K` |
 | grupa `L` (wydajność) | mierzy **czas i liczbę zapytań**, czyli własności implementacji, nie kontraktu; szkielet bez kontraktu byłby zgadywaniem instrumentacji | kontrakt API + seed `S111` od KOD-SILNIK |
 | **kotwice 11 pozostałych parametrów** | kotwica bez przypadku, który jej używa, jest deklaracją. Po tej rundzie brakuje ich do `C`, `D`, `F` — **wypisane niżej**, nie przemilczane | etap B, razem z pierwszym testem grupy |
 | kod w `tests/` | nadal **etap A**; `tests/` otwiera się po merge F1 | merge F1 do `main` |
