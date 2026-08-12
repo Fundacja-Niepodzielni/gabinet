@@ -179,9 +179,31 @@ return [
          *     (fail-closed), ale zachowanie nieprzewidziane;
          *   · przy polityce eksmisji `allkeys-*` żywe sesje byłyby eksmitowane
          *     pod presją pamięci — użytkownicy wylatują losowo, bez śladu
-         *     w logach aplikacji. Zmierzone u nas: `maxmemory-policy` =
-         *     `noeviction`, `maxmemory` = 0, więc dziś czyści jesteśmy —
-         *     ale to DOMYŚLNA wartość produktu, nie nasz wybór.
+         *     w logach aplikacji.
+         *
+         * ⛔ SPROSTOWANIE WYZWALACZA (R6A-8, 12.08). Ten komentarz wiązał kiedyś
+         * rozdzielenie baz z OCHRONĄ PRZED EKSMISJĄ, a `D-2026-08-08-28` mówi
+         * wprost coś przeciwnego — i decyzji NIE CYTOWAŁ, więc czytelnik nie miał
+         * jak sprawdzić rozbieżności.
+         *
+         * Zmierzone (N-6, na żywym kontenerze): `maxmemory` = 0,
+         * `maxmemory-policy` = `noeviction`. Przy tych wartościach EKSMISJA LRU
+         * NIE MOŻE ZAJŚĆ W OGÓLE — Redis przy wyczerpaniu pamięci zaczyna
+         * ODRZUCAĆ ZAPISY błędem OOM, a odczyty działają dalej. Nazwany wyzwalacz
+         * po prostu nie zachodzi w tej konfiguracji.
+         *
+         * Do tego eksmisja jest własnością INSTANCJI, nie bazy: `maxmemory-policy`
+         * nie ma wariantu per-baza, więc rozdzielenie `cache=1` / `sesje=2` NIE
+         * DAJE sesjom żadnej ochrony przed eksmisją, gdyby limit kiedykolwiek
+         * ustawiono.
+         *
+         * Rozdzielenie zostaje, bo jest słuszne z INNEGO powodu — `Cache::flush()`
+         * i `FLUSHDB` działają per baza. Wyzwalacz podany błędnie jest gorszy niż
+         * brak wyzwalacza, bo wygląda na zmierzony.
+         *
+         * WARUNEK UTRZYMUJĄCY: `maxmemory` pozostaje 0. Ustawienie limitu WŁĄCZA
+         * klasę awarii, której dziś nie ma — i wtedy to rozdzielenie przestanie
+         * cokolwiek dawać.
          *
          * To ta sama przyczyna, dla której znacznik unieważnienia musiał wyjść
          * z cache'u do PostgreSQL (D-2026-08-08-26 i okolice): brak segmentacji

@@ -174,7 +174,7 @@ obalona dwukrotnie, ostatnio pomiarem rozstrzygającym z odczytem bazowym.
 | F0.1 | Szkielet Laravel 13.24 (PHP 8.4.24) w `backend/`, wersje przypięte digestem + `config.platform` | ✅ | `composer install` z lockfile'a; bramka krok 4 |
 | F0.2 | Docker Compose: postgres 18.4, redis 8, php-fpm, nginx, Horizon, scheduler | ✅ | `up -d --wait` → 6 kontenerów `healthy`; sondy pytają o STAN (`gabinet:zdrowie`, `gabinet:puls`) |
 | F0.3 | Pest 5 + Larastan `max` + Pint | ✅ | 66 testów / 192 asercje; `[OK] No errors`; 47 plików PASS |
-| F0.4 | `skrypty/bramka.sh` + CI wołające ten sam skrypt + gitleaks | ✅ lokalnie / ⚠️ CI nieuruchomione | `BRAMKA OK — 18 kroków` na czystym klonie; gitleaks: tryb git czysty, przynęta zapala skan |
+| F0.4 | `skrypty/bramka.sh` + CI wołające ten sam skrypt + gitleaks | ✅ lokalnie / ⚠️ CI nieuruchomione | `BRAMKA OK — 18 kroków` na czystym klonie — **przebieg z 07.08, ówczesna liczba kroków**; dziś jest ich więcej, a stan czytaj z `CURRENT WORK` albo z pomiaru. Gitleaks: tryb git czysty, przynęta zapala skan |
 | F0.5 | `.env.example` bez wartości (Keycloak, 2× Stripe, SMSAPI, poczta, wideo) | ✅ | `SekretyTest`; gitleaks |
 | F0.6 | `docs/DECYZJE.md` | ✅ | 8 wpisów + rejestr zadań dla człowieka |
 | F0.7 | Porównanie Jitsi vs Whereby + rekomendacja | ✅ | `docs/analizy/wideo-jitsi-vs-whereby.md` |

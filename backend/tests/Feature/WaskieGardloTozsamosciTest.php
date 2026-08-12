@@ -174,6 +174,23 @@ it('zbiór plików produkcyjnych sięgających po TOŻSAMOŚĆ to ALLOWLISTA', f
     // R6A-12: poza gardłem zostawała ścieżka KASOWANIA tożsamości i odczyt
     // klucza LITERAŁEM. Policzono wtedy pisarzy i uznano gardło za domknięte —
     // a czytelnicy i kasujący nie byli liczeni w ogóle.
+    //
+    // ⛔ TO JEST EGZEKUTOR DECYZJI D-2026-08-08-24, i dlatego ją tu nazywam.
+    //
+    // Decyzja mówi, że zbiór KOMPONENTÓW zapisujących klucze tożsamości ma
+    // liczność 1 (wykładnia rozstrzygnięta przez architekta 09.08: komponenty,
+    // nie instrukcje zapisu — pod wykładnią literalną ŻADEN komponent tworzący
+    // i aktualizujący nie mógłby jej spełnić, czyli unieważniałaby decyzję,
+    // którą ma egzekwować).
+    //
+    // Do 12.08 D-24 nie miała ŻADNEGO egzekutora: `ObietniceKomentarzyTest`
+    // obejmował regexem tylko sześć rodzin znaczników i decyzje z rejestru
+    // pomijał (R6A-7). Dwa pliki produkcyjne powoływały się na nią w komentarzu,
+    // a nic tego nie sprawdzało — obietnica bez pokrycia.
+    //
+    // Ta asercja egzekwuje ją WPROST: pisarzem, czytelnikiem i kasującym jest
+    // JEDEN komponent (`SesjaKonta`), a `TozsamoscSesji` jest samym typem.
+    // Trzeci plik sięgający po tożsamość zapala bramkę.
     $dopuszczeni = [
         'app/Tozsamosc/SesjaKonta.php',      // fasada — jedyny pisarz i jedyny kasujący
         'app/Tozsamosc/TozsamoscSesji.php',  // sam typ (definicja stałej i fabryki)

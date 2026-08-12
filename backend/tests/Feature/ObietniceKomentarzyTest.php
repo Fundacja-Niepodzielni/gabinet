@@ -60,7 +60,28 @@ function znacznikiZnalezisk(string $katalog): array
 
         $tresc = (string) file_get_contents($plik->getPathname());
 
-        if (preg_match_all('/\b([UWO]-\d+)\b/', $tresc, $trafienia) === 0) {
+        // ⛔ ZASIĘG ZNACZNIKÓW (R6A-7). Poprzedni wzorzec `[UWO]-\d+` obejmował
+        // SZEŚĆ rodzin znaczników i pomijał SIEDEM — w tym `B7`, `B8`, `BLK-22`
+        // i `D-2026-08-08-24`, czyli WSZYSTKIE, na które powołuje się warstwa
+        // `Tozsamosc`. Zdanie z `WYTYCZNE-PRACY.md` o „każdym znalezisku powołanym
+        // w kodzie produkcyjnym" było wobec tego wzorca nieprawdziwe.
+        //
+        // Egzekutor obejmuje dziś rodziny faktycznie używane w tym repozytorium:
+        //   · jednoliterowe rejestry rund   — U-7, W-5, O-2, V-8, N-14, E-3, S-1
+        //   · znaleziska rund weryfikacji   — R6A-3, R6B-16
+        //   · standardy ekosystemu          — B7, B8
+        //   · blokery                       — BLK-22
+        //   · decyzje z rejestru            — D-2026-08-08-24, D-EKO-012
+        $wzorzec = '/\b('
+            .'[UWOVNES]-\d+|'
+            .'R6[AB]-\d+|'
+            .'BLK-\d+|'
+            .'D-EKO-\d+|'
+            .'D-\d{4}-\d{2}-\d{2}-\d+|'
+            .'B\d'
+            .')\b/';
+
+        if (preg_match_all($wzorzec, $tresc, $trafienia) === 0) {
             continue;
         }
 

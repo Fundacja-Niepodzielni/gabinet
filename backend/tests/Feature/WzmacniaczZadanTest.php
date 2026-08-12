@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tozsamosc\KontaOidc;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -95,6 +96,44 @@ it('po wygaśnięciu okna wpuszcza kolejne JEDNO odświeżenie — bramka nie bl
 
     $oidc->jwksDlaKid('nieznany-c');
     expect(policzZadaniaJwks() - $poRozgrzewce)->toBe(2);
+});
+
+it('ATOMOWOŚĆ bramki mierzona na PRAWDZIWYM sterowniku, nie na atrapie', function (): void {
+    // R6B-14. Bramka częstotliwości JWKS stoi na `Cache::add()`, czyli na
+    // operacji ATOMOWEJ. Atomowość ma sens wyłącznie MIĘDZY PROCESAMI —
+    // a `phpunit.xml` wymusza `CACHE_STORE=array`, czyli magazyn żyjący
+    // w pamięci JEDNEGO procesu. Test „stu tokenów" przechodził więc
+    // w środowisku, w którym badane zjawisko NIE ZACHODZI: tam nie ma
+    // dwóch procesów, między którymi mógłby zajść wyścig.
+    //
+    // Kontrola dowodząca własności, której jej środowisko nie ma, jest
+    // atrapą dowodu. Przełączamy się więc na sterownik PRODUKCYJNY.
+    config(['cache.default' => 'redis']);
+
+    $klucz = 'konta:proba-atomowosci-'.bin2hex(random_bytes(4));
+
+    try {
+        // ODCZYT BAZOWY: pierwszy `add` na nieistniejącym kluczu ma się UDAĆ.
+        expect(Cache::add($klucz, 1, 60))->toBeTrue(
+            'Pierwsze `Cache::add` nie zadziałało — mierzymy zepsuty magazyn, nie atomowość.'
+        );
+
+        // SEDNO: drugi `add` na TYM SAMYM kluczu MUSI odmówić. To jest cała
+        // treść bramki częstotliwości — jeżeli tu wyjdzie `true`, sto tokenów
+        // z nieznanym `kid` da sto żądań do Kont Niepodzielni.
+        expect(Cache::add($klucz, 1, 60))->toBeFalse(
+            'Drugie `Cache::add` na tym samym kluczu ZADZIAŁAŁO. Bramka częstotliwości '.
+            'nie jest wtedy bramką: publiczny, nieuwierzytelniony punkt back-channel '.
+            'logout zamienia się w wzmacniacz żądań do IdP.'
+        );
+
+        // KONTROLA POZYTYWNA sterownika: sprawdzamy, że NAPRAWDĘ mierzyliśmy
+        // Redisa, a nie że `config()` przestawiło etykietę bez skutku.
+        expect(Cache::getStore())->toBeInstanceOf(RedisStore::class);
+    } finally {
+        Cache::forget($klucz);
+        config(['cache.default' => 'array']);
+    }
 });
 
 it('ZATRUTY cache JWKS nie odbudowuje się sam w oknie bramki', function (): void {

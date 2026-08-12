@@ -276,7 +276,23 @@ it('NIE traci dostępu, dopóki access token jest ważny — okno jest oknem, ni
 });
 
 it('kończy sesję, gdy IdP odmawia odświeżenia — konto zablokowane', function (): void {
+    // ⛔ ODCZYT BAZOWY (R6B-6). Bez niego 401 na końcu jest zgodne z DWOMA
+    // światami: „odmowa odświeżenia zakończyła sesję" ORAZ „logowanie w ogóle
+    // się nie powiodło, więc nigdy nie było czego kończyć". Obie wartości
+    // wyglądają identycznie, a znaczą coś przeciwnego o systemie.
+    //
+    // Tabela światów po naprawie:
+    //   (200 bazowo, 401 po odmowie) → OCZEKIWANE: odmowa zakończyła sesję
+    //   (401 bazowo, 401 po odmowie) → logowanie nie zadziałało; test nie ma przedmiotu
+    //   (200 bazowo, 200 po odmowie) → odmowa IdP NIE kończy sesji — defekt
     zalogujKoordynatora(waznoscTokenuS: 1);
+
+    expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue(
+        // Komunikat celowo mówi o PRZEDMIOCIE, nie o wyniku: gdy tu jest czerwono,
+        // nie ma sensu czytać asercji niżej.
+        'Sesja nie istnieje PRZED odmową IdP — test nie ma czego kończyć, a jego 401 '.
+        'niżej byłoby 401 braku logowania.'
+    );
 
     punktTokenowZwraca(['error' => 'invalid_grant', 'error_description' => 'Session not active'], 400);
 
