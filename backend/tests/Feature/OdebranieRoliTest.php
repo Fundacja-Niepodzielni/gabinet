@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\SladWylogowania;
 use App\Wsparcie\Typy;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -123,6 +124,57 @@ function sesjaWMagazynie(string $id): string
     $uchwyt = Session::getHandler();
 
     return (string) $uchwyt->read($id);
+}
+
+/**
+ * Odtwarza GRANICĘ PROCESU — pełną, nie połowiczną.
+ *
+ * Produkcja obsługuje każde żądanie w osobnym procesie PHP, więc sesja jest
+ * czytana z magazynu od nowa. W suicie trzy obiekty przeżywają żądanie i każdy
+ * z nich osobno potrafi przenieść tożsamość:
+ *
+ *   · `session`        — menedżer sesji (singleton kontenera);
+ *   · `session.store`  — wczytany `Store` z atrybutami w PAMIĘCI;
+ *   · `StartSession`   — middleware, KTÓRY SAM JEST SINGLETONEM i trzyma
+ *                        referencję do menedżera SPRZED `forgetInstance`.
+ *
+ * Trzeciego brakowało do 12.08 i to jest cała przyczyna czerwonej nogi 1:
+ * `forgetInstance('session')` tworzył nowy menedżer, a middleware podawał
+ * dalej stary, z wczytaną tożsamością. Zmierzone niezależnie trzema metodami
+ * (R6A-2 identyfikatorami obiektów na żywym stosie, R6B-1 lekturą źródeł
+ * `laravel/framework v13.24.0`, weryfikacja krzyżowa Kont u źródła):
+ * `SessionServiceProvider.php:22-26` rejestruje `StartSession` jako singleton,
+ * `StartSession.php:157-160` czyta z własnego `$manager`, `Container.php:1731-1734`
+ * pokazuje, że `forgetInstance` nie sięga do już wstrzykniętej referencji.
+ *
+ * ⚠ SAMA granica procesu NIE WYSTARCZA. Klient testowy Pesta nie odsyła
+ * ciasteczka sesji (`MakesHttpRequests.php:730-737`), więc po zresetowaniu
+ * singletonów każde żądanie dostaje NOWY, losowy identyfikator — i 401 byłoby
+ * wtedy zgodne z dwoma światami („tożsamość zniknęła" ORAZ „to po prostu inna,
+ * pusta sesja"). Dlatego ciasteczko niesiemy JAWNIE, a każdy test korzystający
+ * z tej funkcji ma ODCZYT BAZOWY: przy nietkniętej tożsamości ma wyjść 200.
+ */
+function granicaProcesu(string $idSesji): void
+{
+    app()->forgetInstance('session');
+    app()->forgetInstance('session.store');
+    app()->forgetInstance(StartSession::class);
+
+    test()->withCookie(Typy::napis(config('session.cookie')), $idSesji);
+}
+
+/** Ile razy poszliśmy do punktu tokenów IdP — licznik prób odświeżenia. */
+function zadanDoTokenu(): int
+{
+    $ile = 0;
+
+    foreach (Http::recorded() as [$zadanie]) {
+        if (str_contains($zadanie->url(), '/protocol/openid-connect/token')) {
+            $ile++;
+        }
+    }
+
+    return $ile;
 }
 
 /**
@@ -597,60 +649,92 @@ it('POZYTYWNY: żądanie PO wylogowaniu dostaje 401 — logout REALNIE zabija se
         ->assertJsonPath('zalogowany', false);
 });
 
-it('NOGA 1 [NIEROZSTRZYGNIĘTE — patrz komentarz]: tożsamość usunięta + ŻYWY refresh token → 401', function (): void {
+it('NOGA 1: tożsamość usunięta + ŻYWY refresh token → 401, i ZERO nowych prób odświeżenia', function (): void {
     // Para negatywna do BLK-22, noga pierwsza. Wymóg standardu B8:
     // odświeżanie ma być OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Refresh token,
     // który przetrwał usunięcie tożsamości, nie może jej WSKRZESIĆ.
     //
-    // STAN WIEDZY 08.08, wieczór — SPROSTOWANIE WŁASNEGO WNIOSKU.
+    // ── HISTORIA TEGO TESTU, zostawiona świadomie ────────────────────────
     //
-    // Migawki dały: zniknęło 1, pojawiło się 1, status 200 — i odczytałem to
-    // jako „świat 2: wskrzeszenie z refresh tokenu". Potem przebudowałem
-    // pisarza tożsamości na wąskie gardło (`SesjaKonta` + `TozsamoscSesji`),
-    // przez które odświeżanie NIE MOŻE utworzyć tożsamości — i zmierzyłem
-    // PONOWNIE: liczby IDENTYCZNE (1 / 1 / 200).
+    // Do 12.08 nosił etykietę [NIEROZSTRZYGNIĘTE] i był JEDYNYM czerwonym
+    // testem suity. Przyczyna okazała się PRZYRZĄDEM, nie systemem, i została
+    // ustalona pomiarem, nie rozumowaniem: granica procesu była odtwarzana
+    // POŁOWICZNIE (bez `StartSession`, bez ciasteczka). Szczegóły mechanizmu
+    // i dowody z przypiętego frameworka — w docbloku `granicaProcesu()`.
     //
-    // Skoro naprawa ścieżki odświeżania niczego nie zmieniła, to 200 NIE
-    // pochodzi z tej ścieżki. Mój wniosek „świat 2" był przedwczesny: nie
-    // wykluczyłem świata, w którym nowy klucz to po prostu sesja zakładana
-    // przez samo żądanie, a tożsamość niesie klient testowy w pamięci procesu.
+    // Wcześniejsza diagnoza („odświeżanie wskrzesza tożsamość z refresh
+    // tokenu") została OBALONA dwukrotnie — raz pomiarem kontrolnym po
+    // przebudowie pisarza (liczby identyczne), raz weryfikacją krzyżową Kont.
+    // NIE ścigaj jej ponownie.
     //
-    // Czyli: „pojawił się nowy klucz" jest zgodne z DWOMA światami, a ja
-    // odczytałem je jako jeden. Ta sama wada, którą architekt poprawiał mi
-    // dziś trzy razy — tym razem po stronie migawek, nie licznika.
+    // ── CO TEN TEST NAPRAWDĘ DOWODZI, a czego NIE ────────────────────────
     //
-    // NIE ZMIENIAM już kodu na podstawie tego pomiaru. Odczyt rozstrzygający
-    // musi odróżnić „tożsamość odtworzona w magazynie" od „tożsamość niesiona
-    // przez klienta testowego" — np. przez sprawdzenie ZAWARTOŚCI nowego
-    // klucza, nie samego faktu jego pojawienia się.
+    // Dowodzi: po usunięciu tożsamości z magazynu kolejne żądanie TEJ SAMEJ
+    // przeglądarki (to samo ciasteczko sesji!) dostaje 401, a system nie
+    // podejmuje ŻADNEJ próby odświeżenia.
     //
-    // Przebudowa pisarza ZOSTAJE: jest poprawna niezależnie od tej diagnozy,
-    // bo realizuje wymóg §2 (jeden pisarz, aktualizacja wymaga istniejącego
-    // rekordu) — i to była właściwa naprawa, tylko nie tego objawu.
+    // NIE dowodzi, że system BRONI SIĘ przed wskrzeszeniem. Powód jest inny
+    // i słabszy: refresh token mieszka WEWNĄTRZ tożsamości, a tożsamość
+    // wewnątrz sesji — skasowanie sesji zabiera token razem z nią, więc
+    // odświeżanie NIE MA Z CZEGO wskrzesić. Ta własność zniknie w dniu,
+    // w którym ktokolwiek przeniesie refresh token poza sesję (odświeżanie
+    // w tle, odświeżanie z kolejki) — i wtedy właśnie ma zaświecić druga
+    // asercja niżej, ta o liczniku żądań do punktu tokenów.
     //
-    // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół.
-    // Pierwsza wersja używała 600 s i dawała 200. Dyskryminator z ODCZYTEM
-    // BAZOWYM pokazał, dlaczego: w przebiegu kontrolnym (bez usuwania
-    // tożsamości) licznik żądań do punktu tokenów wynosił ZERO — ścieżka
-    // odświeżania w ogóle się nie uruchamiała, więc 200 pochodziło ze zwykłej,
-    // nietkniętej sesji, a test nie mierzył tego, co deklarował.
+    // ── TABELA ŚWIATÓW (pre-flight dyskryminatora) ───────────────────────
     //
-    // Bez odczytu bazowego odczytałbym to jako „kasuję niewłaściwy wpis"
-    // i zmienił kod, który działa. Wartość dyskryminatora zgodna z więcej niż
-    // jednym światem znaczy, że brakuje pomiaru bazowego.
+    //   (200, licznik bez zmian) → tożsamość PRZEŻYŁA skasowanie sesji
+    //   (200, licznik +1)        → WSKRZESZENIE z refresh tokenu
+    //   (401, licznik +1)        → próba odświeżenia była, IdP/walidacja odmówiły
+    //   (401, licznik bez zmian) → OCZEKIWANE: nie ma czego odświeżać
+    //
+    // Każda wartość ma dokładnie jeden świat — dlatego wolno tym mierzyć.
+    //
+    // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół. Przy
+    // `OdswiezanieSesji::MARGINES_S = 30` okno odświeżania jest wtedy otwarte
+    // przy KAŻDYM żądaniu, więc ścieżka wskrzeszenia ma pełną szansę zadziałać.
+    // Gdyby token był ważny 600 s, ścieżka odświeżania nie uruchomiłaby się
+    // wcale, a 401 pochodziłoby po prostu z braku sesji — test świeciłby
+    // zielono, nie zbadawszy tego, co deklaruje.
     config(['session.driver' => 'redis']);
     $sid = zalogujKoordynatora(waznoscTokenuS: 1);
 
+    // Identyfikator sesji LOKALNEJ — ten, który klient dostał w `Set-Cookie`
+    // po `regenerate()` przy logowaniu. Bez niego nie da się odtworzyć
+    // „tej samej przeglądarki" po granicy procesu.
+    $idSesji = RejestrSesji::odczytaj($sid)[0] ?? '';
+
+    expect($idSesji)->not->toBe(
+        '',
+        'Rejestr sesji nie zna sesji lokalnej dla tego `sid` — pomiar nie ma PRZEDMIOTU, '.
+        'a nie „przeszedł". Bez identyfikatora ciasteczko niesie pustkę i każde 401 niżej '.
+        'byłoby 401 nowej, pustej sesji.'
+    );
+
+    // ── ODCZYT BAZOWY (kontrola pozytywna) ───────────────────────────────
+    // Granica procesu SAMA W SOBIE nie ma prawa zabrać tożsamości. Gdyby
+    // zabierała, 401 na końcu byłoby artefaktem przyrządu — dokładnie tym,
+    // czym było do 12.08.
+    granicaProcesu($idSesji);
+
     expect(test()->get('/auth/ja')->assertOk()->json('bramki')['panel.koordynacji'])->toBeTrue();
 
+    $licznikBazowy = zadanDoTokenu();
+
     // Usuwamy TOŻSAMOŚĆ, zostawiając refresh token żywy po stronie IdP —
-    // atrapa punktu tokenów nadal zwraca poprawny token.
-    foreach (RejestrSesji::odczytaj($sid) as $idSesji) {
-        Session::getHandler()->destroy($idSesji);
+    // atrapa punktu tokenów nadal zwraca poprawny token, więc wskrzeszenie
+    // jest DOSTĘPNE dla systemu, który by je robił.
+    foreach (RejestrSesji::odczytaj($sid) as $id) {
+        Session::getHandler()->destroy($id);
     }
 
-    app()->forgetInstance('session');
-    app()->forgetInstance('session.store');
+    // DOWÓD MUTACJI: magazyn pytany INNĄ DROGĄ niż mechanizm badany niżej.
+    expect(sesjaWMagazynie($idSesji))->toBe(
+        '',
+        'Sesja NIE zniknęła z magazynu, więc test nie zaczął się od stanu, który deklaruje.'
+    );
+
+    granicaProcesu($idSesji);
 
     sleep(2);
 
@@ -658,6 +742,14 @@ it('NOGA 1 [NIEROZSTRZYGNIĘTE — patrz komentarz]: tożsamość usunięta + Ż
     test()->get('/auth/ja')
         ->assertStatus(401)
         ->assertJsonPath('zalogowany', false);
+
+    expect(zadanDoTokenu())->toBe(
+        $licznikBazowy,
+        'Poszło żądanie do punktu tokenów PO usunięciu tożsamości. Znaczy to, że refresh '.
+        'token przeżył skasowanie sesji — czyli zamieszkał poza nią. To jest dokładnie ta '.
+        'regresja, której ten test pilnuje: wskrzeszenie przestaje być niemożliwe '.
+        'konstrukcyjnie i staje się kwestią tego, czy ktoś pamiętał o warunku.'
+    );
 });
 
 it('znacznik unieważnienia PRZEŻYWA wyczyszczenie cache — brak trybu cichego otwarcia', function (): void {
