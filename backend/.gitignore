@@ -26,3 +26,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /storage/slad-wylogowania
+
+# Puls harmonogramu — ARTEFAKT DZIAŁANIA, nie kod (12.08).
+# Wszedł raz do commita przez `git add` na katalogu; plik powstaje przy
+# każdym uruchomieniu `gabinet:puls` i jego obecność w repozytorium
+# oznaczałaby, że stan jednego przebiegu podróżuje z kodem.
+/storage/puls-harmonogramu
