@@ -128,3 +128,65 @@ it('skaner znaczników naprawdę coś znajduje — inaczej powyższy test jest p
 
     expect($wTestach)->not->toHaveKey('W-999');
 });
+
+it('każdy `@dowod:` wskazuje klasę testową, która ISTNIEJE', function (): void {
+    // ⛔ ZNALEZISKO NIEZALEŻNEGO WERYFIKATORA (12.08).
+    //
+    // Adnotacja `@dowod: NazwaTestu` jest w tym repozytorium obietnicą pokrycia:
+    // mówi czytelnikowi „ten mechanizm ma świadka i oto on". Dwie z jedenastu
+    // wskazywały klasy, KTÓRE NIE ISTNIEJĄ — `SladNieKlamieTest`
+    // i `TrwaloscRejestruSesjiTest`. Mechanizmy były przetestowane (w innym,
+    // realnym pliku), więc nie było luki w pokryciu — była luka w PRAWDZIWOŚCI
+    // dokumentacji, czyli dokładnie ta klasa, którą ten plik egzekwuje.
+    //
+    // Nic tego nie łapało: kontrola wyżej pyta o ZNACZNIKI znalezisk (`R6B-9`),
+    // a nie o istnienie wskazanej klasy. Luka leżała w cieniu drugiej kontroli,
+    // zdjętej z bramki (D3) — dwie ślepe plamy nałożone na siebie.
+    $brakujace = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(base_path('app'), FilesystemIterator::SKIP_DOTS)
+    );
+
+    /** @var SplFileInfo $plik */
+    foreach ($iterator as $plik) {
+        if ($plik->getExtension() !== 'php') {
+            continue;
+        }
+
+        $tresc = (string) file_get_contents($plik->getPathname());
+
+        if (preg_match_all('/@dowod:\s*([A-Z][A-Za-z0-9]*Test)\b/', $tresc, $trafienia) === 0) {
+            continue;
+        }
+
+        foreach (array_unique($trafienia[1]) as $klasa) {
+            $sciezki = glob(base_path('tests/**/'.$klasa.'.php')) ?: [];
+            $sciezki = array_merge($sciezki, glob(base_path('tests/*/'.$klasa.'.php')) ?: []);
+
+            if ($sciezki === []) {
+                $brakujace[] = $klasa.' (obiecany w: '.$plik->getFilename().')';
+            }
+        }
+    }
+
+    sort($brakujace);
+
+    expect($brakujace)->toBe(
+        [],
+        "Adnotacja `@dowod:` wskazuje klasę testową, której NIE MA:\n  ".
+        implode("\n  ", $brakujace)."\n".
+        'Obietnica pokrycia wskazująca w próżnię jest gorsza od jej braku: czytelnik '.
+        'przestaje szukać świadka, bo wierzy, że go znalazł.'
+    );
+});
+
+it('KONTROLA NEGATYWNA: skaner `@dowod:` widzi nazwę wskazującą w próżnię', function (): void {
+    // Bez tego „zero brakujących" przechodzi także wtedy, gdy wyrażenie nie
+    // dopasowuje NICZEGO — czyli gdy kontrola jest ślepa na badane zjawisko.
+    $sztuczny = '/** @dowod: KlasaKtorejNieMaTest — obietnica bez pokrycia. */';
+
+    expect(preg_match_all('/@dowod:\s*([A-Z][A-Za-z0-9]*Test)\b/', $sztuczny, $t))->toBe(1);
+    expect($t[1][0])->toBe('KlasaKtorejNieMaTest');
+    expect(glob(base_path('tests/*/'.$t[1][0].'.php')) ?: [])->toBe([]);
+});

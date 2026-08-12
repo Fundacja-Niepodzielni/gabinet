@@ -37,7 +37,7 @@ use RuntimeException;
  * i ile NAPRAWDE zniknelo. „Zero skasowanych” przestalo byc nieodroznialne od
  * „rejestr pusty”.
  *
- * @dowod: TrwaloscRejestruSesjiTest — mapa PRZEZYWA `Cache::flush()`.
+ * @dowod: TrwaloscMagazynowTest — mapa PRZEZYWA `Cache::flush()`.
  */
 final class RejestrSesji
 {

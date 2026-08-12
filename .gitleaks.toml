@@ -135,3 +135,16 @@ zapala skaner — dowiedzione przyneta przy naprawie (patrz ZLECENIE-048).
 """
 targetRules = ["generic-api-key"]
 regexes = ['''aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA''']
+# ZAKRES ZAWEZONY DO TRZECH COMMITOW (12.08, po pomiarze weryfikatora).
+#
+# Opis wyzej mowil „domyka WYLACZNIE HISTORIE", a `targetRules` + `regexes`
+# bez `commits` zwalnialy te wartosc WSZEDZIE: takze w drzewie roboczym
+# i we wszystkich przyszlych commitach. Zdanie bylo nieprawdziwe wobec
+# wlasnej implementacji — dokladnie klasa „dokumentacja klamiaca o kodzie",
+# ktora ta sesja zamyka gdzie indziej. Zmierzyl to niezalezny weryfikator:
+# doslowna przyneta w `perturbuj.py` dawala `no leaks found`.
+commits = [
+  "31727fb215",
+  "f24dfec",
+  "4ad5728",
+]

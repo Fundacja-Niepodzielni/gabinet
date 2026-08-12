@@ -152,11 +152,31 @@ const OCZEKIWANE_TRASY = [
  *
  * CZEGO TA KONTROLA NIE LAPIE (mowie wprost)
  *
- * Mechanizmu hasel da sie teoretycznie napisac BEZ funkcji kryptograficznej —
- * porownaniem `===` zapisanego sekretu. Tego ta kontrola nie widzi. Lapie to
- * DRUGA, niezalezna siec: `OCZEKIWANY_SCHEMAT` jest allowlista tabel i kolumn,
- * wiec kolumna na sekret nie ma gdzie powstac bez zapalenia bramki. Dwa
- * niezalezne mechanizmy, nie jeden z dwoma nazwami.
+ * Mechanizmu hasel da sie napisac BEZ funkcji kryptograficznej — porownaniem
+ * `===` zapisanego sekretu. TEGO TA KONTROLA NIE WIDZI I NIC INNEGO TEZ NIE.
+ *
+ * ⛔ SPROSTOWANIE 12.08 — POPRZEDNIA WERSJA TEGO AKAPITU BYLA NIEPRAWDZIWA.
+ *
+ * Stalo tu: „Lapie to DRUGA, niezalezna siec: OCZEKIWANY_SCHEMAT jest
+ * allowlista tabel i kolumn, wiec kolumna na sekret nie ma gdzie powstac".
+ * Niezalezny weryfikator to OBALIL POMIAREM: podlozyl weryfikacje sekretu
+ * opartu o `===`, z sekretem w ISTNIEJACEJ, DOPUSZCZONEJ kolumnie
+ * (`users.nazwa_wyswietlana`) — wszystkie dziewiec kontroli tego pliku
+ * przeszlo, `9 passed`.
+ *
+ * Allowlista schematu broni przed NOWA kolumna. Przy PONOWNYM UZYCIU
+ * istniejacej — obie siatki sa slepe.
+ *
+ * NOWEGO ZALECENIA NIE WPISUJE, i to jest decyzja, nie zaniechanie: dwa razy
+ * w tym repozytorium zalecenie wpisane bez pokrycia dalo ZIELONA KONTROLE NAD
+ * OTWARTA DZIURA. Luka jest ZGLOSZONA architektowi jako pozycja rundy 7
+ * (ZLECENIE-048) z pelnym opisem wektora.
+ *
+ * ⚠ I RZECZ NAJWAZNIEJSZA: ten plik dokumentuje DWA wczesniejsze obalenia
+ * i sam ostrzega, ze pisemne zapewnienie o braku dziury „uczy czytelnika
+ * przestac szukac". Poprzedni akapit byl TRZECIM takim zapewnieniem, napisanym
+ * przez autora, ktory to ostrzezenie mial przed oczami. Zostawiam ten zapis
+ * jako ostrzezenie dla nastepnego — mnie ono nie wystarczylo.
  */
 /**
  * Funkcje kryptograficzne DOPUSZCZONE w kodzie produkcyjnym tego repozytorium.

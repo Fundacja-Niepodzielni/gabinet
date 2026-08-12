@@ -60,7 +60,7 @@ use Illuminate\Support\Facades\File;
  *      `TozsamoscSesji` oddajace `null` zamiast pustej tozsamosci:
  *      BRAK WARTOSCI PRZED SPRAWDZANIEM WARTOSCI.
  *
- * @dowod: SladNieKlamieTest — katalog bez prawa zapisu daje NIE WIEM,
+ * @dowod: TrwaloscMagazynowTest — katalog bez prawa zapisu daje NIE WIEM,
  *         nigdy liczby (kontrola pozytywna i negatywna).
  */
 final class SladWylogowania

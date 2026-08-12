@@ -741,7 +741,22 @@ it('NOGA 1: tożsamość usunięta + ŻYWY refresh token → 401, i ZERO nowych 
     //   (401, licznik +1)        → próba odświeżenia była, IdP/walidacja odmówiły
     //   (401, licznik bez zmian) → OCZEKIWANE: nie ma czego odświeżać
     //
-    // Każda wartość ma dokładnie jeden świat — dlatego wolno tym mierzyć.
+    // ⚠ WARUNEK, BEZ KTOREGO TA TABELA JEST NIEPRAWDZIWA (dopisane 12.08 po
+    // pomiarze niezaleznego weryfikatora, ktory to obalil).
+    //
+    // Jednoznacznosc zachodzi WYLACZNIE przy PELNEJ granicy procesu. Weryfikator
+    // odtworzyl granice polowiczna (bez `StartSession`, bez ciasteczka) i zmierzyl
+    // `(200, licznik +1)` w swiecie, ktory NIE JEST wskrzeszeniem: przyrzad
+    // przeciekl tozsamosc do pamieci, a odswiezanie poszlo zwyczajna sciezka.
+    // Ta wartosc ma wiec DWA swiaty, dopoki granica jest polowiczna.
+    //
+    // Historycznie to wlasnie ten dyskryminator wyprodukowal diagnoze
+    // „odswiezanie wskrzesza tozsamosc", pozniej dwukrotnie obalana — czyli
+    // zostal uzyty, ZANIM byl gotowy. Napisanie „kazda wartosc ma jeden swiat"
+    // bez wymienienia tego warunku bylo powtorzeniem tamtego bledu.
+    //
+    // Warunek jest EGZEKWOWANY, nie zapisany: odczyt bazowy nizej (200 przy
+    // nietknietej tozsamosci) pada, gdy granica jest polowiczna.
     //
     // TOKEN WAŻNY 1 s — TO JEST ISTOTA TEGO TESTU, nie szczegół. Przy
     // `OdswiezanieSesji::MARGINES_S = 30` okno odświeżania jest wtedy otwarte
