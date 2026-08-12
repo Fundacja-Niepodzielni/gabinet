@@ -52,6 +52,21 @@ T0            := 2026-09-15 08:00:00 Europe/Warsaw      # wtorek; 06:00:00Z
 STREFA_SYS    := Europe/Warsaw
 ```
 
+> **⚠ REGUŁA WEJŚCIOWA — dopisana 12.08 po przeglądzie adwersarialnym (§10).**
+> **Datę przypadku dobiera się względem `T0`, nie względem kalendarza.** Pięć z czternastu
+> znalezisk przeglądu (`P-02`, `P-03`, `P-04`, `P-12`, `P-13`) to **jedna klasa**: data
+> wyglądała sensownie w kalendarzu (właściwy dzień tygodnia, właściwy rytm), a była
+> **przeszła albo obcięta regułą 2 h** względem zegara przypadku. Skutek bywa w obie strony
+> — raz test przechodzi z niewłaściwej przyczyny, raz świeci czerwono na sprawnym silniku.
+>
+> **Trzy pytania przed wpisaniem daty do szkieletu:**
+> 1. czy ten dzień jest **po** zegarze przypadku (nie „dziś", nie wczoraj)?
+> 2. czy godzina jest **co najmniej 2 h** po zegarze (reguła najbliższego terminu)?
+> 3. czy mieści się w **horyzoncie roli** (30 dni pacjent / 7 dni wystawianie)?
+>
+> Bezpieczna domyślna odległość w tym dokumencie: **tydzień od zegara przypadku**
+> (`T0` → `2026-09-22`). Wszystkie szkielety pisane po tym wpisie mają ją stosować.
+
 **Budowniczy `fixtureS1()`** — jedno miejsce, w którym powstaje stan bazowy planu §3.2:
 
 ```
@@ -185,6 +200,13 @@ KOTWICE  KONF-BUFOR, KONF-DL-KONS
 > **Stan przypięty:** `NEG` biegnie na stanie **po** `ARRANGE` (poprawka 18:00 już jest).
 > Prostuje to plan §5.A-03 — pierwsza wersja podawała `SLOTY = 4` **i** `poprawek = 1`,
 > czego nie da się mieć naraz.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-01`, POPRAWIONE.** `NEG` żąda tylko „odrzucone" — a to jest
+> spełnione także przez implementację, która **odrzuca KAŻDĄ drugą poprawkę tego dnia**,
+> bez patrzenia na kolizję. Odrzucenie z niewłaściwej przyczyny wygląda identycznie.
+> **Dopisz `POZ-2`:** `POPRAWKA.zapisz(dodaj, 2026-09-16 19:00)` (bez kolizji) →
+> **przyjęte**, `count(poprawki) == 2`, `count(w16) == 6`. Dopiero para „19:00 wchodzi,
+> 12:30 nie" mierzy kolizję, a nie licznik poprawek.
 
 #### SZK-A-04 → `F2-A-04` · Urlop wygrywa z rytmem, we wszystkich usługach naraz
 ```
@@ -203,6 +225,15 @@ KOTWICE  KONF-DL-KONS, KONF-DL-ADHD, KONF-BUFOR
 > `ŚWIADEK` i `NEG` to tu **ta sama miara** i jest to celowe: cztery zera nie znaczą nic,
 > dopóki nie wiadomo, że przed urlopem stały tam cztery liczby dodatnie. *(Prostuje plan
 > §5.A-04, gdzie stało `4, 4, 2, 2` — ADHD w `09:00–13:00` daje **2** sloty po 100 min.)*
+>
+> **⚠ PRZEGLĄD 12.08 — `P-02`, POPRAWIONE.** Urlop `14–18.09` **zachodzi na przeszłość**
+> względem `T0 = 2026-09-15 08:00`: `14.09` jest dniem minionym, a `15.09` obcina reguła
+> 2 h. Bez urlopu ten zakres i tak dałby `0 + 3 + 4 + 4 + 4`, więc **część oczekiwanego
+> zera pochodzi od zegara, nie od urlopu** — a `ŚWIADEK` mierzy `22.09`, czyli **inny
+> dzień**, więc niczego o tym zakresie nie dowodzi.
+> **Poprawka:** urlop `2026-09-21 .. 2026-09-25`; `ŚWIADEK` = suma slotów **tego samego
+> zakresu bez urlopu** == **20**; kontrola „poza urlopem" przenosi się na
+> `2026-09-28 .. 2026-10-02` == **20**.
 
 #### SZK-A-05 → `F2-A-05` · Urlop wygrywa również z poprawką
 ```
@@ -248,6 +279,14 @@ PERT     granica '<' zamiast '<=' → w == [4, 0, 0, 4, 4]
 OBS      pięć osobnych zapytań SLOTY
 KOTWICE  KONF-DL-KONS
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-03`, POPRAWIONE. To był BŁĄD WARTOŚCI, nie słaba kontrola.**
+> `w == [4, 0, 0, 0, 4]` dla dni `14.09 .. 18.09` jest **nieprawdą wobec poprawnej
+> implementacji**: `14.09` to dzień **miniony** względem `T0`, więc `SLOTY` zwróci tam `0`,
+> a test świeciłby czerwono na sprawnym silniku (fałszywa czerwień — gorsza od braku testu,
+> bo wysyła szukać defektu tam, gdzie go nie ma).
+> **Poprawka — całość o tydzień w przód:** urlop `2026-09-22 .. 2026-09-24`,
+> mierzone dni `2026-09-21 .. 2026-09-25` → `[4, 0, 0, 0, 4]`.
+> `NEG` (urlop jednodniowy) → `2026-09-22 .. 2026-09-22` → `[4, 0, 4, 4, 4]`.
 
 #### SZK-A-08 → `F2-A-08` · Urlop pokazuje, ile wizyt przełożyć — i niczego nie kasuje
 ```
@@ -263,6 +302,13 @@ PERT     urlop kasujący wizyty → count(rezerwacje) < 3
 OBS      count(rezerwacje) osobnym zapytaniem do bazy, NIE z odpowiedzi URLOP.zapisz
 KOTWICE  KONF-DL-KONS
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-04`, POPRAWIONE. `ARRANGE` jest NIEWYKONALNY.**
+> Wizyta `15.09 09:00` przy zegarze `T0 = 15.09 08:00` leży **godzinę** przed terminem,
+> a najbliższy możliwy termin to **2 h** — poprawna implementacja **odrzuci tę rezerwację**
+> i przygotowanie nigdy nie powstanie. Test padłby w `ARRANGE`, czyli w miejscu, w którym
+> nikt nie szuka defektu.
+> **Poprawka:** wizyty `2026-09-22 09:00`, `2026-09-23 09:00`, `2026-09-24 09:00`;
+> urlop `2026-09-22 .. 2026-09-24`. `NEG` (urlop bez wizyt) bez zmian.
 
 #### SZK-A-09 → `F2-A-09` · Jedna funkcja slotów — trzy konsumenty, jedna odpowiedź
 ```
@@ -325,6 +371,16 @@ KOTWICE  KONF-BUFOR, KONF-DL-KONS
 ```
 > **2 kontra 3** to jedyna liczba odróżniająca bufor od zwykłej kontroli nakładek.
 > Kontrola nakładek daje `3` i wygląda poprawnie na ekranie.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-05`, POPRAWIONE.** `NEG` ustawia `bufor_min := 0`, ale ten sam
+> parametr **buduje raster**: przy zerze siatka przestaje być 60-minutowa i robi się
+> 50-minutowa, więc starty byłyby `[09:00, 09:50, 10:40, 11:30]`, a **nie**
+> `[09:00, 10:00, 12:00]`. Kontrola negatywna przeczy własnej przesłance.
+> **Poprawka — nie ruszamy parametru, przesuwamy wizytę.** `NEG`: wizyta ręczna
+> `11:05–11:55` → `count == 2`, ale **starty `[09:00, 10:00]`**, nie `[09:00, 12:00]`:
+> `10:00` wchodzi (`10:50 + 10 == 11:00 ≤ 11:05`), `12:00` odpada (`11:55 + 10 == 12:05`).
+> **Ta sama liczba, inny zbiór** — dokładnie ten wzorzec, który zapisaliśmy przy `J-05`:
+> gdy operacja przesuwa coś w czasie, licznik jest niewrażliwy, mierzy się zbiór.
 
 #### SZK-B-02 → `F2-B-02` · ADHD zdejmuje dwa sloty konsultacji i bufor
 ```
@@ -338,6 +394,14 @@ PERT     długość ADHD liczona jako 60 min → count(w) == 3
 OBS      SLOTY + suma_zajetych_minut(2026-09-22) z bazy == 100
 KOTWICE  KONF-BUFOR, KONF-DL-ADHD, KONF-DL-KONS
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-06`, POPRAWIONE. PERTURBACJA BYŁA MARTWA.**
+> „ADHD liczone jako 60 min" daje zajętość `09:00–10:00` + bufor do `10:10`; slot `10:00`
+> nadal odpada (`10:00 < 10:10`), więc wynik to **wciąż 2** — **perturbacja nie zapala
+> testu**. Kontrola bez dowodu czerwieni jest traktowana jak nieistniejąca
+> (`D-2026-08-07-13`), a martwa mutacja to ta sama klasa co `N-3`.
+> **Poprawka:** `PERT: dlugosc_adhd := 50` (tyle co konsultacja) → zajętość `09:00–09:50`
+> + bufor do `10:00`, slot `10:00` **wchodzi** → `count == 3`, starty
+> `[10:00, 11:00, 12:00]` → **czerwony**. Sprawdzone rachunkiem, nie założone.
 
 #### SZK-B-03 → `F2-B-03` · Kierunek odwrotny: konsultacja zamyka oba sloty ADHD
 ```
@@ -405,6 +469,15 @@ KOTWICE  KONF-OKNO-24H, KONF-CENY
 > `NEG` nie jest tu „innym wejściem", tylko **inną osią**: termin wraca do puli po **obu**
 > stronach granicy (spec, tabela odwołań). Test bez tej osi przechodzi także wtedy, gdy
 > późne odwołanie blokuje termin na zawsze — a to jest strata godziny, nie tylko reguły.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-07`, POPRAWIONE. Dotyczy też `SZK-E-02` i `SZK-J-04`.**
+> Trzy pomiary graniczne odwołują **tę samą rezerwację `R`** trzy razy. Drugie i trzecie
+> wywołanie trafia w rezerwację **już odwołaną** — a wtedy `zwrot_gr == 0` może pochodzić
+> ze stanu „nie ma czego odwoływać", **nie z okna 24 h**. Trzecia wartość `0` jest wtedy
+> prawdziwa z niewłaściwej przyczyny, czyli test na granicy przechodzi przy **całkowicie
+> zepsutym oknie**.
+> **Poprawka:** każdy z trzech pomiarów na **świeżej kopii `R`** — tak, jak `SZK-E-03`
+> i `SZK-J-03` już to mają zapisane. Trzy kopie, trzy zegary, zero dziedziczenia stanu.
 
 #### SZK-E-02 → `F2-E-02` · Zegarowo, nie w dniach roboczych
 ```
@@ -419,6 +492,10 @@ KOTWICE  KONF-OKNO-24H, KONF-CENY
 ```
 > Odwołanie **sobotnie** jest przypadkiem rozstrzygającym: przy odczycie „dni robocze"
 > granica wypadłaby w piątek i sobota dałaby **0**. Granica wypada w niedzielę o 09:00.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-07` dotyczy również tego szkieletu.** `ACT`, `POZ-2` i `NEG`
+> odwołują **tę samą** rezerwację `R2` przy trzech różnych zegarach. **Świeża kopia
+> na każdy pomiar.**
 
 #### SZK-E-03 → `F2-E-03` · Brak progów pośrednich — zbiór wartości ma 2 elementy
 ```
@@ -469,6 +546,15 @@ PERT     kwota czytana z cennika bieżącego → w == [16500, 16500]
 OBS      kwota_zamrozona z bazy + zwrot_gr z operacji — dwa źródła
 KOTWICE  KONF-CENY, KONF-OKNO-24H
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-08`, ZGŁOSZONE (nie poprawiam sam).**
+> **Ten szkielet zamraża kwotę przy `REZERWACJA.utworz`, a `SZK-D-06` — przy
+> `BLOKADA.zaloz`.** To dwa różne momenty i **oba są w moich szkieletach**, czyli jedna
+> rzecz opisana dwa razy, rozbieżnie (`P3`). Przy ścieżce psychologa dzieli je **48 h**,
+> w których cennik może się zmienić.
+> **Rekomendacja: zamrożenie w chwili ZAŁOŻENIA BLOKADY** — bo to wtedy pacjent dostaje
+> kwotę do zapłaty w linku, a zwrot ma się równać temu, co naprawdę zapłacił
+> (`CLAUDE.md` §4). Przy ścieżce własnej oba momenty i tak się zbiegają.
+> **Wymaga jednej linijki w kontrakcie operacji** — `ZLECENIE-055` §3.
 
 #### SZK-G-02 → `F2-G-02` · Reguła anulacji zamrożona jako pełny zrzut
 ```
@@ -487,6 +573,15 @@ KOTWICE  KONF-OKNO-24H, KONF-CENY
 ```
 > Dwie rezerwacje, **jedna sekunda**, jedno wywołanie reguły, **dwie różne liczby**.
 > Test wykonujący tylko jedną rezerwację nie odróżnia zamrożenia od bieżącej konfiguracji.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-09`, POPRAWIONE. `ARRANGE` był NIEWYKONALNY.**
+> „zegar taki, by do **OBU** wizyt zostało 30 h" jest niemożliwy: wizyty dzieli godzina,
+> więc jeden zegar nie da 30 h do obu. Napisane tak, jakby liczba `30` była wymagana —
+> a wymagane jest tylko, żeby **obie mieściły się w przedziale (24 h, 48 h)**.
+> **Poprawka — konkretny zegar zamiast opisu:** `zegar := 2026-09-21 03:00` →
+> do `RA` (22.09 09:00) zostaje **30 h**, do `RB` (22.09 10:00) — **31 h**.
+> Obie w przedziale, więc werdykty `[14500, 0]` stoją.
+> `NEG`: `zegar := 2026-09-20 07:00` → **50 h** i **51 h** → `[14500, 14500]`.
 
 #### SZK-G-03 → `F2-G-03` · Niekompletny zrzut jest błędem, nie zgadywaniem
 ```
@@ -524,6 +619,14 @@ KOTWICE  —  (wartości pochodzą ze zrzutu, nie z konfiguracji: o to właśnie
 > trzeba przestawić **zanim** powstanie pierwsza rezerwacja. Dziś rezerwacji jest zero,
 > więc zmiana jest darmowa; po pierwszej — to albo zmiana wstecz (zakazana zasadą 4),
 > albo dwa kształty zrzutu na zawsze.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-10`, POPRAWIONE.** `ASSERT` żąda
+> `tp == max(start + 48 h, otwarcie_linku + 10 min)`, ale **`ARRANGE` nigdy nie otwiera
+> linku** — `otwarcie_linku` jest niezdefiniowane, więc `max()` nie ma drugiego argumentu.
+> Asercja odwołująca się do zdarzenia, którego nie było, jest spełnialna dowolnie.
+> **Poprawka:** ten szkielet asertuje wyłącznie `tp == start + 48 h` (kształt zrzutu,
+> dwie ścieżki, jeden zestaw pól). **Drugi stopień ma własny szkielet — `SZK-D-04`** —
+> i tam `LINK.otworz` jest w `ACT`. Jedna rzecz, jedno miejsce.
 
 #### SZK-G-05 → `F2-G-05` · Zamrożenie nie dotyczy dostępności
 ```
@@ -540,6 +643,12 @@ PERT     zmiana rytmu przesuwa istniejące wizyty → termin(R) ≠ 10:00
 OBS      termin wizyty z bazy + SLOTY
 KOTWICE  KONF-BUFOR, KONF-DL-KONS
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-11`, POPRAWIONE.** `NEG` mówi
+> `suma_zajetych_minut(22.09) == 300` i **miesza dwie różne wielkości**: 240 min to
+> **sloty oferowane** z nowego zakresu, a 60 min to **wizyta zajęta**. Suma `300` nie jest
+> żadną z tych rzeczy i przechodzi przy implementacji, która liczy jedno zamiast drugiego.
+> **Poprawka — dwie osobne asercje:** `count(SLOTY(22.09)) == 4` (oferta z nowego zakresu)
+> **oraz** `suma_zajetych_minut(22.09) == 60` (wyłącznie zarezerwowana wizyta `10:00`).
 
 ---
 
@@ -689,6 +798,14 @@ KOTWICE  KONF-STREFA
 ```
 > **Data `2026-11-17`, nie `2026-11-15`** — 15 listopada 2026 to **niedziela**, a rytm
 > bazowy obejmuje pon–pt. Prostuje plan §5.H-01.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-12`, POPRAWIONE. Ta sama klasa co `P-03`, druga strona.**
+> Poprawiłem dzień tygodnia, a **przeoczyłem zegar**: przy `T0 = 2026-09-15 08:00` reguła
+> 2 h odcina wszystko przed `10:00`, więc **slotu `09:00` dnia `2026-09-15` po prostu nie
+> ma** (potwierdza to `SZK-C-01`: tego dnia sloty to `10:00, 11:00, 12:00`).
+> `a := SLOTY(…)[start 09:00]` byłoby **puste**.
+> **Poprawka:** pierwszy pomiar na `2026-09-22` (wtorek, CEST, tydzień od `T0`) →
+> `start_utc(a) == 2026-09-22 07:00:00Z`. Drugi bez zmian.
 
 #### SZK-H-02 → `F2-H-02` · Doba 23-godzinna, zakres 15:00–20:00
 ```
@@ -793,6 +910,16 @@ PERT     granica doby wyznaczana w UTC → 23 i 25 znikają
 OBS      liczba slotów ORAZ suma minut — dwie miary tego samego
 KOTWICE  KONF-STREFA, KONF-BUFOR, KONF-DL-KONS
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-13`, POPRAWIONE. Znowu zegar, trzeci raz.**
+> Pomiar `b` bierze `zegar := T0` i dzień `2026-09-15` — czyli **ten sam dzień**.
+> Przy rytmie całodobowym reguła 2 h odcina wszystko przed `10:00`, więc wyszłoby
+> **14 slotów, nie 24**, i `[23, 24, 25]` padłoby na sprawnym silniku.
+> **Poprawka:** `zegar := 2026-09-10 08:00` dla pomiaru `b` (dzień mierzony bez zmian:
+> `2026-09-15`). Pomiary `a` i `c` mają zegary z wyprzedzeniem 3 dni — są poprawne.
+>
+> **Wniosek do zasad planu:** trzy z czternastu znalezisk tego przeglądu (`P-02`, `P-03`,
+> `P-04`, `P-12`, `P-13` — właściwie pięć) to **jedna klasa: data przypadku ustawiona
+> względem kalendarza, a nie względem zegara `T0`**. Dopisuję do §1 regułę wejściową.
 
 ---
 
@@ -977,6 +1104,11 @@ PERT     ścieżka „zapłacone, więc rezerwuj" → count(rezerwacje) == 2
 OBS      liczba wierszy rezerwacji z bazy + liczba zadań z osobnej tabeli
 KOTWICE  KONF-CENY
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-08` dotyczy również tego szkieletu.** `ARRANGE` przypisuje
+> `kwota_zamrozona` już **blokadzie**, a `SZK-G-01` zamraża dopiero przy
+> `REZERWACJA.utworz`. Do czasu rozstrzygnięcia (`ZLECENIE-055` §3) czytaj oba szkielety
+> jako **zamrożenie w chwili założenia blokady** — inaczej `kwota(zadanie) == 14500`
+> nie ma skąd pochodzić, bo pacjent `A` nigdy nie doszedł do utworzenia rezerwacji.
 
 #### SZK-D-07 → `F2-D-07` · Limit równoczesnych nieopłaconych blokad (`Q-12` = 2)
 ```
@@ -1047,6 +1179,19 @@ OBS      LIMIT.pacjent ORAZ niezależne zliczenie wierszy rezerwacji z bazy —
          licznik agregowany i policzone wiersze MUSZĄ się zgadzać
 KOTWICE  —   (limit_niskoplatnych_wizyt: kotwica w etapie B razem z grupą F)
 ```
+> **⚠ PRZEGLĄD 12.08 — `P-14`, POPRAWIONE. Dotyczy `F-01`, `F-04`, `F-05`, `F-07`, `F-08`.**
+> Terminy rezerwacji zapisałem jako `…`, a odrzucenie jako samo `odrzucone(422)`.
+> **Odrzucenie bez wskazanej przyczyny jest spełnione także przez „brak wolnego slotu"** —
+> a przy nieprzypiętych terminach to scenariusz całkiem prawdopodobny, bo rytm niskopłatny
+> daje tylko **2** sloty na wtorek. Test limitu przechodziłby wtedy, mierząc dostępność.
+> To ta sama klasa co **milcząca czerwień** w perturbacjach (`D-2026-08-07-22`): odmowa
+> z niewłaściwego powodu wygląda identycznie jak odmowa właściwa.
+> **Poprawka, dwie części:**
+> 1. **terminy przypięte co do daty i godziny**, z jawnym świadkiem
+>    `count(wolne_terminy_niskopłatne) ≥ liczba planowanych rezerwacji`;
+> 2. **każda odmowa asertuje PRZYCZYNĘ**: `przyczyna == LIMIT_PACJENTA` —
+>    tak, jak `SZK-F-10` już to robi. `F-10` był wzorcem, tylko go nie zastosowałem
+>    do reszty grupy.
 
 #### SZK-F-02 → `F2-F-02` · Limit nie odnawia się w czasie
 ```
@@ -1282,6 +1427,11 @@ KOTWICE  KONF-OKNO-24H, KONF-STREFA, KONF-CENY
 > raz w tył. To jest argument, dla którego `Q-4` rozstrzygnięto na odczyt absolutny:
 > odczyt „ta sama godzina" daje raz 25 h, raz 23 h, czyli **reguła zmieniałaby wartość
 > dwa razy w roku**. Para tych szkieletów jest dowodem tej własności, nie ilustracją.
+>
+> **⚠ PRZEGLĄD 12.08 — `P-07` dotyczy również `SZK-J-04`.** `SZK-J-03` ma w `ACT`
+> dopisek „świeża kopia `R`", `SZK-J-04` go **nie ma** — a odwołuje tę samą rezerwację
+> trzy razy. **Świeża kopia na każdy z trzech pomiarów granicznych**, inaczej trzecia
+> wartość `0` może pochodzić ze stanu „już odwołana", nie z okna.
 
 #### SZK-J-05 → `F2-J-05` · Przełożenie: limit 2, płatność przechodzi, slot wraca od razu
 ```
@@ -1376,6 +1526,21 @@ KOTWICE  KONF-CENY
 > tam cena jest niezerowa, a **zeruje się przelew**. Implementacja, która utożsamia
 > „pacjent płaci 0" z `kwota_zamrozona == 0`, przechodzi `J-08` i psuje sprawozdanie
 > z dotacji (`Q-22`). Dlatego obie asercje stoją obok siebie w dwóch szkieletach.
+>
+> **⚠ PRZEGLĄD 12.08 — `Q-23`, NOWE PYTANIE. Nie zgaduję.**
+> W `fixtureS1()` **asystent zdrowienia siedzi w kategorii `NISKOPLATNE`** — a limit
+> „10 wizyt niskopłatnych na pacjenta" liczy… właśnie co? Wszystkie usługi tej kategorii,
+> czy **wyłącznie konsultacje niskopłatne (55 zł)**?
+> **Skutek jest realny:** przy szerszym odczycie pacjent korzystający z **bezpłatnego**
+> asystenta zdrowienia **zużywa pulę dofinansowanej terapii** — czyli darmowa usługa
+> odbiera dostęp do płatnej-dofinansowanej. To ta sama rodzina co `D-2026-08-09-08`
+> („gdyby licznik liczył wszystko, odciąłby ludzi płacących pełną stawkę"), tylko od
+> drugiej strony.
+> **Rekomendacja: limit liczy wyłącznie konsultacje niskopłatne.** Asystent zdrowienia
+> jest osobną usługą, bezpłatną i bezprowizyjną — nie jest wizytą, której pula dotyczy.
+> **Do rozstrzygnięcia:** czy kategoria `fundacja/komercja` (`CLAUDE.md` §3) jest tym
+> samym podziałem, co „wizyta niskopłatna" w liczniku. Dziś w moim fixture **jest** —
+> i to może być mój błąd modelowania, nie tylko pytanie o regułę.
 
 ---
 
@@ -1418,3 +1583,71 @@ gdyby parametr się rozjechał. Do etapu B zostaje 11 pozycji, wypisanych co do 
 4. **Każdy szkielet ma `PERT` przed uznaniem za zrobiony** (`K-01`), a dla ścieżek
    pieniężnych (`E`, `G`) — **allowlistę z fragmentem skopiowanym z kontroli**, nie
    z pamięci.
+
+---
+
+## 10 · Przegląd adwersarialny — wynik
+
+**Zlecony w `ODPOWIEDZ-053` §3.** Rama: **jedno pytanie na szkielet** — *czy ten szkielet
+przechodzi także wtedy, gdy reguła nie działa?* Poprawki **dopiskiem przy oryginale**,
+nigdy cichą podmianą.
+
+**Przejrzano: 68/68. Znalezisk: 14. Nowych pytań: 1 (`Q-23`).**
+
+**Licznik podaję także po to, żeby zero nie było domyślne.** Gdyby wyszło zero, byłby to
+sygnał o przeglądzie, nie o szkieletach — autor przeglądający własną pracę ma tendencję
+do potwierdzania jej, a `WYTYCZNE-PRACY.md` mówi wprost, że **atrybucji wygodnej nie obali
+ten, komu ona służy**.
+
+| # | szkielety | co było źle | klasa |
+|---|---|---|---|
+| `P-01` | `A-03` | `NEG` spełniony także przez „odrzuca każdą drugą poprawkę" — odmowa z niewłaściwej przyczyny | odmowa nieatrybuowana |
+| `P-02` | `A-04` | zakres urlopu zachodzi na przeszłość; część zera pochodzi od zegara, świadek mierzy inny dzień | data vs zegar |
+| `P-03` | `A-07` | **wartość oczekiwana nieprawdziwa** — `4` dla dnia minionego; fałszywa czerwień na sprawnym silniku | data vs zegar |
+| `P-04` | `A-08` | `ARRANGE` niewykonalny — wizyta 1 h po zegarze łamie regułę 2 h | data vs zegar |
+| `P-05` | `B-01` | `NEG` zmienia parametr, który **buduje raster** — przeczy własnej przesłance | parametr o dwóch rolach |
+| `P-06` | `B-02` | **perturbacja martwa** — „ADHD jako 60 min" daje ten sam wynik, test nie zapala się | brak dowodu czerwieni |
+| `P-07` | `E-01`, `E-02`, `J-04` | trzy pomiary graniczne na **tej samej** rezerwacji; `0` może pochodzić z „już odwołana" | dziedziczenie stanu |
+| `P-08` | `G-01` ↔ `D-06` | **moment zamrożenia kwoty opisany dwa razy, rozbieżnie** (blokada vs utworzenie) | `P3` — dwa opisy jednej rzeczy |
+| `P-09` | `G-02` | `ARRANGE` niewykonalny — jeden zegar nie da 30 h do dwóch wizyt odległych o godzinę | opis zamiast wartości |
+| `P-10` | `G-04` | `ASSERT` powołuje `otwarcie_linku`, którego `ARRANGE` nie wykonuje | asercja o zdarzeniu, którego nie było |
+| `P-11` | `G-05` | `300` miesza **sloty oferowane** z **minutami zajętymi** | dwie wielkości w jednej liczbie |
+| `P-12` | `H-01` | slot `09:00` tego dnia nie istnieje — obcięty regułą 2 h | data vs zegar |
+| `P-13` | `H-07` | `b == 24` nieprawdziwe z tego samego powodu — wyszłoby 14 | data vs zegar |
+| `P-14` | `F-01`, `F-04`, `F-05`, `F-07`, `F-08` | terminy nieprzypięte, odmowa bez asercji **przyczyny** — spełnione przez „brak wolnego slotu" | odmowa nieatrybuowana |
+
+**Szkieletów ze znaleziskiem: 21 z 68. Czystych: 47.** Do tego `SZK-J-08` niesie **nowe
+pytanie `Q-23`**, które nie jest znaleziskiem w szkielecie, tylko luką w regule — dlatego
+liczę je osobno, a nie doliczam do 21.
+
+**Rozbicie, bo suma bez rozbicia nie jest dowodem:**
+`A-03 · A-04 · A-07 · A-08 · B-01 · B-02 · E-01 · E-02 · G-01 · G-02 · G-04 · G-05 ·
+H-01 · H-07 · F-01 · F-04 · F-05 · F-07 · F-08 · D-06 · J-04` = **21**.
+
+*(Sprostowanie w trakcie pisania tej sekcji: napisałem najpierw „20 dotkniętych, 48
+czystych" — przeliczenie z rozbicia dało **21 i 47**. Pomyliłem się, bo `P-08` i `P-14`
+obejmują po kilka szkieletów, a liczyłem znaleziska zamiast pozycji. Zostawiam ślad,
+bo to ta sama klasa, którą ten przegląd tropi: liczba, która brzmi sensownie.)*
+
+### Trzy wnioski, nie czternaście
+
+1. **„Data vs zegar" to pięć z czternastu** (`P-02`, `P-03`, `P-04`, `P-12`, `P-13`) —
+   jedna klasa, nie pięć pomyłek. Data wyglądała poprawnie **w kalendarzu** (dobry dzień
+   tygodnia, właściwy rytm) i była zła **względem zegara przypadku**. Dlatego wynikiem
+   przeglądu jest **reguła wejściowa w §1**, a nie pięć poprawek.
+2. **Odmowa bez przyczyny to druga klasa** (`P-01`, `P-14`, 6 szkieletów). `SZK-F-10`
+   robił to poprawnie od początku — **miałem własny wzorzec i nie zastosowałem go
+   do reszty grupy**. To jest dokładnie ta sama rodzina co „milcząca czerwień"
+   w perturbacjach (`D-2026-08-07-22`).
+3. **Jedna perturbacja była martwa** (`P-06`). Sprawdziłem **rachunkiem** wszystkie
+   pozostałe `PERT` w grupach A, B, E, G, I, H, C, D, F, J — reszta zapala.
+   Martwa mutacja melduje sukces, nie zmieniwszy niczego; to najgorszy możliwy wynik
+   kontroli (`D-2026-08-07-18`, U-2/U-3).
+
+### Ograniczenie tego przeglądu — wpisane, nie przemilczane
+
+**To jest przegląd AUTORA.** Nie zastępuje niezależnego wykonania w etapie B i nie ma
+prawa być cytowany jako „szkielety zweryfikowane". Znalazłem 14 rzeczy w **swojej własnej**
+pracy, więc znalazłem te, które umiem zobaczyć. Klasy, których nie umiem zobaczyć,
+zostają — i to jest powód, dla którego etap B pisze się **przeciw kontraktowi**,
+a rundę weryfikacyjną prowadzi ktoś, kto tego nie pisał (`WYTYCZNE-PRACY.md` §2).

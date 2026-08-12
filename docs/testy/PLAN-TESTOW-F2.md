@@ -1084,10 +1084,12 @@ i nie liczy się do sumy 75.
   = 0 gr**, wywołań Stripe = **0**, oznaczenie „pokryta ze środków fundacji" obecne.
   Po **odmowie**: `Q-17` — slot zwolniony (`SLOTY` = 4) albo link wysłany (linków = 1).
   Dwie liczby, jedna decyzja.
-- **⚠ `Q-22` (dopisane 12.08 przy `SZK-J-07`):** „kwota = 0" jest **niejednoznaczne** —
-  `kwota_zaplacona` i `kwota_zamrozona` to dwie różne rzeczy i tu się rozjeżdżają.
-  Kandydaci na `kwota_zamrozona`: **5500** (cena usługi) albo **0**. Rozstrzyga kwotę
-  dopłaty fundacji w raporcie grantowym. Rekomendacja: **5500**. Piszę wg rekomendacji.
+- **✅ `Q-22` ROZSTRZYGNIĘTE (`ODPOWIEDZ-053` §2): wariant A.** `kwota_zamrozona` =
+  **5500** (cena usługi z cennika z dnia wizyty), `kwota_zaplacona` = **0**.
+  Odczyt B (obie zerowe) staje się **kontrolą negatywną**: czyniłby wizyty zwolnione
+  z opłaty niewidzialnymi dla sprawozdania z dotacji, czyli gubił dokładnie tę kategorię,
+  którą fundacja finansuje. Para `J-07`/`J-08` (zero w cenie kontra zero w przelewie)
+  zostaje jako egzekucja tego rozróżnienia.
 - **Pert.:** wniosek nieblokujący terminu → 4, czerwony.
 - **Obserwacja:** `SLOTY` + liczba wysyłek ze śladu.
 
@@ -1338,7 +1340,8 @@ rozstrzygnięciem. **`J-02` pozostaje jedynym przypadkiem bez pełnej wartości 
 | **Q-18** | Usługa 0 zł — czy w ogóle występuje blokada? | **nie** — rezerwacja potwierdzana natychmiast, `kwota_zamrozona = 0` |
 | **Q-20** | Kierunek „konto zamiast gościa" (`D-2026-08-09-10`) — czy F2 ma go zakładać? | **nie zakładam**; grupa F pisana przeciw **pacjentowi jako bytowi**, więc przeżyje obie wersje |
 | **Q-21** | Kto i kiedy ustala **kontrakt API F2** (§4) — potrzebny na wejście etapu B | KOD-SILNIK, przed pierwszym testem etapu B |
-| **Q-22** | **Czym jest `kwota_zamrozona` przy wizycie zwolnionej z opłaty** (`J-07`)? Cena usługi (**5500**) czy tyle, ile pacjent zapłacił (**0**)? | **5500** — `kwota_zamrozona` opisuje **wartość usługi**, nie przelew. Przy `0` fundacja traci w sprawozdaniu z dotacji ślad po własnym wkładzie (raport liczy dopłatę z cennika z dnia wizyty, spec M4/8). Dopisane 12.08 przy `SZK-J-07` |
+| **Q-22** | **Czym jest `kwota_zamrozona` przy wizycie zwolnionej z opłaty** (`J-07`)? | ✅ **ROZSTRZYGNIĘTE (`ODPOWIEDZ-053` §2): wariant A** — `kwota_zamrozona` = **cena usługi z cennika z dnia wizyty (5500)**, `kwota_zaplacona` = 0. Odczyt B czynił wizyty zwolnione z opłaty **niewidzialnymi dla sprawozdania z dotacji** |
+| **Q-23** | **Czy limit 10 wizyt niskopłatnych liczy WSZYSTKIE usługi kategorii „niskopłatne", czy wyłącznie konsultacje niskopłatne (55 zł)?** Dotyczy asystenta zdrowienia (0 zł) | **wyłącznie konsultacje niskopłatne.** Przy szerszym odczycie pacjent korzystający z **bezpłatnego** asystenta **zużywa pulę dofinansowanej terapii** — darmowa usługa odbiera dostęp do płatnej-dofinansowanej. Ta sama rodzina co `D-2026-08-09-08`, od drugiej strony. **Dopisane 12.08 przy przeglądzie adwersarialnym (`SZK-J-08`)** |
 
 **`Q-21` zamknięte w `ODPOWIEDZ-045` §1:** pierwsze zadanie F2 sesji KOD-SILNIK to
 **kontrakt operacji API**, drugie — **przestawienie kształtu zamrożonego zrzutu**
