@@ -11,10 +11,16 @@
 Plan mówi **co** ma być zmierzone i **jaką liczbą**. Ten dokument mówi **w jakiej
 kolejności i na jakim stanie**, tak żeby etap B był **przepisaniem**, nie projektowaniem.
 
-**Zakres:** grupy **A** (10), **B** (5), **E** (4), **G** (5), **I** (6) = **30 szkieletów**
-— te, których wartości nie zależą od pytań otwartych. `ODPOWIEDZ-045` §5 wymienia dodatkowo
-`H-01`…`H-03` i `H-06`; **nie ma ich tutaj**, bo zlecenie do tej rundy enumeruje pięć grup.
-Są gotowe do wzięcia i nic ich nie blokuje.
+**Zakres: 62 szkielety.**
+
+| runda | grupy | ile |
+|---|---|---|
+| pierwsza (`ZLECENIE-047`) | **A** 10 · **B** 5 · **E** 4 · **G** 5 · **I** 6 | **30** |
+| druga (`ODPOWIEDZ-047` §5) | **H** 7 · **C** 5 · **D** 9 · **F** 10 · `SZK-J-02` | **32** |
+
+Po drugiej rundzie **bez szkieletu zostają: `J-01` (odsyłacz), `J-03`…`J-08`, `K`, `L`**
+— powody w §8. `SZK-J-02` jest dopisany **na wyraźny wniosek** `ODPOWIEDZ-047` §5 („twarde
+liczby pisz teraz"), z częścią zgodową wstrzymaną na `Q-16`; nie oznacza otwarcia grupy J.
 
 **Jeden punkt podstawienia w etapie B.** Operacje (`SLOTY`, `RYTM.zapisz`, …) to nazwy
 kontraktowe z planu §4. Gdy KOD-SILNIK poda kontrakt API (`Q-21`, pierwsze zadanie F2),
@@ -634,15 +640,616 @@ KOTWICE  —
 
 ---
 
+## 7a · Przygotowania dodatkowe (grupy H, C, D, F)
+
+**`fixtureH(zakres)`** — grupa H bada **doby przestawienia zegarów**, a te wypadają
+w **niedzielę**. Rytm bazowy `S1` obejmuje pon–pt, więc na nim tych przypadków **nie da
+się zbudować** — slotu tam po prostu nie ma:
+
+```
+fixtureH(zakres):
+    S_H := specjalista(strefa: Europe/Warsaw)
+    usluga(KONS_PELNA, dlugosc: 50, cena_gr: 14500)
+    RYTM.zapisz(S_H, PELNOPLATNE, pon–nd, zakres)      # siedem dni, celowo
+```
+
+**`fixtureF(n_nisko, n_pelno)`** — pacjent `P` z zadaną **historią**, nie z zadanym
+licznikiem. Licznik ma się **wyliczyć**; wpisany wprost mierzyłby sam siebie:
+
+```
+fixtureF(n_nisko, n_pelno):
+    P := pacjent()
+    n_nisko × REZERWACJA.utworz(P, KONS_NISKA, <termin przeszły>, status: ODBYTA)
+    n_pelno × REZERWACJA.utworz(P, KONS_PELNA, <termin przeszły>, status: ODBYTA)
+```
+
+**`fixtureNY()`** — specjalista `S_NY` ze strefą `America/New_York` i **bez cyklicznego
+rytmu niskopłatnego**; terminy wystawiane wyłącznie pojedynczo. Rytm cykliczny dokładałby
+2 terminy w każdym tygodniu i licznik przestałby być jednoznaczny (`SZK-F-06` `NEG`).
+
+---
+
+## 7b · Grupa H — strefa czasowa i zmiana czasu
+
+#### SZK-H-01 → `F2-H-01` · Ta sama godzina lokalna, dwa różne offsety
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      a := SLOTY(S1, KONS_PELNA, 2026-09-15)[start 09:00]      # wtorek, CEST
+         zegar := 2026-11-10 08:00 Europe/Warsaw                  # wtorek, CET
+         b := SLOTY(S1, KONS_PELNA, 2026-11-17)[start 09:00]      # wtorek, CET
+ASSERT   start_utc(a) == 2026-09-15 07:00:00Z
+         start_utc(b) == 2026-11-17 08:00:00Z
+NEG      etykieta_lokalna(a) == etykieta_lokalna(b) == "09:00"
+         # sam UTC nie dowodzi prezentacji, sama etykieta nie dowodzi zapisu
+PERT     offset zapisany na stałe (+2) → start_utc(b) == 07:00:00Z
+OBS      kolumna terminu Z BAZY oraz pole prezentacyjne z API — dwie drogi
+KOTWICE  KONF-STREFA
+```
+> **Data `2026-11-17`, nie `2026-11-15`** — 15 listopada 2026 to **niedziela**, a rytm
+> bazowy obejmuje pon–pt. Prostuje plan §5.H-01.
+
+#### SZK-H-02 → `F2-H-02` · Doba 23-godzinna, zakres 15:00–20:00
+```
+ARRANGE  zegar := 2026-03-25 08:00 Europe/Warsaw ; fixtureH(15:00–20:00)
+ACT      w28 := SLOTY(S_H, KONS_PELNA, 2026-03-28)      # sobota, CET
+         w29 := SLOTY(S_H, KONS_PELNA, 2026-03-29)      # niedziela, doba 23 h, CEST
+ASSERT   count(w28) == 5 ; count(w29) == 5
+         starty_lokalne(w28) == starty_lokalne(w29) == [15:00,16:00,17:00,18:00,19:00]
+         starty_utc(w28) == [14:00Z, 15:00Z, 16:00Z, 17:00Z, 18:00Z]
+         starty_utc(w29) == [13:00Z, 14:00Z, 15:00Z, 16:00Z, 17:00Z]
+NEG      starty_utc(w28) ≠ starty_utc(w29)     # SAMA LICZBA NIE ODRÓŻNIA — 5 i 5
+PERT     offset brany z pierwszego dnia zakresu → starty_utc(w29) == starty_utc(w28)
+OBS      starty UTC z odpowiedzi + niezależne przeliczenie z kolumny bazy
+KOTWICE  KONF-STREFA, KONF-BUFOR, KONF-DL-KONS
+```
+> **To jest przypadek wprost z zakresu wdrożenia** (s. 17: *„zakres 15:00–20:00 w noc
+> przestawienia zegarów"*). Liczba slotów jest **identyczna po obu stronach zmiany czasu**
+> — test liczący tylko sloty przechodzi przy całkowicie zepsutej strefie.
+
+#### SZK-H-03 → `F2-H-03` · Doba 23-godzinna, zakres obejmujący nieistniejącą godzinę
+```
+ARRANGE  zegar := 2026-03-25 08:00 ; fixtureH(00:00–06:00)
+ACT      w29 := SLOTY(S_H, KONS_PELNA, 2026-03-29)
+         w28 := SLOTY(S_H, KONS_PELNA, 2026-03-28)
+ASSERT   count(w29) == 5 ; count(w28) == 6
+         starty_lokalne(w29) == [00:00, 01:00, 03:00, 04:00, 05:00]     # 02:00 NIE ISTNIEJE
+         starty_utc(w29)     == [2026-03-28 23:00Z, 00:00Z, 01:00Z, 02:00Z, 03:00Z]
+         odstępy(starty_utc(w29)) == [3600, 3600, 3600, 3600]           # ciągłe co godzinę
+ŚWIADEK  count(w28) == 6                                                # zakres daje 6
+NEG      count(starty_lokalne(w29) == 02:00) == 0
+PERT     sloty generowane przez dodawanie 3600 s do ETYKIETY lokalnej → pojawia się 02:00
+OBS      dwie listy: etykiety lokalne i starty UTC
+KOTWICE  KONF-STREFA, KONF-BUFOR, KONF-DL-KONS
+```
+
+#### SZK-H-04 → `F2-H-04` · Doba 25-godzinna, godzina powtórzona (`Q-3`)
+```
+ARRANGE  zegar := 2026-10-22 08:00 ; fixtureH(00:00–06:00)
+ACT      w25 := SLOTY(S_H, KONS_PELNA, 2026-10-25)      # niedziela, doba 25 h
+         w26 := SLOTY(S_H, KONS_PELNA, 2026-10-26)      # poniedziałek, doba 24 h
+ASSERT   count(w25) == 7 ; count(w26) == 6
+         count(starty_lokalne(w25) == 02:00) == 2
+         starty_utc dla tych dwóch == [2026-10-25 00:00Z (CEST), 01:00Z (CET)]
+         count(rozróżnialnych etykiet dla tych dwóch) == 2      # warunek z Q-3
+ŚWIADEK  count(w26) == 6
+NEG      przy odrzuconym odczycie („powtórzona godzina raz") → count(w25) == 6
+         i count(etykiet 02:00) == 1 — obie liczby są dziś CZERWIENIĄ, nie wariantem
+PERT     deduplikacja po etykiecie lokalnej → count(w25) == 6
+PERT-2   etykieta nierozróżnialna (dwa razy „02:00" bez znacznika) → czerwony
+         MIMO poprawnych 7 slotów — warunek etykiety jest częścią decyzji Q-3
+OBS      starty UTC i etykiety lokalne, dwie listy
+KOTWICE  KONF-STREFA, KONF-BUFOR, KONF-DL-KONS
+```
+
+#### SZK-H-05 → `F2-H-05` · Niezmiennik doby 25-godzinnej
+```
+ARRANGE  zegar := 2026-10-22 08:00 ; fixtureH(00:00–06:00)
+ACT      w := SLOTY(S_H, KONS_PELNA, 2026-10-25)
+ASSERT   count(duplikatów startu UTC)        == 0
+         count(duplikatów etykiety lokalnej) == 1        # jedna para: 02:00
+ŚWIADEK  count(w) == 7
+NEG      ten sam pomiar dnia 2026-10-26 → duplikatów UTC == 0, etykiet == 0
+PERT     klucz slotu budowany z etykiety lokalnej → jeden slot ginie
+         albo konflikt unikalności (specjalista_id, termin)
+OBS      zliczenie duplikatów W BAZIE, po kluczu (specjalista_id, termin UTC)
+KOTWICE  KONF-STREFA
+```
+> Ten klucz to ten sam, na którym stoi `CLAUDE.md` §6 i cała grupa I. **Tutaj rozstrzyga
+> się, czy jest odporny na zmianę czasu** — dwa sloty o etykiecie `02:00` muszą być dwoma
+> różnymi wierszami, a nie kolizją.
+
+#### SZK-H-06 → `F2-H-06` · Okna reguł niezależne od strefy pacjenta
+```
+ARRANGE  R_W := rezerwacja pacjenta ze strefą Europe/Warsaw,  wizyta 2026-09-22 09:00
+         R_NY:= rezerwacja pacjenta ze strefą America/New_York, wizyta 2026-09-22 09:00
+         obie: kwota_zamrozona 14500, zrzut z oknem 86 400 s
+ACT      zegar := 2026-09-21 08:59:59 Europe/Warsaw          # JEDEN moment absolutny
+         w := [ REZERWACJA.odwolaj(R_W).zwrot_gr, REZERWACJA.odwolaj(R_NY).zwrot_gr ]
+ASSERT   w == [14500, 14500]
+NEG      data_graniczna_prezentowana(R_W)  == "2026-09-21 09:00"
+         data_graniczna_prezentowana(R_NY) == "2026-09-21 03:00"     # EDT = UTC−4
+         # wynik reguły identyczny, PREZENTACJA różna — obie asercje w jednym przypadku
+PERT     okno liczone w strefie pacjenta → w == [14500, 0]
+OBS      zwrot_gr ×2 + pole prezentacyjne daty granicznej ×2
+KOTWICE  KONF-OKNO-24H, KONF-STREFA, KONF-CENY
+```
+> Sama równość zwrotów przechodzi także wtedy, gdy strefa pacjenta jest ignorowana
+> **wszędzie, łącznie z prezentacją** — a wtedy pacjent w Nowym Jorku dostaje godzinę,
+> której u siebie nie rozpozna. Dlatego `NEG` mierzy **różnicę** tam, gdzie ma być różnica.
+
+#### SZK-H-07 → `F2-H-07` · Doba jako jednostka ma 23 / 24 / 25 godzin
+```
+ARRANGE  fixtureH(00:00–24:00)
+ACT      zegar := 2026-03-26 08:00 ; a := SLOTY(S_H, KONS_PELNA, 2026-03-29)
+         zegar := T0               ; b := SLOTY(S_H, KONS_PELNA, 2026-09-15)
+         zegar := 2026-10-22 08:00 ; c := SLOTY(S_H, KONS_PELNA, 2026-10-25)
+ASSERT   [count(a), count(b), count(c)]                        == [23, 24, 25]
+         [suma_minut(a), suma_minut(b), suma_minut(c)]          == [1380, 1440, 1500]
+NEG      doba liczona jako 86 400 s → [24, 24, 24]
+         oraz ostatni slot 29.03 kończyłby się 01:00 dnia NASTĘPNEGO
+PERT     granica doby wyznaczana w UTC → 23 i 25 znikają
+OBS      liczba slotów ORAZ suma minut — dwie miary tego samego
+KOTWICE  KONF-STREFA, KONF-BUFOR, KONF-DL-KONS
+```
+
+---
+
+## 7c · Grupa C — horyzonty
+
+#### SZK-C-01 → `F2-C-01` · Najbliższy termin 2 h: trzy wartości na granicy
+```
+ARRANGE  fixtureS1()
+ACT      dla z ∈ [2026-09-15 07:59:59, 08:00:00, 08:00:01]:
+             zegar := z ; w[z] := SLOTY(S1, KONS_PELNA, 2026-09-15)
+ASSERT   [count(w[z])] == [3, 3, 2]
+         # próg = zegar + 2 h; slot 10:00 wchodzi, dopóki próg ≤ 10:00:00
+NEG      zegar := 2026-09-15 05:00:00 → count == 4      # cały dzień dostępny
+PERT     '>=' → '>' w progu → [3, 2, 2]
+OBS      SLOTY z jawnie podanym zegarem (K-6), nigdy z zegara maszyny
+KOTWICE  KONF-DL-KONS
+```
+
+#### SZK-C-02 → `F2-C-02` · Kalendarz pacjenta otwarty 30 dni
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      w := SLOTY(rola: PACJENT, S1, KONS_PELNA, 2026-09-15 .. 2026-11-15)
+ASSERT   count(dni z ≥1 slotem) == 23           # dni robocze 15.09 .. 15.10 włącznie
+         count(SLOTY(rola: PACJENT, …, 2026-10-15)) == 4     # czwartek, ostatni dzień okna
+         count(SLOTY(rola: PACJENT, …, 2026-10-16)) == 0     # piątek, dzień za oknem
+NEG      count(SLOTY(rola: GRAFIK, …, 2026-10-16)) == 4
+         # horyzont 30 dni to ograniczenie PREZENTACJI dla pacjenta, nie brak slotu
+PERT     horyzont liczony w miesiącach → pacjent widzi 2026-10-16
+OBS      dwa zapytania w dwóch rolach
+KOTWICE  KONF-DL-KONS
+```
+
+#### SZK-C-03 → `F2-C-03` · Wystawianie 7 dni w przód — egzekwowane w API
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      dla d ∈ [2026-09-21, 2026-09-22, 2026-09-23]:        # T0+6, T0+7, T0+8
+             wynik[d] := POPRAWKA.zapisz(S1, dodaj, d 18:00)
+ASSERT   [wynik[d]] == [przyjęte, przyjęte, odrzucone(422)]
+         count(poprawki(S1)) == 2
+NEG      ta sama operacja dla T0+8 przez KOORDYNATORA → odrzucone, count == 2   # Q-6
+PERT     kontrola przeniesiona do warstwy prezentacji → T0+8 przechodzi przez API
+OBS      count(poprawki) Z BAZY, nie z odpowiedzi operacji
+KOTWICE  —   (kotwica horyzontu powstaje razem z resztą grupy C w etapie B)
+```
+
+#### SZK-C-04 → `F2-C-04` · Termin ręczny spoza grafiku jest dozwolony
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      r := REZERWACJA.utworz(przez: SPECJALISTA, S1, KONS_PELNA, 2026-09-22 20:00)
+ASSERT   count(rezerwacje(S1, 2026-09-22))                    == 1
+         count(SLOTY(rola: PACJENT, S1, KONS_PELNA, 2026-09-22)) == 4
+         # godzina 20:00 NIE staje się slotem do rezerwacji dla innych
+         suma_zajetych_minut(2026-09-22) == 60
+NEG      termin ręczny 2026-09-22 12:30 (koliduje z rytmem przez bufor)
+         → count(SLOTY(…)) == 3, starty == [09:00, 10:00, 11:00]
+         # termin ręczny ZABIERA dostępność, nie dodaje
+PERT     termin ręczny publikowany jako slot → count(SLOTY) == 5
+OBS      SLOTY w roli pacjenta + count(rezerwacje) z bazy
+KOTWICE  KONF-BUFOR, KONF-DL-KONS
+```
+
+#### SZK-C-05 → `F2-C-05` · Horyzont 7 dni a termin ręczny — rozdzielone (`Q-6`)
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+ACT      p := POPRAWKA.zapisz(S1, dodaj, 2026-10-05 20:00)              # T0+20d
+         r := REZERWACJA.utworz(przez: SPECJALISTA, S1, KONS_PELNA, 2026-10-05 20:00)
+ASSERT   p == odrzucone      ; count(poprawki(S1))  == 0
+         r == przyjęte       ; count(rezerwacje(S1)) == 1
+         # ta sama data: ODRZUCONA jako wystawienie, PRZYJĘTA jako umówienie
+NEG      termin ręczny na 2026-09-14 20:00 (przeszłość) → odrzucone, count == 0
+         # zniesienie horyzontu W PRZÓD nie znosi kontroli przeszłości
+PERT     jedno wspólne sprawdzenie dla obu operacji → obie liczby jednakowe
+OBS      dwie tabele, dwa niezależne zapytania
+KOTWICE  —
+```
+> Wartość oczekiwana stoi na **rekomendacji** `Q-6` (nieblokujące, przyjęte w planie §8.2):
+> horyzont dotyczy **wystawiania dostępności**, nie umawiania konkretnej wizyty.
+
+---
+
+## 7d · Grupa D — blokada slotu
+
+**Wspólny cel grupy:** blokowany slot to zawsze `(S1, 2026-09-22 10:00)` — tydzień od `T0`,
+więc reguła `min(okno, czas_do_wizyty − M)` **nie przycina** okna i nie miesza się do
+pomiaru. Dzień ma bazowo **4** sloty; z blokadą — **3**.
+
+#### SZK-D-01 → `F2-D-01` · Rezerwacja własna: 10 min, trzy wartości
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+         t0 := T0 ; BLOKADA.zaloz(ścieżka: WLASNA, S1, 2026-09-22 10:00, pacjent: A)
+ACT      dla t ∈ [t0+09:59.999, t0+10:00.000, t0+10:00.001]:
+             zegar := t ; w[t] := count(SLOTY(S1, KONS_PELNA, 2026-09-22, pacjent: B))
+ASSERT   [w[t]] == [3, 3, 4]                    # konwencja K-1: okno domknięte
+NEG      bez blokady wszystkie trzy pomiary == 4
+PERT     blokada zwalniana wyłącznie przez zadanie cykliczne, nie przy odczycie
+         → w[t0+30 min] == 3
+OBS      SLOTY drugiego pacjenta ORAZ trzymane_do z bazy — „logicznie wygasła"
+         i „usunięta przez sprzątaczkę" to dwa różne stany
+KOTWICE  KONF-DL-KONS
+```
+
+#### SZK-D-02 → `F2-D-02` · Blokada dwustopniowa: zegar startuje po potwierdzeniu
+```
+ARRANGE  zegar := T0 ; fixtureS1() ; t0 := T0
+ACT      BLOKADA.zaloz(WLASNA, S1, 2026-09-22 10:00, pacjent: A)
+         zegar := t0+02:00 ; BLOKADA.potwierdz(…)
+ASSERT   trzymane_do == t0+12:00                # nie t0+10:00
+         count(SLOTY(…, pacjent: B)) w t0+11:00        == 3
+         count(SLOTY(…, pacjent: B)) w t0+12:00.001    == 4
+NEG      BEZ potwierdzenia: slot wraca po blokadzie wstępnej (Q-8 = 10 min)
+         count(SLOTY(…, pacjent: B)) w t0+10:00.001    == 4
+         # niepotwierdzony klikacz NIE trzyma slotu przez pełne okno
+PERT     zegar liczony od wyboru terminu → trzymane_do == t0+10:00
+OBS      trzymane_do z bazy + odczyt SLOTY drugim kontem
+KOTWICE  —   (blokada_koszyka_min i blokada_wstepna_min: kotwice w etapie B razem z grupą D)
+```
+> **Dwie liczby różniące się o 2 minuty i to jest cały mechanizm** (`D-2026-08-09-11` §4:
+> gdyby 10 minut liczyło się od wyboru terminu, krok z kodem zjadłby połowę okna).
+
+#### SZK-D-03 → `F2-D-03` · Umawianie przez psychologa: 48 h
+```
+ARRANGE  zegar := 2026-09-15 10:00 ; fixtureS1()
+ACT      BLOKADA.zaloz(ścieżka: PSYCHOLOG, S1, 2026-09-22 10:00, pacjent: A)
+ASSERT   trzymane_do == 2026-09-17 10:00
+         count(SLOTY(…, pacjent: B)) w 2026-09-17 09:59:59 == 3
+         count(SLOTY(…, pacjent: B)) w 2026-09-17 10:00:01 == 4
+NEG      ta sama operacja ścieżką WLASNA → trzymane_do == 2026-09-15 10:10
+         # jedna operacja, dwie ścieżki, dwie różne liczby
+PERT     obie ścieżki czytają jedno pole konfiguracji → trzymane_do równe
+OBS      trzymane_do z bazy
+KOTWICE  —
+```
+
+#### SZK-D-04 → `F2-D-04` · Drugi stopień: 10 minut od OTWARCIA linku (`Q-9`)
+```
+ARRANGE  blokada jak w SZK-D-03 (trzymane_do == 2026-09-17 10:00)
+ACT      zegar := 2026-09-17 09:55 ; LINK.otworz(token)
+ASSERT   trzymane_do == 2026-09-17 10:05          # max(2 dni, otwarcie + 10 min)
+POZ-2    płatność zaksięgowana 2026-09-17 10:03
+         → count(rezerwacje) == 1 ; count(zadania_zwrotu) == 0
+NEG      LINK.otworz o 2026-09-16 20:00 (dawno przed końcem)
+         → trzymane_do NADAL 2026-09-17 10:00, NIE 2026-09-16 20:10
+PERT     `min` zamiast `max` → trzymane_do == 2026-09-16 20:10
+OBS      trzymane_do przed i po LINK.otworz — dwa odczyty tego samego pola
+KOTWICE  —
+```
+> Uzasadnienie architekta (`ODPOWIEDZ-045`): *otwarcie linku nie może SKRACAĆ okna
+> pacjenta*. `NEG` jest tu ważniejszy od `ASSERT`: `min` zamiast `max` daje wynik, który
+> na pierwszy rzut oka wygląda jak działający drugi stopień.
+
+#### SZK-D-05 → `F2-D-05` · `okno = min(okno_ścieżki, czas_do_wizyty − M)`
+```
+ARRANGE  zegar := 2026-09-15 18:00 ; fixtureS1()
+ACT      BLOKADA.zaloz(PSYCHOLOG, S1, wizyta: 2026-09-16 09:00)    # wizyta JUTRO
+ASSERT   trzymane_do == 2026-09-16 07:00                            # M = 2 h
+         termin_wizyty − trzymane_do == 7200 s
+         trzymane_do < termin_wizyty                                # NIGDY po wizycie
+NEG      ta sama operacja dla wizyty 2026-10-15 09:00 (miesiąc naprzód)
+         → trzymane_do == 2026-09-17 18:00        # pełne 48 h, min nie przycina
+PERT     `min` usunięty → trzymane_do == 2026-09-17 18:00 dla wizyty JUTRZEJSZEJ,
+         czyli termin płatności PO wizycie
+OBS      trzymane_do z bazy + różnica do terminu wizyty w sekundach
+KOTWICE  —
+```
+
+#### SZK-D-06 → `F2-D-06` · Płatność po wygaśnięciu NIE tworzy wizyty
+```
+ARRANGE  blokada pacjenta A na (S1, 2026-09-22 10:00), kwota_zamrozona 14500
+         zegar := po trzymane_do(A)     → blokada wygasła
+         REZERWACJA.utworz(pacjent: B, ten sam termin)      # B zajął slot
+ACT      webhook „płatność zaksięgowana" pacjenta A
+ASSERT   count(rezerwacje WHERE specjalista=S1 AND termin=…) == 1        # to jest B
+         count(wizyty(A))         == 0
+         count(zadania_zwrotu(A)) == 1
+         kwota(zadanie)           == 14500                               # z ZAMROŻONEJ
+POZ-2    płatność PRZED wygaśnięciem → count(rezerwacje) == 1 (A), zadania == 0
+NEG      blokada wygasła, ale NIKT slotu nie zajął
+         → count(wizyty(A)) == 0 ; count(zadania) == 1, typ == KOORDYNATOR   # Q-11
+         # automat NIE tworzy wizyty nawet przy wolnym terminie
+PERT     ścieżka „zapłacone, więc rezerwuj" → count(rezerwacje) == 2
+         ALLOWLISTA (ścieżka pieniędzy)
+OBS      liczba wierszy rezerwacji z bazy + liczba zadań z osobnej tabeli
+KOTWICE  KONF-CENY
+```
+
+#### SZK-D-07 → `F2-D-07` · Limit równoczesnych nieopłaconych blokad (`Q-12` = 2)
+```
+ARRANGE  zegar := T0 ; fixtureS1() ; pacjent A
+ACT      w1 := BLOKADA.zaloz(WLASNA, S1, 2026-09-22 10:00, A)
+         w2 := BLOKADA.zaloz(WLASNA, S1, 2026-09-22 11:00, A)
+         w3 := BLOKADA.zaloz(WLASNA, S1, 2026-09-22 12:00, A)
+ASSERT   [w1, w2, w3] == [przyjęte, przyjęte, odrzucone(422)]
+         count(aktywne_blokady(A)) == 2
+         count(SLOTY(…, pacjent: B)) == 2                  # 4 − 2 zajęte
+NEG      po wygaśnięciu w1: BLOKADA.zaloz(…, A) → przyjęte, count(aktywne) == 2 (nie 3)
+PERT     limit liczony po SESJI zamiast po PACJENCIE
+         → ten sam pacjent z dwóch przeglądarek zakłada 4 blokady
+OBS      count(aktywne_blokady) z bazy, klucz = pacjent
+KOTWICE  —
+```
+> Perturbacja odtwarza scenariusz zamrażania grafiku (`D5` z `D-2026-08-09-08`).
+> Ten limit **zastąpił** kod przy każdej rezerwacji (`R-3`), więc jest dziś jedyną obroną.
+
+#### SZK-D-08 → `F2-D-08` · Wygaśnięcie blokady zostawia ślad
+```
+ARRANGE  blokada pacjenta A; zegar przesunięty za trzymane_do
+ACT      (wygaśnięcie)
+ASSERT   count(zdarzenia typu BLOKADA_WYGASLA dla A) == 1
+         count(zaplanowane_powiadomienia do A)       == 1     # kanał: F6
+NEG      blokada zakończona PŁATNOŚCIĄ → count(BLOKADA_WYGASLA) == 0
+PERT     ciche zwolnienie slotu → count == 0
+OBS      tabela zdarzeń (append-only), zapytanie niezależne od mechanizmu blokady
+KOTWICE  —
+```
+> `D-2026-08-09-08`: *cisza znaczy „nie wiem, czy mam wizytę"*. Zdarzenie liczymy tu,
+> wysyłkę — w F6; granica faz odnotowana w planie §7.
+
+#### SZK-D-09 → `F2-D-09` · „2 dni" a zmiana czasu (`Q-19` = 48 h absolutnych)
+```
+ARRANGE  zegar := 2026-10-24 10:00 CEST ; fixtureS1()
+ACT      BLOKADA.zaloz(PSYCHOLOG, S1, wizyta: 2026-10-27 09:00)
+ASSERT   trzymane_do == 2026-10-26 09:00 CET        # 48 h absolutnych
+         trzymane_do − start == 172800 s
+NEG      odczyt kalendarzowy dałby 2026-10-26 10:00 CET == 176400 s (49 h)
+         — to jest dziś CZERWIEŃ, nie wariant
+POZ-2    ta sama operacja w tygodniu bez zmiany czasu (start 2026-09-15 10:00)
+         → oba odczyty dają 2026-09-17 10:00; przypadek MUSI wtedy przechodzić
+         (kontrola, że w ogóle rozróżnia tylko tam, gdzie jest co rozróżniać)
+PERT-2   start 2026-03-27 10:00 CET → 48 h daje 2026-03-29 11:00 CEST (172800 s),
+         kalendarzowo 10:00 CEST (169200 s = 47 h) — rozjazd w DRUGĄ stronę
+OBS      trzymane_do w UTC ORAZ lokalnie, plus różnica w sekundach
+KOTWICE  KONF-STREFA
+```
+> `POZ-2` jest tu konieczne: bez niego przypadek przechodzi także przy implementacji,
+> która **zawsze** liczy kalendarzowo, a różnicę widać tylko dwa razy w roku.
+
+---
+
+## 7e · Grupa F — dwa rozłączne limity
+
+#### SZK-F-01 → `F2-F-01` · Limit pacjenta: 10 niskopłatnych, granica
+```
+ARRANGE  fixtureF(n_nisko: 9, n_pelno: 0)
+ASSERT   LIMIT.pacjent(P).pozostale == 1
+ACT      r10 := REZERWACJA.utworz(P, KONS_NISKA, …)
+         r11 := REZERWACJA.utworz(P, KONS_NISKA, …)
+ASSERT   r10 == przyjęte ; LIMIT.pacjent(P).pozostale == 0
+         r11 == odrzucone(422) ; LIMIT.pacjent(P).wykorzystane == 10      # nie 11
+NEG      fixtureF(8, 0) → dwie rezerwacje przyjęte, pozostale == 0, trzecia odrzucona
+PERT     granica '<' zamiast '<=' → r10 odrzucone, wykorzystane == 9
+OBS      LIMIT.pacjent ORAZ niezależne zliczenie wierszy rezerwacji z bazy —
+         licznik agregowany i policzone wiersze MUSZĄ się zgadzać
+KOTWICE  —   (limit_niskoplatnych_wizyt: kotwica w etapie B razem z grupą F)
+```
+
+#### SZK-F-02 → `F2-F-02` · Limit nie odnawia się w czasie
+```
+ARRANGE  fixtureF(10, 0), wizyty rozłożone na 3 lata (≈3 rocznie) ; zegar := T0
+ACT      w := LIMIT.pacjent(P)
+ASSERT   w.pozostale == 0
+NEG      zegar := T0 + 1 rok → pozostale NADAL == 0        # limit nie jest oknem
+POZ-2    fixtureF(9, 0) rozłożone tak samo → pozostale == 1
+PERT     liczenie w oknie 12 miesięcy → pozostale == 7
+OBS      LIMIT.pacjent przy dwóch różnych zegarach
+KOTWICE  —
+```
+
+#### SZK-F-03 → `F2-F-03` · Limit liczy WYŁĄCZNIE niskopłatne
+```
+ARRANGE  fixtureF(n_nisko: 0, n_pelno: 10)
+ASSERT   LIMIT.pacjent(P).pozostale == 10
+ACT      r := REZERWACJA.utworz(P, KONS_NISKA, …)
+ASSERT   r == przyjęte
+NEG      fixtureF(10, 0) → pozostale == 0,
+         ALE REZERWACJA.utworz(P, KONS_PELNA, …) == przyjęte
+         count(rezerwacje(P)) rośnie o 1
+PERT     licznik liczy wszystkie wizyty → pozostale == 0 w pierwszym przypadku
+         ALLOWLISTA — ten defekt ODCINA OD POMOCY ludzi płacących pełną stawkę
+OBS      LIMIT.pacjent + liczba rezerwacji per kategoria z bazy
+KOTWICE  —
+```
+> `D-2026-08-09-08` ⛔: *historia obejmuje wszystkie wizyty, LIMIT liczy tylko niskopłatne*.
+> Kontrola negatywna jest tu ważniejsza od pozytywnej — bada, czy wyczerpany limit
+> **nie zamyka** drogi pełnopłatnej.
+
+#### SZK-F-04 → `F2-F-04` · Licznik wisi na PACJENCIE, nie na klikającym
+```
+ARRANGE  P z 10 wizytami niskopłatnymi: 4 umówione przez PSYCHOLOGA,
+         3 przez PANEL pacjenta, 3 przez STRONĘ
+ASSERT   LIMIT.pacjent(P).wykorzystane == 10 ; pozostale == 0
+ACT      trzy próby 11. rezerwacji, po jednej każdą ścieżką
+ASSERT   wszystkie trzy == odrzucone(422)      # 3 × 422
+NEG      te same 10 wizyt rozdzielone na DWÓCH pacjentów (5 + 5)
+         → pozostale == [5, 5]                 # licznik nie skleja ludzi
+PERT     licznik po AUTORZE operacji → psycholog wyczerpuje limit swoim pacjentom
+OBS      LIMIT.pacjent dla obu pacjentów + trzy próby przez trzy ścieżki
+KOTWICE  —
+```
+> Spec mówi, że regułą jest umawianie niskopłatnych **przez psychologa** — ten defekt
+> trafiłby więc w **większość** wizyt niskopłatnych, a nie w przypadek brzegowy.
+
+#### SZK-F-05 → `F2-F-05` · Twarda bramka z jawnym wyjątkiem
+```
+ARRANGE  fixtureF(10, 0) → pozostale == 0
+ACT      p1 := LIMIT.podnies(P, +4, uzasadnienie: <41 znaków>)
+         p2 := LIMIT.podnies(P, +4, uzasadnienie: <39 znaków>)
+ASSERT   p1 == przyjęte  ; limit == 14 ; pozostale == 4 ; count(wpisy_dziennika) == 1
+         p2 == odrzucone ; limit == 14 ;                  count(wpisy_dziennika) == 1
+NEG      próba rezerwacji przy pozostale == 0 BEZ podniesienia
+         → 422 oraz count(wpisy_dziennika) == 0
+         # odmowa nie jest decyzją uznaniową i nie brudzi dziennika
+PERT     bramka zamieniona na ostrzeżenie → rezerwacja przechodzi przy pozostale == 0
+OBS      LIMIT.pacjent + count wierszy dziennika (tabela append-only, F5 — granica faz)
+KOTWICE  —
+```
+
+#### SZK-F-06 → `F2-F-06` · Limit podażowy 4/tydzień ISO — przy WYSTAWIANIU
+```
+ARRANGE  zegar := T0 ; fixtureS1()
+         # rytm niskopłatny (wt 15:00–17:00) daje 2 terminy w KAŻDYM tygodniu
+ASSERT   LIMIT.specjalista(S1, W39).wystawione == 2
+ACT      a := POPRAWKA.zapisz(S1, dodaj, NISKOPLATNE, 2026-09-22 17:00)
+         b := POPRAWKA.zapisz(S1, dodaj, NISKOPLATNE, 2026-09-22 18:00)
+         c := POPRAWKA.zapisz(S1, dodaj, NISKOPLATNE, 2026-09-22 19:00)
+ASSERT   wystawione(W39) po a, b, c == [3, 4, 4]
+         c == odrzucone(422) ; count(wskazanych terminów w komunikacie) == 1
+         wskazany termin == 2026-09-22 19:00
+NEG      ta sama operacja w tygodniu W40 (2026-09-29 17:00) → przyjęte
+         wystawione(W40) == 3      # 2 z RYTMU + 1 poprawka
+         wystawione(W39) == 4
+PERT     tydzień liczony od niedzieli → operacja z poniedziałku wpada do poprzedniej puli
+OBS      LIMIT.specjalista dla dwóch tygodni + liczba slotów niskopłatnych z bazy
+KOTWICE  —
+```
+> **`wystawione(W40) == 3`, nie 1** — rytm jest cykliczny i dokłada 2 terminy w każdym
+> tygodniu. Prostuje plan §5.F-06.
+
+#### SZK-F-07 → `F2-F-07` · Reset w poniedziałek 00:00 Warsaw, także dla innej strefy
+```
+ARRANGE  fixtureNY()      # strefa America/New_York, BEZ cyklicznego rytmu niskopłatnego
+         4 × POPRAWKA.zapisz(S_NY, dodaj, NISKOPLATNE, <terminy w W38>)
+ASSERT   LIMIT.specjalista(S_NY, W38).wystawione == 4
+ACT      zegar := 2026-09-20 23:30 America/New_York        # = 2026-09-21 05:30 Warsaw
+         w := POPRAWKA.zapisz(S_NY, dodaj, NISKOPLATNE, <termin>)
+ASSERT   w == przyjęte
+         wystawione(W38) == 4 ; wystawione(W39) == 1
+NEG      zegar := 2026-09-20 17:00 America/New_York        # = niedziela 23:00 Warsaw
+         → odrzucone ; wystawione(W38) == 4 ; wystawione(W39) == 0
+         # DWIE operacje w odstępie 6,5 h, po dwóch stronach granicy tygodnia
+PERT     tydzień liczony w strefie specjalisty → pierwsza operacja odrzucona
+OBS      LIMIT.specjalista dla obu tygodni
+KOTWICE  KONF-STREFA
+```
+
+#### SZK-F-08 → `F2-F-08` · Limit podażowy NIE działa przy rezerwacji
+```
+ARRANGE  wystawione(S1, W39) == 4
+         konfiguracja(limit_niskoplatnych_na_tydzien) := 2      # koordynator OBNIŻA
+ACT      4 × REZERWACJA.utworz(pacjenci: różni, KONS_NISKA, cztery wystawione terminy)
+ASSERT   count(rezerwacje) == 4 ; count(odmów) == 0
+NEG      po obniżeniu NOWE wystawienie odrzucone
+         → wystawione(W39) == 4 ; count(nowych) == 0        # w przód, nie wstecz (Q-13)
+PERT     sprawdzenie limitu przeniesione do ścieżki rezerwacji → count(odmów) == 2
+OBS      count(rezerwacje) z bazy + count odpowiedzi 422
+KOTWICE  —
+```
+> **To jest test MIEJSCA egzekwowania, nie wartości.** Spec podaje powód wprost: *pacjent
+> nigdy nie powinien zobaczyć wolnego terminu i dostać odmowy przy płatności — w najgorszym
+> możliwym momencie, po podjęciu decyzji i wyjęciu karty*.
+
+#### SZK-F-09 → `F2-F-09` · „Wystawiony" = slot OTWARTY (`Q-14`)
+```
+ARRANGE  wystawione(S1, W39) == 4
+ACT      REZERWACJA.utworz(pacjent, KONS_NISKA, <jeden z tych czterech terminów>)
+         piaty := POPRAWKA.zapisz(S1, dodaj, NISKOPLATNE, <nowy termin w W39>)
+ASSERT   wystawione(W39) == 4          # rezerwacja NIE zwalnia miejsca w puli podaży
+         piaty == odrzucone(422)
+NEG      odrzucony odczyt („otwarty i wolny") dałby wystawione == 3 i piaty == przyjęte
+         → wystawione == 5. Obie liczby są dziś CZERWIENIĄ, nie wariantem
+PERT     licznik pomijający terminy zarezerwowane → wystawione == 3
+OBS      LIMIT.specjalista + liczba slotów niskopłatnych z bazy, per stan
+KOTWICE  —
+```
+
+#### SZK-F-10 → `F2-F-10` · Dwa limity są rozłączne
+```
+ARRANGE  P z pozostale == 0 (10/10) ; S1 z wystawione(W39) == 3
+ACT      w := REZERWACJA.utworz(P, KONS_NISKA, <termin S1>)
+ASSERT   w == odrzucone ; przyczyna == LIMIT_PACJENTA
+         LIMIT.specjalista(S1, W39).wystawione == 3        # NIEZMIENIONE
+         LIMIT.pacjent(P).wykorzystane        == 10        # NIEZMIENIONE
+         # odmowa niczego nie konsumuje
+NEG      P2 z pozostale == 5 ; S1 z wystawione(W39) == 4
+         → rezerwacja PRZYJĘTA ; wystawione == 4 (rezerwacja nie podnosi podaży)
+           wykorzystane(P2) == 6
+         # dwa liczniki, cztery wartości, żadnego przecieku
+PERT     jeden wspólny licznik → jedna z czterech liczb się rozjeżdża
+OBS      dwa niezależne zapytania o liczniki
+KOTWICE  —
+```
+
+---
+
+## 7f · `SZK-J-02` — dopisane na wniosek `ODPOWIEDZ-047` §5
+
+Architekt poprosił, żeby **twarde liczby `J-02` napisać teraz**, a wartość zgody dopłynęła
+po spotkaniu z Fundacją (`Q-16`). Reszta grupy J czeka.
+
+#### SZK-J-02 → `F2-J-02` · Psycholog umawia osobę bez konta (część twarda)
+```
+ARRANGE  zegar := T0 ; fixtureS1() ; osoba X bez konta i bez rekordu pacjenta
+ACT      REZERWACJA.utworz(przez: PSYCHOLOG, S1, KONS_NISKA, 2026-09-22 15:00,
+                           dane: {imię, nazwisko, e-mail})
+ASSERT   count(rezerwacje ze statusem CZEKA_NA_PLATNOSC) == 1
+         count(rekordy_pacjenta pasujące do X)           == 1
+         count(kont utworzonych w tym momencie)          == 0
+         (po zaksięgowaniu płatności) LIMIT.pacjent(X).wykorzystane == 1
+NEG      ta sama osoba umówiona przez psychologa DRUGI raz
+         → count(rekordy_pacjenta) NADAL == 1 ; wykorzystane == 2
+PERT     tożsamość pacjenta wyprowadzana z identyfikatora rezerwacji → 2 rekordy
+OBS      count(rekordy_pacjenta) z bazy + LIMIT.pacjent z operacji — dwie drogi
+KOTWICE  —
+
+⛔ CZĘŚĆ ZGODOWA — WSTRZYMANA (Q-16, właściciel / spotkanie G7):
+         count(zapisane_zgody(X)) == ZGODY_Q16
+         kandydaci: 0 (zgody zbiera pacjent przy płatności)
+                    2 (psycholog potwierdza w imieniu — wymaga osobnej podstawy)
+         NIE ZGADUJĘ. Do rozstrzygnięcia ta asercja nie wchodzi do suity.
+```
+> **Stan zmierzony, który czyni `NEG` istotnym** (`D-2026-08-09-07`): dziś *te same dane
+> gościa dwa razy dają **dwa rekordy**, a jednoznaczność istnieje wyłącznie na
+> `keycloak_sub`*. Bez tego `NEG` licznik limitu jest fikcją — a na wizytach niskopłatnych
+> to **reguła, nie wyjątek**, że umawia psycholog.
+
+---
+
 ## 8 · Czego w tym dokumencie nie ma
 
 | co | dlaczego | warunek znoszący |
 |---|---|---|
-| `H-01`…`H-03`, `H-06` | `ODPOWIEDZ-045` §5 je wymienia, ale zlecenie tej rundy enumeruje pięć grup (A, B, E, G, I). **Nic ich nie blokuje** | następna runda — biorę je bez pytania (S-2) |
-| grupy `C`, `D`, `F`, `J`, `K`, `L` | wartości zależą od `Q-16` (grupa J) albo od kontraktu API (`Q-21`); reszta czeka na kolejność z `ODPOWIEDZ-045` | kontrakt API od KOD-SILNIK |
-| kotwice pozostałych 11 parametrów | kotwica bez przypadku, który jej używa, jest deklaracją | powstają razem z grupami C, D, F, J |
+| `J-03`…`J-08` | grupa J zależy od `Q-16` (`J-02`) i od rozstrzygnięć nieblokujących `Q-17`, `Q-18`; `J-03`/`J-04` są **gotowe do napisania** — czekają wyłącznie na kolejność | następna runda; `J-03`/`J-04` biorę bez pytania (S-2) |
+| grupa `K` (kontrole nad kontrolami) | mierzą **zbiór szkieletów**, więc mają sens dopiero, gdy zbiór jest zamknięty — dziś rósłby pod nimi | domknięcie wszystkich grup |
+| grupa `L` (wydajność) | mierzy **czas i liczbę zapytań**, czyli własności implementacji, nie kontraktu; szkielet bez kontraktu byłby zgadywaniem instrumentacji | kontrakt API + seed `S111` od KOD-SILNIK |
+| **kotwice 11 pozostałych parametrów** | kotwica bez przypadku, który jej używa, jest deklaracją. Po tej rundzie brakuje ich do `C`, `D`, `F` — **wypisane niżej**, nie przemilczane | etap B, razem z pierwszym testem grupy |
 | kod w `tests/` | nadal **etap A**; `tests/` otwiera się po merge F1 | merge F1 do `main` |
 | `fixtureS111()` w szczegółach | proporcje seeda (111 specjalistów, kilkanaście wizyt na pacjenta) należą do F1/F2 po stronie KOD-SILNIK; tu wołam go po nazwie | seed dostarczony razem z kontraktem |
+
+**Kotwice brakujące po tej rundzie** — parametry, których szkielety już używają, a które
+nie mają jeszcze wpisu w §2 (dopisuję je w etapie B, razem z pierwszym testem grupy):
+`min_wyprzedzenie_h` (2) · `horyzont_pacjenta_dni` (30) · `horyzont_wystawiania_dni` (7) ·
+`blokada_koszyka_min` (10) · `blokada_wstepna_min` (10) · `waznosc_linku_platnosci_h` (48) ·
+`okno_po_otwarciu_linku_min` (10) · `margines_przed_wizyta_h` (2) ·
+`limit_rownoczesnych_blokad` (2) · `limit_niskoplatnych_wizyt` (10) ·
+`limit_niskoplatnych_na_tydzien` (4).
+
+**Odnotowuję uczciwie:** to jest **dług**, nie decyzja. Szkielety `C`, `D`, `F` mają dziś
+literały w `ASSERT` (jak należy) i **żadnej kotwicy**, która nazwałaby przyczynę czerwieni,
+gdyby parametr się rozjechał. Do etapu B zostaje 11 pozycji, wypisanych co do jednej —
+żeby „kotwice są" nie znaczyło „kotwice są dla sześciu parametrów z siedemnastu".
 
 ---
 

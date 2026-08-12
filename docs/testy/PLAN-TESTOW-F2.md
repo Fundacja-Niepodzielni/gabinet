@@ -680,8 +680,11 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
   **wskazuje konkretny termin**, który nie przeszedł (spec M2/4) — liczba wskazanych
   terminów = **1**.
 - **Poz.:** 4 i jeden wskazany termin.
-- **Neg.:** ta sama piąta operacja w tygodniu **W40** → **przyjęta**, `wystawione(W40)` = **1**,
+- **Neg.:** ta sama piąta operacja w tygodniu **W40** → **przyjęta**, `wystawione(W40)` = **3**,
   `wystawione(W39)` = **4**. Pula liczy się per tydzień ISO, nie globalnie.
+  *(Sprostowanie 12.08: pierwsza wersja podawała `wystawione(W40)` = **1** — pominęła, że
+  **rytm jest cykliczny** i sam z siebie daje 2 terminy niskopłatne w KAŻDYM tygodniu,
+  więc po dołożeniu poprawki wychodzi 3, nie 1. Złapane przy `SZK-F-06`.)*
 - **Pert.:** tydzień liczony od niedzieli → operacja z poniedziałku wpada do poprzedniej puli,
   czerwony.
 - **Obserwacja:** `LIMIT.specjalista` dla dwóch tygodni + liczba slotów niskopłatnych z bazy.
@@ -823,7 +826,10 @@ perturbacja (dowód, że kontrola umie zaświecić), ścieżka obserwacji (anty-
 > dwa razy w roku"*.
 
 #### F2-H-01 · Ta sama godzina lokalna, dwa różne offsety
-- **Wejście:** slot `09:00` lokalnie dnia `2026-09-15` (CEST) i `2026-11-15` (CET).
+- **Wejście:** slot `09:00` lokalnie dnia `2026-09-15` (wtorek, CEST) i `2026-11-17`
+  (wtorek, CET). *(Sprostowanie 12.08: pierwsza wersja podawała `2026-11-15` — to
+  **niedziela**, a rytm bazowy obejmuje pon–pt, więc przypadku nie dałoby się zbudować:
+  slotu tam po prostu nie ma. Złapane przy `SZK-H-01`.)*
 - **Wynik:** w bazie **`07:00:00Z`** i **`08:00:00Z`**.
 - **Poz.:** dwie różne wartości UTC dla tej samej etykiety lokalnej.
 - **Neg.:** obie prezentowane jako **`09:00`** — etykieta lokalna identyczna.
