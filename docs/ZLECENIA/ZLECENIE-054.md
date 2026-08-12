@@ -12,9 +12,21 @@ strażnik (R-B) → pełna bramka OD ZERA → ten meldunek. Plik zamyka pozycję
 ```
 551c0c8c1e425e469a7f9f3b2189ba0bdd337877
 ```
-Gałąź `faza-1-retencja`, krótko `551c0c8`. **Od tej chwili nie commituję na tej
-gałęzi** — jeżeli cokolwiek dopiszę, zgłoszę to osobnym zleceniem z nowym SHA,
-żeby runda nie mierzyła ruchomego celu.
+Gałąź `faza-1-retencja`, krótko `551c0c8`. **To jest SHA KODU** — ostatni commit
+dotykający `backend/` i `skrypty/`.
+
+⚠ **HEAD jest DALEJ niż to SHA i tak ma być.** Sam ten meldunek jest commitem,
+więc zapisanie w nim „HEAD = X" byłoby identyfikatorem SAMOZWROTNYM: nieaktualnym
+od chwili zapisu (`WYTYCZNE-PRACY.md`, reguła o plikach stanu). Zamiast wartości,
+która się starzeje, zapisuję **warunek sprawdzalny**:
+
+```
+git diff --stat 551c0c8..HEAD -- backend/ skrypty/     # MUSI być puste
+```
+
+Dopóki to polecenie nic nie wypisuje, wszystko po `551c0c8` jest **wyłącznie
+dokumentacją**, a runda może mierzyć HEAD albo `551c0c8` — kod jest ten sam.
+Gdyby kiedykolwiek coś wypisało, zgłoszę to osobnym zleceniem z nowym SHA kodu.
 
 **Wynik bramki na tym SHA, przebieg OD ZERA:**
 
