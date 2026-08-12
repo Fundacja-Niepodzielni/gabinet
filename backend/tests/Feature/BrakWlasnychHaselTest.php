@@ -124,21 +124,145 @@ const OCZEKIWANE_TRASY = [
  */
 
 /**
- * Prymitywy, którymi w PHP da się utworzyć albo sprawdzić sekret
- * uwierzytelniający. Lista jest ZAMKNIĘTA — nie da się zweryfikować hasła
- * bez jednego z nich (albo bez własnej kryptografii, co samo w sobie byłoby
- * czerwoną flagą przy przeglądzie).
+ * ALLOWLISTA PRYMITYWOW KRYPTOGRAFICZNYCH — zbior DOPUSZCZONY, nie zakazany.
+ *
+ * Znalezisko R6A-4, waga KRYTYCZNA (CLAUDE.md §2). Poprzednia wersja tej
+ * kontroli WYLICZALA ZAKAZANE prymitywy — `password_hash`, `crypt`,
+ * `sodium_crypto_pwhash`, `Hash::`, `bcrypt`, `Auth::attempt`. Weryfikator
+ * rundy 6 zbudowal KOMPLETNY mechanizm wlasnych hasel na `hash(sha256, ...)`,
+ * czyli prymitywie SPOZA listy, i cala kontrola przeszla: 7 passed.
+ *
+ * Nad tamta lista stalo zdanie: „Lista jest ZAMKNIETA — nie da sie zweryfikowac
+ * hasla bez jednego z nich". Zdanie bylo NIEPRAWDZIWE, obalone jedna linijka,
+ * i samo przewidywalo dziure („albo bez wlasnej kryptografii"), po czym oddawalo
+ * ja czlowiekowi („czerwona flaga przy przegladzie"). Weryfikator krzyzowy Kont
+ * nazwal to cizszym niz sama luka: kontrola zawierala PISEMNE ZAPEWNIENIE,
+ * ZE DZIURY NIE MA — czyli uczyla czytelnika przestac szukac.
+ *
+ * DLACZEGO TA WERSJA NIE PRZEGRA TAK SAMO
+ *
+ * Zbior ZAKAZANY nie jest tu wypisany recznie. Pochodzi z RUNTIMEU PHP:
+ * `get_defined_functions()` daje wszystkie funkcje, jakie ta instalacja zna,
+ * a my bierzemy z nich rodziny kryptograficzne po PREFIKSIE. Nowa funkcja
+ * w rozszerzeniu `hash`, `openssl` czy `sodium` wchodzi w siec SAMA, bez
+ * niczyjej pamieci — bo to PHP ja zglasza, nie ja ja przewiduje.
+ *
+ * Reczna jest wylacznie ALLOWLISTA, czyli zbior funkcji, ktorym w tym
+ * repozytorium wolno wystapic w kodzie produkcyjnym. Dopisanie do niej wymaga
+ * swiadomej decyzji i zostawia slad w przegladzie — koszt wyjatku rowny
+ * kosztowi zgodnosci.
+ *
+ * CZEGO TA KONTROLA NIE LAPIE (mowie wprost)
+ *
+ * Mechanizmu hasel da sie teoretycznie napisac BEZ funkcji kryptograficznej —
+ * porownaniem `===` zapisanego sekretu. Tego ta kontrola nie widzi. Lapie to
+ * DRUGA, niezalezna siec: `OCZEKIWANY_SCHEMAT` jest allowlista tabel i kolumn,
+ * wiec kolumna na sekret nie ma gdzie powstac bez zapalenia bramki. Dwa
+ * niezalezne mechanizmy, nie jeden z dwoma nazwami.
  */
-const PRYMITYWY_POSWIADCZEN = '/('
-    .'password_hash\s*\(|password_verify\s*\(|'
-    .'crypt\s*\(|'
-    .'sodium_crypto_pwhash|'
+/**
+ * Funkcje kryptograficzne DOPUSZCZONE w kodzie produkcyjnym tego repozytorium.
+ *
+ * Dzis: `hash`, i wylacznie do skrotow NIEODWRACALNYCH pelniacych role klucza
+ * technicznego (`sid_skrot`, `email_skrot`) — nie do weryfikacji sekretu.
+ * `hash_equals` dopuszczone jako porownanie odporne na atak czasowy: jego BRAK
+ * jest defektem, a obecnosc sama w sobie nie tworzy poswiadczenia.
+ *
+ * Kazda inna funkcja z rodzin kryptograficznych PHP zapala bramke.
+ */
+/**
+ * MAPA: funkcja kryptograficzna -> pliki, w ktorych wolno jej wystapic.
+ *
+ * ZAKRES PLIKOW JEST TU ISTOTA, NIE OZDOBNIKIEM. Dopuszczenie `hash`
+ * globalnie odtwarzaloby DOKLADNIE atak weryfikatora rundy 6: mechanizm
+ * wlasnych hasel na `hash(sha256, $haslo)`. Allowlista bez zakresu jest
+ * denylista w przebraniu — dopuszcza nie funkcje, tylko jej dowolne uzycie.
+ *
+ * Kazdy wpis odpowiada na dwa pytania: CO wolno i GDZIE. Nowe uzycie
+ * dopuszczonej funkcji w NOWYM pliku zapala bramke tak samo, jak funkcja
+ * spoza listy — bo to wlasnie nowy plik bylby nosnikiem nowego mechanizmu.
+ *
+ * @var array<string, list<string>>
+ */
+const DOPUSZCZONE_PRYMITYWY = [
+    // Skrot NIEODWRACALNY w roli klucza technicznego: `sid_skrot` w rejestrze
+    // sesji i mapie SSO, `email_skrot` w modelu pacjenta, wyzwanie PKCE.
+    // ZADNE z tych uzyc nie weryfikuje sekretu podanego przez czlowieka.
+    'hash' => [
+        'app/Tozsamosc/KontaOidc.php',
+        'app/Tozsamosc/RejestrSesji.php',
+        'tests/Feature/KluczRetencjiTest.php',
+        'tests/Feature/ModelDanychTest.php',
+        'tests/Feature/NowaTrasaJestChronionaTest.php',
+        'tests/Feature/RetencjaWykonanieTest.php',
+        'tests/Feature/TrwaloscMagazynowTest.php',
+        'tests/Feature/WygasnieciePozwolenieTest.php',
+    ],
+
+    // Porownanie odporne na atak czasowy parametru `state` w OIDC. Jego BRAK
+    // bylby defektem; sama obecnosc nie tworzy poswiadczenia.
+    'hash_equals' => ['app/Http/Controllers/LogowanieController.php'],
+
+    // Sprawdzenie podpisu tokenu WYSTAWIONEGO PRZEZ IdP. To jest przeciwienstwo
+    // wlasnych hasel: dowod tozsamosci pochodzi z Kont Niepodzielni, a my go
+    // wylacznie WERYFIKUJEMY kluczem publicznym z JWKS.
+    'openssl_verify' => ['app/Tozsamosc/WalidatorTokenu.php'],
+
+    // Atrapa IdP w suicie: wytwarza pare kluczy i podpisuje tokeny testowe.
+    // Wylacznie kod testowy — w `app/` tych funkcji nie ma i nie ma ich prawa byc.
+    'openssl_pkey_new' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php'],
+    'openssl_pkey_get_details' => ['tests/Wsparcie/FabrykaTokenow.php'],
+    'openssl_sign' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php'],
+];
+
+/**
+ * Fasady i typy Laravela, przez ktore przechodzi UWIERZYTELNIANIE HASLEM.
+ *
+ * Osobno od funkcji, bo to nie sa funkcje — to statyczne wywolania i interfejsy,
+ * ktorych `get_defined_functions()` nie zna. Tu lista jest wyliczeniem
+ * ZAKAZANYCH i mowie to wprost, zamiast udawac allowliste: powierzchnia
+ * frameworka nie jest odpytywalna z runtimeu tak, jak zbior funkcji.
+ * Jej slabosc jest ODNOTOWANA, a nie zaklejona — i nie jest jedyna siecia,
+ * bo allowlista schematu nie pozwala powstac kolumnie na sekret.
+ */
+const POWIERZCHNIA_UWIERZYTELNIANIA = '/('
     .'Hash::|'
     .'\bbcrypt\s*\(|'
     .'Auth::attempt|->attempt\s*\(|'
     .'PasswordBroker|CanResetPassword|'
     .'Authenticatable'
     .')/';
+
+/**
+ * Rodziny funkcji kryptograficznych ZNANE TEJ INSTALACJI PHP.
+ *
+ * Zbior pochodzi z `get_defined_functions()`, nie z mojej pamieci — dlatego
+ * wariant „spoza listy" nie istnieje: gdy PHP doda funkcje do rozszerzenia
+ * `hash`, `openssl` albo `sodium`, wejdzie ona w siec bez zmiany tego pliku.
+ *
+ * @return list<string>
+ */
+function funkcjeKryptograficzne(): array
+{
+    $prefiksy = ['hash', 'crypt', 'password_', 'openssl_', 'sodium_', 'mcrypt_'];
+    $wynik = [];
+
+    $wszystkie = get_defined_functions();
+
+    foreach ($wszystkie['internal'] as $nazwa) {
+        foreach ($prefiksy as $prefiks) {
+            if (str_starts_with($nazwa, $prefiks)) {
+                $wynik[] = $nazwa;
+
+                break;
+            }
+        }
+    }
+
+    sort($wynik);
+
+    return $wynik;
+}
 
 /**
  * @return array<string, list<string>> tabela => posortowane kolumny
@@ -356,21 +480,119 @@ it('wystawia DOKŁADNIE zadeklarowane trasy', function (): void {
 // PRYMITYWY POŚWIADCZEŃ — w CAŁYM repozytorium, nie tylko w app/
 // ---------------------------------------------------------------------------
 
-it('nie używa ANI JEDNEGO prymitywu tworzącego lub sprawdzającego hasło', function (): void {
-    // Weryfikator schował `Hash::make`/`Hash::check` w `routes/web.php`,
-    // a `sodium_crypto_pwhash_str()` w `app/Wejscie/` — poprzedni skan
-    // obejmował wyłącznie `app/` i wyłącznie cztery funkcje.
+it('KAZDA uzyta funkcja kryptograficzna jest na ALLOWLISCIE — nieznane = odmowa', function (): void {
+    // R6A-4. Nie pytamy „czy jest tu cos zakazanego" (to przegrywa z wariantem
+    // spoza listy — przegralo u nas CZTERY RAZY), tylko „czy wszystko, co tu
+    // jest, zostalo DOPUSZCZONE".
+    $znane = funkcjeKryptograficzne();
+    $uzyte = [];
+
+    foreach (plikiPhpProjektu() as $plik) {
+        $tresc = bezKomentarzy((string) file_get_contents($plik));
+
+        foreach ($znane as $funkcja) {
+            // Granica z lewej odsiewa wywolania metod i dluzsze nazwy,
+            // nawias z prawej — wystapienia w napisach i komentarzach.
+            if (preg_match('/(?<![\\w$>-])'.preg_quote($funkcja, '/').'\\s*\\(/', $tresc) === 1) {
+                $uzyte[$funkcja][] = str_replace(base_path().'/', '', $plik);
+            }
+        }
+    }
+
+    // NARUSZENIEM jest jedno i drugie: funkcja spoza listy ORAZ dopuszczona
+    // funkcja w pliku, ktorego nikt dla niej nie dopuscil.
+    $naruszenia = [];
+
+    foreach ($uzyte as $funkcja => $pliki) {
+        $dozwolone = DOPUSZCZONE_PRYMITYWY[$funkcja] ?? null;
+
+        foreach ($pliki as $plik) {
+            if ($dozwolone === null || ! in_array($plik, $dozwolone, true)) {
+                $naruszenia[] = $funkcja.' w '.$plik;
+            }
+        }
+    }
+
+    sort($naruszenia);
+
+    expect($naruszenia)->toBe(
+        [],
+        sprintf(
+            'Prymityw kryptograficzny POZA dopuszczonym zakresem: %s. '.
+            'To jest miejsce, w ktorym R6A-4 przeszlo poprzednia kontrole: weryfikator '.
+            'zbudowal kompletny mechanizm wlasnych hasel na skrocie sha256, bo tamta '.
+            'lista wyliczala ZAKAZANE. Jesli to uzycie ma prawo istniec, dopisz plik '.
+            'do DOPUSZCZONE_PRYMITYWY SWIADOMIE i napisz PO CO — CLAUDE.md §2 mowi '.
+            'ZADNYCH wlasnych hasel w tym systemie.',
+            implode(', ', $naruszenia)
+        )
+    );
+
+    // Pustka to blad, nie zero: gdyby skan nie znalazl ANI JEDNEJ funkcji
+    // kryptograficznej, znaczyloby to, ze parser albo lista nie dzialaja —
+    // a `hash()` w tym repozytorium NA PEWNO jest (skroty sid i e-maila).
+    // `toContain()` w Pest traktuje kolejne argumenty jako KOLEJNE IGLY, nie jako
+    // komunikat — pulapka opisana wyzej w tym samym pliku, w ktora i tak wpadlem.
+    expect(in_array('hash', array_keys($uzyte), true))->toBeTrue(
+        'Skaner nie znalazl nawet hash(), ktory w tym repozytorium NA PEWNO jest. '.
+        'To znaczy, ze mierzy pustke, a jego zielone nic nie znaczy.'
+    );
+});
+
+it('KONTROLA NEGATYWNA: allowlista widzi prymityw, ktorego weryfikator NIE pokazal', function (): void {
+    // Perturbacja rozpinajaca KLASE, nie instancje: podkladamy prymityw spoza
+    // KAZDEJ listy w tym pliku i spoza tego, co pokazal weryfikator
+    // (`sodium_crypto_generichash`, `hash_hmac`) — czyli dokladnie wariant,
+    // na ktorym przegrywala kazda poprzednia denylista.
+    $sztuczny = '<?php sodium_crypto_generichash($x); hash_hmac($a, $b, $c);';
+    $trafione = [];
+
+    foreach (funkcjeKryptograficzne() as $funkcja) {
+        if (preg_match('/(?<![\\w$>-])'.preg_quote($funkcja, '/').'\\s*\\(/', $sztuczny) === 1) {
+            $trafione[] = $funkcja;
+        }
+    }
+
+    expect($trafione)->toContain('sodium_crypto_generichash')
+        ->and($trafione)->toContain('hash_hmac');
+
+    $spozaListy = array_values(array_diff($trafione, array_keys(DOPUSZCZONE_PRYMITYWY)));
+
+    expect($spozaListy)->not->toBe(
+        [],
+        'Podlozony prymityw spoza allowlisty NIE zapalil kontroli — czyli allowlista '.
+        'przepuszcza to samo, co przepuszczala denylista.'
+    );
+
+    // DRUGI KIERUNEK: dopuszczenie ma ZAKRES, a nie jest zgoda globalna. Bez tego
+    // `hash` bylby wolny wszedzie — czyli dokladnie ta droga, ktora weszedl
+    // weryfikator. Sprawdzamy KSZTALT wpisu, nie konkretna nazwe pliku: nazwa
+    // podana z palca jest zawsze nieobecna, wiec taka asercja nic by nie znaczyla.
+    foreach (DOPUSZCZONE_PRYMITYWY as $funkcja => $zakres) {
+        expect($zakres)->not->toBe(
+            [],
+            'Wpis allowlisty dla '.$funkcja.' ma PUSTY zakres plikow. Wpis bez zakresu jest '.
+            'zgoda globalna na prymityw kryptograficzny — a to odtwarza R6A-4: mechanizm '.
+            'wlasnych hasel wchodzi wtedy dowolnym plikiem.'
+        );
+    }
+});
+
+it('POWIERZCHNIA UWIERZYTELNIANIA frameworka: zadnego Hash::, bcrypt, Auth::attempt', function (): void {
+    // Druga siec, o SLABSZEJ konstrukcji i mowie to wprost: fasad i interfejsow
+    // Laravela nie da sie odpytac z runtimeu tak jak funkcji, wiec TA lista jest
+    // wyliczeniem zakazanych. Jej slabosc jest odnotowana, a nie zaklejona.
     $podejrzane = [];
 
     foreach (plikiPhpProjektu() as $plik) {
         $tresc = bezKomentarzy((string) file_get_contents($plik));
 
-        if (preg_match(PRYMITYWY_POSWIADCZEN, $tresc) === 1) {
+        if (preg_match(POWIERZCHNIA_UWIERZYTELNIANIA, $tresc) === 1) {
             $podejrzane[] = str_replace(base_path().'/', '', $plik);
         }
     }
 
-    expect($podejrzane)->toBe([], 'Pliki z prymitywami poświadczeń: '.implode(', ', $podejrzane));
+    expect($podejrzane)->toBe([], 'Pliki z powierzchnia uwierzytelniania: '.implode(', ', $podejrzane));
 });
 
 it('przeszukuje realny zbiór plików, w tym routes/ i bootstrap/', function (): void {
