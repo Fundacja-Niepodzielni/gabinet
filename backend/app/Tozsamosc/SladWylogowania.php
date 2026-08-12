@@ -123,8 +123,44 @@ final class SladWylogowania
 
     private static function zapisz(string $nazwa, string $wartosc): void
     {
-        File::ensureDirectoryExists(self::katalog());
-        File::put(self::katalog().'/'.$nazwa, $wartosc);
+        $katalog = self::katalog();
+        $powstal = ! is_dir($katalog);
+
+        File::ensureDirectoryExists($katalog);
+
+        // PRAWA USTAWIANE PRZY TWORZENIU, nie przy starcie kontenera (N-14).
+        //
+        // Poprawka w `entrypoint.sh` zakłada katalog i nadaje go `www-data`,
+        // ale działa TYLKO przy starcie. Katalog kasuje sprzątanie testów,
+        // a potem odtwarza go PIERWSZY PISZĄCY — i jeśli był nim proces testowy
+        // (root), N-14 wracał bez śladu w `git diff`. Kolejność uruchomień nie
+        // jest zabezpieczeniem.
+        //
+        // `0777` jest tu świadome i wąskie: katalog niesie WYŁĄCZNIE liczniki
+        // diagnostyczne (wejścia, awarie, odmowy), zero danych osobowych i zero
+        // sekretów, a musi go zapisywać zarówno `www-data` (żądania), jak i root
+        // (suita). Gdyby kiedykolwiek trafiło tu cokolwiek wrażliwego, ta linia
+        // przestaje być akceptowalna — i to jest warunek znoszący.
+        if ($powstal) {
+            @chmod($katalog, 0777);
+        }
+
+        $plik = $katalog.'/'.$nazwa;
+        $nowy = ! is_file($plik);
+
+        File::put($plik, $wartosc);
+
+        // PRAWA NA PLIKU, NIE TYLKO NA KATALOGU — zmierzone, nie przewidziane.
+        //
+        // Pierwsza wersja tej naprawy ustawiała prawa wyłącznie katalogowi
+        // i BYŁA NIEWYSTARCZAJĄCA: plik licznika powstawał z domyślną maską
+        // (0644, właściciel = pierwszy piszący), więc `www-data` dostawał
+        // `Permission denied` na PLIKU, choć katalog był zapisywalny.
+        // Objaw był identyczny jak w N-14: zapis cicho nie dochodził, a odczyt
+        // oddawał liczbę ROOTA jako własną.
+        if ($nowy) {
+            @chmod($plik, 0666);
+        }
     }
 
     /**
@@ -138,7 +174,29 @@ final class SladWylogowania
     {
         $katalog = self::katalog();
 
-        return is_dir($katalog) ? is_writable($katalog) : is_writable(dirname($katalog));
+        if (! is_dir($katalog)) {
+            return is_writable(dirname($katalog));
+        }
+
+        if (! is_writable($katalog)) {
+            return false;
+        }
+
+        // KAŻDY ISTNIEJĄCY LICZNIK Z OSOBNA. Zapisywalny katalog NIE WYSTARCZA:
+        // plik utworzony przez inny proces z maską 0644 jest dla nas tylko do
+        // odczytu, więc nasze zapisy cicho przepadają, a odczyt oddaje CUDZĄ
+        // liczbę. Zmierzone 12.08: katalog 0777, plik `wejscia` należący do
+        // roota — `www-data` dostawał `Permission denied`, a `wejscia()`
+        // zwracało 1. Przyrząd wyglądał na sprawny dokładnie wtedy, gdy kłamał.
+        foreach ([self::WEJSCIA, self::AWARIE, self::ODMOWY] as $nazwa) {
+            $plik = $katalog.'/'.$nazwa;
+
+            if (is_file($plik) && ! is_writable($plik)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static function licznik(string $nazwa): ?int

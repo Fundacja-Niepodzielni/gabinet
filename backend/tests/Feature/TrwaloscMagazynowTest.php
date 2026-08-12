@@ -232,6 +232,30 @@ it('N-14: kontrola biegnie jako WWW-DATA — ten sam uzytkownik, co proces obslu
         'W sprawnym magazynie `www-data` nie umie ani zapisac, ani odczytac wlasnego zapisu.'
     );
 
+    // ── GALAZ 3: KATALOG ZAPISYWALNY, ale PLIK LICZNIKA NIE ──────────────
+    //
+    // To NIE jest wariant tego samego. Pierwsza wersja naprawy ustawiala prawa
+    // wylacznie KATALOGOWI i wygladala na skuteczna — a plik licznika powstawal
+    // z maska 0644, wiec `www-data` dostawal `Permission denied` NA PLIKU przy
+    // zapisywalnym katalogu. Objaw byl identyczny jak w N-14: zapis cicho
+    // przepadal, a odczyt oddawal liczbe ROOTA jako wlasna.
+    //
+    // Zmierzone 12.08 wprost na kontenerze: `wejscia=1` u `www-data`, ktory
+    // niczego nie zapisal. Ta galaz istnieje, zeby ta pomylka nie wrocila.
+    SladWylogowania::wyczysc();
+    SladWylogowania::wejscie();
+
+    chmod($katalog, 0o777);
+    chmod($katalog.'/wejscia', 0o644);
+    chown($katalog.'/wejscia', 'root');
+
+    expect(jakoWwwData(static fn (): bool => SladWylogowania::wejscia() === null))->toBe(
+        0,
+        'Katalog byl zapisywalny, ale PLIK licznika nalezal do innego procesu i byl tylko '.
+        'do odczytu — a slad mimo to oddal LICZBE. To jest N-14 o poziom nizej: kontrola '.
+        'pytala o katalog, a pisze sie do pliku.'
+    );
+
     SladWylogowania::wyczysc();
 });
 
