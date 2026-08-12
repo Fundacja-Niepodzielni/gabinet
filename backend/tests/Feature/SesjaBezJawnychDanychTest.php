@@ -7,6 +7,7 @@ use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Redis;
 use Tests\Wsparcie\FabrykaTokenow;
+use Tests\Wsparcie\Zrodlo;
 
 /**
  * Magazyn sesji nie może trzymać danych osobowych JAWNIE.
@@ -156,7 +157,16 @@ it('ma szyfrowanie sesji włączone DOMYŚLNIE — czytane z TREŚCI pliku, nie 
     //
     // Reguła ekosystemu: kontrola tekstowa nad kodem filtruje komentarze,
     // albo jej zero jest bezwartościowe.
-    $kod = (string) preg_replace('~^\s*//.*$~m', '', $tresc);
+    //
+    // ROZSZERZONE 12.08 z wyrażenia regularnego na PARSER. Poprzednia postać
+    // (`preg_replace('~^\s*//.*$~m', …)`) filtrowała WYŁĄCZNIE komentarze
+    // liniowe na początku wiersza, więc ten sam cytat w `/* … */`, w docbloku
+    // albo dopisany na końcu linii kodu nadal spełniałby asercję. Zamknięta
+    // była instancja, którą pokazał weryfikator, nie KLASA — a to dokładnie
+    // schemat, przez który w tym repozytorium nawróciły trzy naprawy naraz.
+    // `Zrodlo::bezKomentarzy()` używa leksera PHP, więc odróżnia komentarz
+    // od napisu zawierającego `//`, czego regex nie potrafi z zasady.
+    $kod = Zrodlo::bezKomentarzy($tresc);
 
     // `toContain()` w Pest traktuje kolejne argumenty jako KOLEJNE IGŁY,
     // nie jako komunikat — dlatego jawne `str_contains` z opisem błędu.

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tozsamosc;
 
-use App\Wsparcie\Typy;
 use Illuminate\Http\Request;
 
 /**
@@ -35,8 +34,13 @@ use Illuminate\Http\Request;
  */
 final class SesjaKonta
 {
-    /** Klucz w sesji. Jedno miejsce, żeby dało się policzyć piszących. */
-    public const KLUCZ = 'konta';
+    /**
+     * Klucz w sesji — ODWOŁANIE, nie druga definicja.
+     *
+     * Dwa opisy tej samej rzeczy rozjeżdżają się po cichu (klasa P3), więc
+     * wartość mieszka w `TozsamoscSesji`, a tutaj stoi wyłącznie odsyłacz.
+     */
+    public const KLUCZ = TozsamoscSesji::KLUCZ;
 
     /**
      * Zakłada tożsamość. WYŁĄCZNIE ścieżka logowania.
@@ -51,7 +55,7 @@ final class SesjaKonta
     /** Odczyt — `null`, gdy tożsamości NIE MA w magazynie. */
     public static function odczytaj(Request $request): ?TozsamoscSesji
     {
-        return TozsamoscSesji::zMagazynu(Typy::mapa($request->session()->get(self::KLUCZ)));
+        return TozsamoscSesji::zZadania($request);
     }
 
     /**
@@ -72,5 +76,23 @@ final class SesjaKonta
     {
         $request->session()->flush();
         $request->session()->regenerate();
+    }
+
+    /**
+     * Kasowanie tożsamości na ścieżce WYLOGOWANIA użytkownika.
+     *
+     * Różni się od `zakoncz()` świadomie: tam sesja ma żyć dalej (użytkownik
+     * został tylko pozbawiony tożsamości), tutaj ma zniknąć razem z ciasteczkiem.
+     * Do 12.08 ta ścieżka stała POZA fasadą, wprost w kontrolerze — znalezisko
+     * R6A-12. Kasowanie tożsamości jest operacją na tożsamości, więc mieszka
+     * tam, gdzie reszta.
+     *
+     * @dowod: WaskieGardloTozsamosciTest — „zbiór plików sięgających po klucz
+     *         tożsamości to ALLOWLISTA".
+     */
+    public static function wyloguj(Request $request): void
+    {
+        $request->session()->flush();
+        $request->session()->invalidate();
     }
 }

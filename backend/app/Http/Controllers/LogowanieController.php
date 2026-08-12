@@ -173,7 +173,7 @@ final class LogowanieController extends Controller
 
     public function wyloguj(Request $request): RedirectResponse
     {
-        $konta = Typy::mapa($request->session()->get('konta', []));
+        $konta = Typy::mapa($request->session()->get(SesjaKonta::KLUCZ, []));
         // Odszyfrowanie tuż przed użyciem. Sesja sprzed tej zmiany trzyma
         // wartość jawną, więc nieudane odszyfrowanie nie może wywrócić
         // wylogowania — bez `id_token_hint` IdP po prostu zapyta użytkownika.
@@ -185,8 +185,10 @@ final class LogowanieController extends Controller
             $idToken = '';
         }
 
-        $request->session()->flush();
-        $request->session()->invalidate();
+        // R6A-12: kasowanie tożsamości przez FASADĘ, nie wprost w kontrolerze.
+        // Zostawało to poza wąskim gardłem §2 wyłącznie dlatego, że nikt nie
+        // policzył ścieżek KASUJĄCYCH — liczono tylko piszące.
+        SesjaKonta::wyloguj($request);
 
         if ($idToken === '') {
             return redirect('/');

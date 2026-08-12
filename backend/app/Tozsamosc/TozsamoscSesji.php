@@ -5,15 +5,31 @@ declare(strict_types=1);
 namespace App\Tozsamosc;
 
 use App\Wsparcie\Typy;
+use Illuminate\Http\Request;
 
 /**
  * ISTNIEJĄCA tożsamość w sesji — typ, który UTRUDNIA wytworzenie z niczego.
  *
- * @dowod: R6A-3 — twierdzenie „nie da się" ZOSTAŁO OBALONE pomiarem (weryfikator
- *         wytworzył tożsamość koordynatora bez logowania trzema wektorami:
- *         danymi z żądania, `Reflection` i `unserialize`). Zdanie osłabione do
- *         stanu zgodnego z pomiarem; domknięcie strukturalne czeka na rundę
- *         przedmiotu (`zMagazynu()` prywatne, jedyne wejście przez `SesjaKonta`).
+ * @dowod: WaskieGardloTozsamosciTest — R6A-3 zamknięte 12.08 STRUKTURALNIE.
+ *
+ * Historia, bo bez niej naprawa wygląda na kosmetykę: weryfikator rundy 6 wytworzył
+ * tożsamość koordynatora BEZ LOGOWANIA trzema wektorami — danymi z żądania,
+ * `Reflection` i `unserialize` — i uzyskał przez HTTP pełne uprawnienia. Pierwszy
+ * z tych wektorów prowadził przez `zMagazynu()`: PUBLICZNĄ fabrykę przyjmującą
+ * DOWOLNĄ tablicę. Moje wcześniejsze zdanie „NIEWYWOŁYWALNE" było za mocne —
+ * warunek przeniósł się o poziom wyżej, zamiast zniknąć.
+ *
+ * ZAMKNIĘTE JEST: wytworzenie tożsamości z surowej tablicy. `zMagazynu()` jest
+ * prywatna, a jedyne publiczne wejście — `zZadania(Request)` — czyta PRAWDZIWY
+ * magazyn sesji. Podanie mu wymyślonych ról wymaga uprzedniego zapisania ich
+ * do sesji, czyli przejścia drogą logowania.
+ *
+ * NIE JEST ZAMKNIĘTE i mówię to wprost, żeby nikt nie odziedziczył fałszywego
+ * poczucia domknięcia: `Reflection::newInstanceWithoutConstructor()` oraz
+ * `unserialize()` omijają KAŻDY konstruktor w PHP i tego nie da się zamknąć
+ * typem. WARUNEK UTRZYMUJĄCY: w kodzie produkcyjnym nie ma ani `unserialize()`
+ * na danych z żądania, ani wywołań `Reflection` na tej warstwie — i to jest
+ * EGZEKWOWANE kontrolą, nie pamięcią.
  *
  * Powód istnienia: wymóg CLAUDE.md §2 i standardu B8 — odświeżanie ma być
  * OPERACJĄ NA ISTNIEJĄCEJ TOŻSAMOŚCI. Wcześniej pilnował tego STRAŻNIK:
@@ -44,18 +60,33 @@ final readonly class TozsamoscSesji
      */
     private function __construct(public array $dane) {}
 
+    /** Klucz w magazynie sesji. JEDNO miejsce, żeby dało się policzyć czytających. */
+    public const KLUCZ = 'konta';
+
     /**
-     * Tożsamość odczytana z magazynu — albo `null`, gdy jej TAM NIE MA.
+     * JEDYNE publiczne wejście: odczyt z PRAWDZIWEGO magazynu sesji.
      *
-     * `null` nie jest błędem do obsłużenia. Jest brakiem wejścia, przez który
-     * operacje wymagające tożsamości stają się trudniejsze do wywołania.
+     * Argumentem jest żądanie, nie tablica — i to jest cała naprawa R6A-3.
+     * Tablicę można wymyślić; sesji nie można, bo żeby coś w niej było,
+     * ktoś musiał to tam wcześniej zapisać drogą logowania.
      *
-     * @dowod: R6A-3 — „niewywoływalne" było za mocne; `zMagazynu()` jest
-     *         publiczną fabryką przyjmującą dowolną tablicę.
+     * @dowod: WaskieGardloTozsamosciTest — „jedyna publiczna fabryka przyjmuje
+     *         Request, nigdy tablicy" (kontrola pozytywna i negatywna).
+     */
+    public static function zZadania(Request $request): ?self
+    {
+        return self::zMagazynu(Typy::mapa($request->session()->get(self::KLUCZ)));
+    }
+
+    /**
+     * Tożsamość z surowej zawartości magazynu — albo `null`, gdy jej TAM NIE MA.
+     *
+     * PRYWATNA od 12.08. Dopóki była publiczna, była fabryką tożsamości
+     * z dowolnej tablicy — czyli §2 stało na nazwie metody, nie na typie.
      *
      * @param  array<string, mixed>  $zMagazynu
      */
-    public static function zMagazynu(array $zMagazynu): ?self
+    private static function zMagazynu(array $zMagazynu): ?self
     {
         // `sub` rozstrzyga o istnieniu tożsamości — to identyfikator z ID
         // tokenu, wiązanie po nim jest wymogiem CLAUDE.md §2. Sam fakt, że
