@@ -84,7 +84,7 @@ it('KONTROLA POZYTYWNA: przy zadeklarowanym zakresie i czystym stanie PRZEPUSZCZ
 
     expect($kod)->toBe(
         0,
-        "Strażnik odmówił przy poprawnym stanie — czyli odmawia ZAWSZE, a wtedy zostanie ".
+        'Strażnik odmówił przy poprawnym stanie — czyli odmawia ZAWSZE, a wtedy zostanie '.
         "wyłączony i nie ochroni niczego.\n".$wyjscie
     );
 });

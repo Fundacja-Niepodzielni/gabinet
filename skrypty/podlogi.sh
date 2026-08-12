@@ -68,11 +68,11 @@
 # Podniesienie ich bez uruchomienia perturbacji jest bezpieczne (perturbacje
 # porównują z nimi PEŁNY przebieg suity), ale podniesienie POWYŻEJ stanu
 # bieżącego wywali i bramkę, i perturbacje — i to jest zamierzone.
-MINIMUM_TESTOW=258
+MINIMUM_TESTOW=265
 
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Liczbę testów da się nadmuchać
 # (pominięte wliczały się do podłogi, aż weryfikator pokazał zieloną bramkę
 # przy 151 pominiętych i ZERZE asercji). Asercji nie da się nadmuchać, nie
 # wykonując ich.
-MINIMUM_ASERCJI=2008
+MINIMUM_ASERCJI=2024

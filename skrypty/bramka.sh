@@ -152,7 +152,20 @@ PLIK_ENV="$KORZEN/.env.bramka.$PROJEKT"
 # `skrypty/znacznik-przebiegu.sh`.
 . "$KORZEN/skrypty/znacznik-przebiegu.sh"
 znacznik_zaloz "bramka (projekt: $PROJEKT)"
-trap znacznik_zdejmij EXIT INT TERM
+# DWA OSOBNE `trap`, NIE JEDEN — zlapala mnie na tym wlasna kontrola
+# (`KlamraSkryptowTest`, krok [19] bramki), i to jest jej cala wartosc.
+#
+# Zmierzone w tym repozytorium (ZLECENIE-022, powtorzenie pomiaru hubu):
+# `trap ... EXIT INT TERM` w JEDNEJ linii NIE PRZERYWA przebiegu przy
+# sygnale — handler sie wykonuje, a skrypt leci dalej. Sprzatanie dziala,
+# przerwanie NIE. Handler `INT`/`TERM` musi konczyc JAWNIE.
+#
+# Napisalem wadliwa forme mimo istniejacej kontroli i opisu w repozytorium.
+# Zostawiam ten komentarz jako slad: kontrola byla warta swojego istnienia.
+przerwano_bramke() { znacznik_zdejmij; trap - EXIT; exit 130; }
+
+trap znacznik_zdejmij EXIT
+trap przerwano_bramke INT TERM
 
 ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka.${PROJEKT}.zamek"
 
