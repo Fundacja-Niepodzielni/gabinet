@@ -264,7 +264,16 @@ it('N-14 SRODOWISKO: katalog sladu nalezy do uzytkownika procesu zadan', functio
     // poprzestac, produkcja mialaby diagnostyke trwale w stanie „nie wiem”.
     // Katalog powstaje w `entrypoint.sh`, PRZED pierwszym zadaniem, wiec obejmuje
     // go `chown www-data` — a nie leniwie u tego, kto pisal pierwszy.
-    $entrypoint = (string) file_get_contents(base_path('../docker/php/entrypoint.sh'));
+    // R7-9: pierwsza wersja czytala SUROWA tresc pliku, wiec ZAKOMENTOWANY
+    // `chown` spelnial asercje — `str_contains` widzial podciag, a bash
+    // komentarza nie wykonuje. Katalog sladu powstawalby wtedy leniwie
+    // u pierwszego piszacego i N-14 wracaloby przy zielonej kontroli.
+    //
+    // To ta sama klasa co R6A-6, ktora piec innych plikow filtruje przez
+    // `Zrodlo::bezKomentarzy()` — a ten jeden nie filtrowal. Powloka ma
+    // inny znak komentarza niz PHP, wiec filtr jest tutaj, nie w `Zrodlo`.
+    $surowy = (string) file_get_contents(base_path('../docker/php/entrypoint.sh'));
+    $entrypoint = (string) preg_replace('/^\s*#.*$/m', '', $surowy);
 
     expect($entrypoint)->toContain(
         'storage/slad-wylogowania',

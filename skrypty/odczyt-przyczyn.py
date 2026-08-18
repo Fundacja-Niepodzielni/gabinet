@@ -19,28 +19,191 @@ kategoriami, w tym dwiema kategoriami rozbieznosci — osobno, bo znacza co inne
 import io
 import os
 import re
+import shutil
 import subprocess
 import sys
 
-KORZEN = 'D:/KOD/Niepodzielni/gabinet'
+NL = chr(10)
+
+# KORZEN ZE SCIEZKI WLASNEJ, nie z literalu (R7-7).
+#
+# Do 12.08 stalo tu `D:/KOD/Niepodzielni/gabinet` — sciezka jednego
+# konkretnego drzewa. Odpalony z klonu weryfikatora albo z worktree ten
+# skrypt czytal i URUCHAMIAL cudzy kod, meldujac wynik jako swoj.
+# Ta sama klasa co `core.hooksPath` wskazujacy w pustke poza worktree
+# glownym: narzedzie zna JEDNO drzewo, a dziala w wielu.
+KORZEN = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace(os.sep, chr(47))
 SKRYPT = KORZEN + '/skrypty/perturbacje.sh'
 RAPORT = KORZEN + '/dowody/odczyt-przyczyn.txt'
 
-NL = chr(10)
+# --- IZOLACJA STOSU (R7-7) ------------------------------------------------
+#
+# Ten skrypt URUCHAMIA polecenia wyjete z `perturbacje.sh`. Sklejal je jako
+# gole 'docker compose ' + reszta — czyli gubil `-p`, `--env-file` i caly
+# zestaw `GABINET_*`, ktore `dc()` w tamtym skrypcie podstawia. Efekt: pelne
+# suity Pest szly na projekt DOMYSLNY, ktory `perturbacje.sh:81` odmawia
+# obslugiwac, bo to stos dewelopera.
+#
+# Odmowa musi byc tutaj wlasna: kod, ktory sklada polecenie, jest tutaj.
+PROJEKTY_ZABRONIONE = ('gabinet', 'dev')
+PROJEKT = os.environ.get('GABINET_PERTURBACJE_PROJEKT', 'gabinet-perturbacje')
+
+if PROJEKT in PROJEKTY_ZABRONIONE:
+    sys.exit(
+        'ODMOWA: odczyt dynamiczny nie dziala na projekcie %r — to stos dewelopera.' % PROJEKT
+        + NL + 'Uruchamia PELNE suity Pest; jego bazy i portow nie zajmujemy.'
+    )
+
+PORT_HTTP = os.environ.get('GABINET_PERTURBACJE_PORT_HTTP', '8097')
+PORT_PG = os.environ.get('GABINET_PERTURBACJE_PORT_POSTGRES', '55444')
+PORT_REDIS = os.environ.get('GABINET_PERTURBACJE_PORT_REDIS', '56391')
+
+
+def interpreter_powloki():
+    """Bash, ktory WIDZI to repozytorium — wybrany testem, nie po nazwie.
+
+    Zmierzone 12.08: `subprocess.run(['bash', ...])` na tej maszynie trafia
+    w bash WSL-a (`C:/Windows/System32/bash.exe`), ktory odpowiada
+    „execvpe(/bin/bash) failed" i nie umie otworzyc sciezki `D:/...`.
+    `shutil.which()` wskazuje przy tym Git Bash — czyli SAMA NAZWA nie
+    rozstrzyga, ktory program dostaniemy.
+
+    Dlatego kandydat jest przyjmowany dopiero wtedy, gdy potrafi ZOBACZYC
+    plik bramki pod sciezka, ktorej uzyjemy. To pytanie o zdolnosc, nie
+    o tozsamosc — i tylko ono odroznia te dwa interpretery.
+    """
+    kandydaci = [
+        os.environ.get('GABINET_BASH'),
+        os.environ.get('SHELL'),
+        (os.environ.get('EXEPATH') or '') + '/bash.exe',
+        shutil.which('bash'),
+        '/bin/bash',
+    ]
+    probny = KORZEN + '/skrypty/bramka.sh'
+
+    for kandydat in kandydaci:
+        if not kandydat:
+            continue
+        try:
+            proc = subprocess.run(
+                [kandydat, '-c', 'test -f "$1"', '_', probny],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30
+            )
+        except Exception:
+            continue
+        if proc.returncode == 0:
+            return kandydat
+
+    sys.exit(
+        'ODMOWA: nie znalazlem powloki bash, ktora widzi %s.' % probny
+        + NL + 'Wskaz ja jawnie: GABINET_BASH="C:/Program Files/Git/bin/bash.exe".'
+    )
+
+
+def plik_srodowiska():
+    """Sciezke pliku srodowiska podaje SAMA BRAMKA — bez drugiego wzoru na nazwe.
+
+    Drugi opis jednej rzeczy rozjezdza sie po cichu (lekcja `licz-testy.sh`).
+    Pliku tu NIE BUDUJEMY: ten skrypt jest ODCZYTEM i nie ma prawa stawiac
+    ani przygotowywac srodowiska. Gdy pliku nie ma, stos perturbacji nie stoi
+    i odczyt dynamiczny jest nierozstrzygniety — co jest uczciwym wynikiem,
+    a nie awaria do obejscia.
+    """
+    try:
+        proc = subprocess.run(
+            [interpreter_powloki(), KORZEN + '/skrypty/bramka.sh',
+             '--projekt', PROJEKT, '--pokaz-srodowisko'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120
+        )
+    except Exception as e:
+        sys.exit('ODMOWA: nie umiem zapytac bramki o plik srodowiska: %s' % e)
+
+    sciezka = proc.stdout.decode('utf-8', errors='replace').strip()
+
+    # Bramka mowi sciezka POSIX (`/d/KOD/...`), bo sama biegnie w MSYS.
+    # Python na Windows jej nie otworzy, a `docker compose --env-file`
+    # potrzebuje postaci natywnej — to ta sama klasa co MSYS_NO_PATHCONV
+    # w naglowku `perturbacja-odwrotna.sh`: przyrzad psuje pomiar, zanim
+    # pomiar sie zacznie. Konwertujemy TYM SAMYM interpreterem, ktory
+    # sciezke podal — inaczej mielibysmy dwa zdania o jednym pliku.
+    if sciezka.startswith(chr(47)):
+        try:
+            konw = subprocess.run(
+                [interpreter_powloki(), '-c', 'cygpath -w "$1"', '_', sciezka],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30
+            )
+            if konw.returncode == 0:
+                nowa = konw.stdout.decode('utf-8', errors='replace').strip()
+                if nowa:
+                    sciezka = nowa.replace(chr(92), chr(47))
+        except Exception:
+            pass
+
+    if not sciezka:
+        sys.exit('ODMOWA: bramka nie podala sciezki pliku srodowiska dla projektu %r' % PROJEKT)
+    if not os.path.isfile(sciezka) or os.path.getsize(sciezka) == 0:
+        sys.exit(
+            'ODMOWA: brak pliku srodowiska %s.' % sciezka
+            + NL + 'Bez niego compose zamontowalby ./.env DEWELOPERA z prawdziwymi sekretami (R6B-16).'
+            + NL + 'Postaw stos perturbacji: bash skrypty/perturbacje.sh --lista, potem dowolny scenariusz.'
+        )
+    return sciezka
+
+
+PLIK_ENV = plik_srodowiska()
+
+# Prefiks POWTARZA to, co robi `dc()` w `perturbacje.sh` — i to jest
+# swiadome powtorzenie, nie kopia przez niedopatrzenie: tamto `dc()` jest
+# funkcja powloki wewnatrz skryptu z wlasna klamra, wiec nie da sie go
+# zaimportowac bez uruchomienia calego przebiegu. Zgodnosci obu miejsc
+# pilnuje kontrola w `KlamraSkryptowTest`.
+PREFIKS_DC = (
+    'docker compose --env-file "' + PLIK_ENV + '"'
+    + ' -p "' + PROJEKT + '"'
+    + ' -f "' + KORZEN + '/docker-compose.yml"'
+)
+
+SRODOWISKO = dict(os.environ)
+SRODOWISKO.update({
+    'GABINET_PREFIX': PROJEKT,
+    'GABINET_PORT_HTTP': PORT_HTTP,
+    'GABINET_PORT_POSTGRES': PORT_PG,
+    'GABINET_PORT_REDIS': PORT_REDIS,
+    'GABINET_PLIK_ENV': PLIK_ENV,
+    'MSYS_NO_PATHCONV': '1',
+    'MSYS2_ARG_CONV_EXCL': '*',
+})
 
 
 def wczytaj_nazwy_testow():
-    """Nazwy testow z it()/test() — material odczytu STATYCZNEGO."""
-    nazwy = []
-    wz = re.compile(r"^\s*(?:it|test)\(\s*(['\"])(.*?)\1", re.M)
-    for korzen, _, pliki in os.walk(KORZEN + '/backend/tests'):
+    """SLOWNIK ZIELONEGO PRZEBIEGU — material odczytu STATYCZNEGO (R7-8).
+
+    Nie tylko nazwy `it()/test()`, ale wszystko, co raporter Pest wypisuje
+    NIEZALEZNIE od tego, czy badana asercja zapalila: nazwy klas w naglowku
+    (`PASS  Tests\\Feature\\BramkiTest`) i wlasne stale raportera.
+
+    Zmierzone 12.08 na przebiegu ZIELONYM — nie zdedukowane z formatu.
+    """
+    slownik = []
+    wz = re.compile(r"^\\s*(?:it|test|describe)\\(\\s*(['\\\"])(.*?)\\1", re.M)
+    katalog = KORZEN + '/backend/tests'
+
+    for korzen, _, pliki in os.walk(katalog):
         for p in pliki:
             if not p.endswith('.php'):
                 continue
-            tresc = io.open(os.path.join(korzen, p), encoding='utf-8').read()
+            pelna = os.path.join(korzen, p)
+            tresc = io.open(pelna, encoding='utf-8').read()
             for m in wz.finditer(tresc):
-                nazwy.append(m.group(2))
-    return nazwy
+                slownik.append(m.group(2))
+
+            wzgledna = os.path.relpath(pelna, katalog).replace(os.sep, chr(47))
+            slownik.append('Tests' + chr(92) + wzgledna[:-4].replace(chr(47), chr(92)))
+
+    slownik.extend(['PASS', 'FAIL', 'Tests:', 'Duration:', 'assertions',
+                    'passed', 'failed', 'WARN', 'SKIPPED'])
+
+    return slownik
 
 
 def wywolania():
@@ -73,29 +236,97 @@ def wywolania():
 
         # polecenie = wszystko po pierwszym "dc " (funkcja z perturbacje.sh)
         mp = re.search(r'\bdc\s+(.*)$', cale)
-        polecenie = ('docker compose ' + mp.group(1)) if mp else None
+        polecenie = (PREFIKS_DC + ' ' + mp.group(1)) if mp else None
 
         wynik.append({'nr': nr, 'wzorzec': wzorzec, 'filtr': filtr, 'polecenie': polecenie})
     return wynik
 
 
-def statyczny(wzorzec, filtr, nazwy):
-    w = wzorzec.lower()
-    if filtr is not None and filtr.lower() == w:
+def galezie_alternatywy(wzorzec):
+    """Galezie ERE — `grep -qiE` spelnia sie, gdy pasuje DOWOLNA (R7-8).
+
+    Dzielimy na kazdym `|` poza klasa znakow i poza ucieczka, takze wewnatrz
+    nawiasow grupujacych. Nadmiarowy podzial czyni odczyt SUROWSZYM;
+    pominiecie galezi czyni go slepym.
+    """
+    galezie, biezaca, w_klasie, ucieczka = [], '', False, False
+
+    for znak in wzorzec:
+        if ucieczka:
+            biezaca += znak
+            ucieczka = False
+        elif znak == chr(92):
+            biezaca += znak
+            ucieczka = True
+        elif w_klasie:
+            biezaca += znak
+            w_klasie = znak != ']'
+        elif znak == '[':
+            w_klasie = True
+            biezaca += znak
+        elif znak == '|':
+            galezie.append(biezaca)
+            biezaca = ''
+        else:
+            biezaca += znak
+
+    galezie.append(biezaca)
+
+    return galezie
+
+
+def statyczny(wzorzec, filtr, slownik):
+    """Wzorzec ROZROZNIA, gdy zadna galaz nie stoi w slowniku zielonego przebiegu.
+
+    R7-8: ten odczyt mial DOKLADNIE te sama slepote co zapadka
+    `PrzyczynyPerturbacjiTest` — i nie przypadkiem, bo powstal z niej przez
+    przepisanie. Naprawa jednej strony bez drugiej zostawilaby dwa przyrzady
+    mierzace TE SAMA wlasnosc i podajace rozne wyniki, a rozbieznosc miedzy
+    nimi jest tu z definicji ZNALEZISKIEM — wiec produkowalaby falszywe.
+    """
+    if filtr is not None and filtr.lower() == wzorzec.lower():
         return False, 'wzorzec IDENTYCZNY z --filter'
-    for n in nazwy:
-        if w in n.lower():
-            return False, 'wzorzec jest fragmentem NAZWY TESTU'
-    return True, 'wzorzec nieobecny w nazwach testow i rozny od --filter'
+
+    for galaz in galezie_alternatywy(wzorzec):
+        if re.match(r'^[.*+?^$()\\s]*$', galaz):
+            return False, 'galaz %r pasuje do KAZDEGO wyjscia' % galaz
+
+        g = galaz.strip().replace('(', '').replace(')', '').lower()
+        if not g:
+            continue
+
+        for napis in slownik:
+            if g in napis.lower():
+                return False, 'galaz %r jest fragmentem napisu stalego: %r' % (galaz, napis)
+
+    return True, 'zadna galaz nie wystepuje w slowniku zielonego przebiegu'
+
+
+def bez_mutacji_w_poleceniu(polecenie):
+    """Usuwa `-e VAR=...`, czyli MUTACJE WNIESIONA PRZEZ SAMO POLECENIE.
+
+    ZNALEZISKO WLASNE 12.08, przy pierwszym przebiegu po naprawie R7-7.
+    Ten odczyt zakladal, ze mutacja mieszka zawsze w DRZEWIE, a polecenie jest
+    neutralnym obserwatorem. Dla perturbacji `p_sesja` nieprawda: mutacja to
+    `-e SESSION_ENCRYPT=false` wpisane w samo wywolanie. Czytnik uruchamial
+    wiec swiat JUZ ZMUTOWANY, dostawal czerwien i meldowal ja jako „GALAZ
+    BAZOWA (R6B-13) — ta perturbacja nie moze niczego dowiesc".
+
+    To bylo FALSZYWE OSKARZENIE sprawnej perturbacji, i to oskarzenie o wade
+    powazna. Przyrzad mierzyl nie ten swiat, o ktory pytal.
+
+    Baze odzyskujemy, zdejmujac z polecenia jego wlasna mutacje.
+    """
+    return re.sub(r'\s-e\s+[A-Za-z_][A-Za-z0-9_]*=\S*', '', polecenie)
 
 
 def dynamiczny(wpis):
-    """Uruchamia polecenie na kodzie NIEZMUTOWANYM i szuka wzorca w wyjsciu."""
+    """Uruchamia polecenie na swiecie NIEZMUTOWANYM i szuka wzorca w wyjsciu."""
     if not wpis['polecenie']:
         return None, 'nie umiem wydobyc polecenia — NIEROZSTRZYGNIETE', None
     try:
         proc = subprocess.run(
-            wpis['polecenie'], shell=True, cwd=KORZEN,
+            bez_mutacji_w_poleceniu(wpis['polecenie']), shell=True, cwd=KORZEN, env=SRODOWISKO,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600
         )
     except Exception as e:

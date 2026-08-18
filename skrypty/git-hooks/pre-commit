@@ -136,7 +136,24 @@ SZABLON
 fi
 
 REPO_ZADEKLAROWANE="$(grep -v '^[[:space:]]*#' "$ZAKRES" | grep -v '^[[:space:]]*$' | head -1)"
-REPO_BIEZACE="$(basename "$KORZEN")"
+# S-02 (sesja TESTY): `basename` KORZENIA to w worktree nazwa DRZEWA, nie
+# repozytorium — `gabinet-testy-plan-f2` zamiast `gabinet`. Straznik odmawialby
+# tam KAZDEGO commita, a obejscie przez wpisanie nazwy worktree ROZBRAJA
+# warunek (b): pytanie „czy jestem w cudzym repozytorium" przestaje odrozniac
+# repozytoria, gdy kazda sesja deklaruje wlasna nazwe katalogu.
+#
+# `--git-common-dir` wskazuje REPOZYTORIUM takze z worktree (zmierzone przez
+# sesje TESTY, potwierdzone przeze mnie), wiec tozsamosc jest jedna dla
+# wszystkich drzew roboczych.
+WSPOLNY="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || printf "")"
+
+if [ -z "$WSPOLNY" ]; then
+	odmowa "Nie umiem ustalic repozytorium — brak --git-common-dir." \
+		"Bez tozsamosci warunek (b) nie ma czego porownac, a cicha zgoda przy" \
+		"nieznanej tozsamosci bylaby fail-open tam, gdzie zabolalo N-13."
+fi
+
+REPO_BIEZACE="$(basename "$(dirname "$WSPOLNY")")"
 
 if [ "$REPO_BIEZACE" != "$REPO_ZADEKLAROWANE" ]; then
 	odmowa \

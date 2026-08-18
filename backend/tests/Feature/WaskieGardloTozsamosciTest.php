@@ -191,12 +191,33 @@ it('zbiór plików produkcyjnych sięgających po TOŻSAMOŚĆ to ALLOWLISTA', f
     // Ta asercja egzekwuje ją WPROST: pisarzem, czytelnikiem i kasującym jest
     // JEDEN komponent (`SesjaKonta`), a `TozsamoscSesji` jest samym typem.
     // Trzeci plik sięgający po tożsamość zapala bramkę.
+    // ⛔ R7-1: TA LISTA NIE WIDZIALA SIEGAJACYCH PRZEZ FASADE.
+    //
+    // Wzorzec znal `TozsamoscSesji::` i literal klucza, ale NIE `SesjaKonta::`
+    // — czyli nie znal ZAMIERZONEJ, jedynej legalnej drogi. Weryfikator rundy 7
+    // zmierzyl: trzy pliki produkcyjne siegaly po tozsamosc NIEWIDZIANE, a nowy,
+    // czwarty plik z `SesjaKonta::odczytaj()` przeszedl niezauwazony (5 passed).
+    // Kontrola pozytywna weryfikatora: ten sam plik przez `TozsamoscSesji::` → czerwien.
+    //
+    // Test reklamowal sie jako egzekutor D-2026-08-08-24 i NIE egzekwowal
+    // twierdzenia, ktore nazywa. To R6A-12 nienaprawione dla sciezki fasady.
+    //
+    // Lista jest dzis DLUZSZA i to jest POPRAWNY stan, nie rozluznienie:
+    // czytelnicy przez fasade sa legalni, ale maja byc POLICZENI. Kazdy nowy
+    // plik siegajacy po tozsamosc — takze przez fasade — nadal zapala bramke.
     $dopuszczeni = [
-        'app/Tozsamosc/SesjaKonta.php',      // fasada — jedyny pisarz i jedyny kasujący
-        'app/Tozsamosc/TozsamoscSesji.php',  // sam typ (definicja stałej i fabryki)
+        'app/Http/Controllers/LogowanieController.php',   // callback OIDC — jedyne ZAKLADANIE tozsamosci
+        'app/Http/Middleware/SprawdzUniewaznienie.php',   // czyta, by sprawdzic uniewaznienie po `sid`
+        'app/Tozsamosc/OdswiezanieSesji.php',             // czyta i AKTUALIZUJE przy odswiezeniu
+        'app/Tozsamosc/SesjaKonta.php',                   // fasada — jedyny pisarz i kasujacy
+        'app/Tozsamosc/TozsamoscSesji.php',               // sam typ (stala i fabryki)
     ];
 
-    $siegajacy = plikiZeWzorcem(base_path('app'), '/TozsamoscSesji::|[\'"]konta[\'"]\s*(?:,|\)|=>|;)/');
+    // Wzorzec obejmuje teraz TRZY drogi do tozsamosci: typ, FASADE i literal
+    // klucza. Pominiecie fasady bylo cala trescia R7-1 — a fasada jest
+    // ZAMIERZONA, jedyna legalna droga, wiec jej brak we wzorcu znaczyl, ze
+    // kontrola nie widziala tego, co sama zaleca.
+    $siegajacy = plikiZeWzorcem(base_path('app'), '/TozsamoscSesji::|SesjaKonta::|[\'"]konta[\'"]\s*(?:,|\)|=>|;)/');
 
     expect($siegajacy)->toBe(
         $dopuszczeni,
@@ -215,7 +236,13 @@ it('KONTROLA NEGATYWNA: allowlista nie gnije — każdy jej wpis wskazuje ISTNIE
     // Bez tego lista przeżyje pliki, których dotyczy: skasowany plik przestaje
     // być „znaleziony", więc porównanie zbiorów zapala się z niewłaściwej
     // przyczyny, a wtedy pierwszym odruchem jest wykreślenie wpisu.
-    foreach (['app/Tozsamosc/SesjaKonta.php', 'app/Tozsamosc/TozsamoscSesji.php'] as $wpis) {
+    foreach ([
+        'app/Http/Controllers/LogowanieController.php',
+        'app/Http/Middleware/SprawdzUniewaznienie.php',
+        'app/Tozsamosc/OdswiezanieSesji.php',
+        'app/Tozsamosc/SesjaKonta.php',
+        'app/Tozsamosc/TozsamoscSesji.php',
+    ] as $wpis) {
         expect(file_exists(base_path($wpis)))->toBeTrue("Allowlista wskazuje nieistniejący plik: {$wpis}");
     }
 

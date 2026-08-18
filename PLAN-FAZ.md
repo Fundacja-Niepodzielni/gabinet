@@ -13,10 +13,13 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
   Zmierzone 12.08 na przebiegu OD ZERA, we własnym środowisku efemerycznym
   (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
-- **Testy — LICZBA Z DATĄ, NIE STAŁA: 260 zielonych, 0 czerwonych, 2 POMINIĘTE,
-  2010 asercji — zmierzone 12.08.** Podłogi bramki: **258 / 2008**
-  (`skrypty/podlogi.sh` — JEDNO źródło dla bramki i perturbacji).
-  **Nie cytuj tych liczb jako stanu bieżącego — zmierz je.**
+- **Testy — LICZBA Z DATĄ, NIE STAŁA: 289 zielonych, 0 czerwonych, 2 POMINIĘTE,
+  2119 asercji — zmierzone 12.08.**
+  Podłogi bramki: **289 / 2119** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
+  i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
+  **Nie cytuj liczb przebiegu jako stanu bieżącego — zmierz je.**
+  ⚠ Do 12.08 stało tu „258 / 2008" przy `podlogi.sh` mówiącym 265 / 2024 (R7-6).
+  Zgodności pilnuje odtąd `JednoZrodloStanuTest`, który czyta OBA miejsca.
 - **Perturbacje: `PERTURBACJE OK` na sześciu naprawionych scenariuszach (12.08).**
   Pełny zestaw 30 scenariuszy przebiegł dwukrotnie; wynik rozstrzygający pochodzi
   z przebiegu na ZDROWYM stosie — patrz niżej.
@@ -46,17 +49,29 @@ pomiarowym; naprawy pogrupowane wg klas z `KLASY-I-NAPRAWY.md`:
 
 ### ⚠ CZEGO SESJA NIE ZROBIŁA — czytaj przed resztą
 
-- **KLASA 7 NIETKNIĘTA.** Strażnik `pre-commit` (odmowa commita w trakcie przebiegu
-  pomiarowego i w cudzym repozytorium) NIE POWSTAŁ. W tej sesji ta klasa złamała się
-  **pięć razy**: komunikat commita przez `-m` z odwrotnymi apostrofami (dwukrotnie),
-  `git add` wciągający pliki dwóch innych sesji, `git checkout --` zamiast `cp`,
-  perturbacja zostawiona w drzewie przez niepełne zachowanie plików.
-  **Rekomendacja twarda: reguła łamana pięć razy mimo pełnej świadomości nie jest
-  regułą, tylko życzeniem.**
-- **Dwie allowlisty `--przyczyna` nadal nie rozróżniają** (dług 2, sufit zapadki 2,
-  `PrzyczynyPerturbacjiTest`). Blokuje je brak komunikatów asercji w dwóch testach.
+- **KLASA 7 — ZAMKNIĘTA, nie otwarta.** Strażnik `skrypty/git-hooks/pre-commit`
+  STOI (commit `cc70946`, 188 wierszy) wraz z `StraznikCommitaTest`. Odmawia
+  commita w trakcie przebiegu pomiarowego, w cudzym repozytorium i przy plikach
+  spoza zakresu sesji; działa we wszystkich worktree (naprawa O-6b, 12.08).
+  ⚠ Do 12.08 stało w tym miejscu „KLASA 7 NIETKNIĘTA … NIE POWSTAŁ" — zdanie
+  nieprawdziwe już w chwili zapisu (R7-6, znalezisko rundy 7). Sekcja stanu
+  wysyłała następną sesję do zbudowania czegoś, co stało obok.
+  Powód, dla którego strażnik powstał, zostaje zapisany: ta klasa złamała się
+  w jednej sesji **pięć razy** mimo pełnej świadomości reguły — komunikat commita
+  przez `-m` z odwrotnymi apostrofami (dwukrotnie), `git add` wciągający pliki
+  dwóch innych sesji, `git checkout --` zamiast `cp`, perturbacja zostawiona
+  w drzewie przez niepełne zachowanie plików.
+- **Allowlisty `--przyczyna`: dług SPŁACONY do zera** (12.08, sufit zapadki 0).
+  ⚠ Do 12.08 stało tu „dług 2 … blokuje brak komunikatów asercji w dwóch testach".
+  Obie liczby były nieprawdziwe i przyczyna też (R7-8): zapadka nie widziała nazw
+  KLAS ani gałęzi alternatywy ERE, więc liczyła 2 z 5. Blokerem nie był wyłącznie
+  brak komunikatów — dla `:1208` blokadą była wada `zdekodowaneLadunki()` (R7-4),
+  przez którą właściwa asercja nie zapalała się wcale; wzorzec nie miał w co celować.
 - **`TwierdzeniaKomentarzyTest` nadal zdjęty z bramki** (kontrola D3, 14 obejść na 15).
-- **Odczyt DYNAMICZNY nowych wzorców `--przyczyna`** — niezmierzony (statycznie rozróżniają).
+- **Odczyt DYNAMICZNY wzorców `--przyczyna` — WYKONANY 12.08** na stosie perturbacyjnym
+  (`skrypty/odczyt-przyczyn.py`, po naprawie izolacji z R7-7). Wynik: 14 wywołań
+  ZGODNE-ROZROZNIA, zero rozbieżności między odczytem statycznym a dynamicznym,
+  jedno NIEROZSTRZYGNIETE z konstrukcji (mutacja siedzi w samym poleceniu).
 - **Wyjątek w `.gitleaks.toml` z warunkiem znoszącym**: przy scalaniu F1 do `main`
   historię zakresu należy przepisać i wpis USUNĄĆ. Kopia: `kopia-przed-filtrem-12-08`.
 

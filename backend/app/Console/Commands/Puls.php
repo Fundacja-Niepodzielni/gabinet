@@ -47,7 +47,8 @@ use Illuminate\Support\Facades\File;
 final class Puls extends Command
 {
     protected $signature = 'gabinet:puls
-        {--sprawdz : Zamiast zapisywać puls, sprawdź czy jest świeży (do healthchecku)}';
+        {--sprawdz : Zamiast zapisywać puls, sprawdź czy jest świeży (do healthchecku)}
+        {--gdzie : Wypisz ŚCIEŻKĘ pliku pulsu i zakończ (dla perturbacji)}';
 
     protected $description = 'Zapisuje puls harmonogramu albo sprawdza jego świeżość';
 
@@ -62,6 +63,23 @@ final class Puls extends Command
 
     public function handle(): int
     {
+        // `--gdzie` istnieje po to, zeby NARZEDZIA NIE CYTOWALY sciezki z pamieci.
+        //
+        // Perturbacja `p_puls` trzykrotnie celowala w POPRZEDNI magazyn pulsu
+        // (cache, potem tabela `sygnaly_zdrowia`) i za kazdym razem przestawala
+        // cokolwiek mierzyc PO CICHU — mutacja szla w miejsce, ktorego nie ma,
+        // wiec puls zostawal, kontrola slusznie przechodzila, a scenariusz
+        // wygladal na zdrowy. To jest klasa N-3: przeniesienie mechanizmu
+        // uniewaznia perturbacje, ktore go cytuja.
+        //
+        // Odtad adres podaje SAM MECHANIZM. Nastepna przenosine perturbacja
+        // przezyje bez zmian, bo nie wie i nie musi wiedziec, gdzie puls lezy.
+        if ($this->option('gdzie')) {
+            $this->line(self::plik());
+
+            return self::SUCCESS;
+        }
+
         if ($this->option('sprawdz')) {
             return $this->sprawdz();
         }

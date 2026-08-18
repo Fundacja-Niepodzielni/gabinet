@@ -213,6 +213,52 @@ def nonce_fail_open() -> None:
     )
 
 
+def d1b_podloz() -> None:
+    """Atak D-1 weryfikatora rundy 7: logowanie BEZ krypto, kolumny i trasy.
+
+    Obie siatki DEKLARATYWNE `BrakWlasnychHaselTest` pytaja o SPOSOB:
+    o funkcje kryptograficzna i o zadeklarowany schemat/trasy. Ten mechanizm
+    nie uzywa zadnej funkcji krypto (gole `===`), nie dodaje kolumny
+    (`nazwa_wyswietlana` jest zadeklarowana) ani trasy (`GET /` istnieje).
+
+    Zmierzone przez weryfikatora: `BrakWlasnychHaselTest` -> 9 passed,
+    Larastan level max -> No errors. Bramka zielona nad dzialajacym
+    mechanizmem wlasnych hasel, czyli nad zlamana zasada 2 z CLAUDE.md.
+
+    Siatka POMIAROWA (`SiatkaPomiarowaTozsamosciTest`) pyta o SKUTEK
+    i dlatego ma to zobaczyc.
+    """
+    podmien_jedyne(
+        TRASY,
+        "Route::get('/', fn () => response()->json([",
+        "Route::get('/', function () {" + chr(10)
+        + "    $podane = (string) request()->input('nazwa_wyswietlana', ''); " + chr(10)
+        + "    $konto = DB::table('users')->where('nazwa_wyswietlana', $podane)->first(); " + chr(10)
+        + "    if ($podane !== '' && $konto !== null && $podane === $konto->nazwa_wyswietlana) { " + chr(10)
+        + "        session()->put('konta', ['sub' => 'sub-lokalne', 'role' => ['pacjent']]); " + chr(10)
+        + "    } " + chr(10)
+        + "    return response()->json([" + chr(10),
+    )
+
+    # Domkniecie domkniecia: oryginal konczy sie `]));`, nowa forma
+    # potrzebuje `]); });`. Bez tego plik nie parsuje sie i perturbacja
+    # zapalilaby suite bledem skladni — czyli czerwienia z INNEJ przyczyny
+    # niz badana (P25).
+    podmien_jedyne(
+        TRASY,
+        "    'informacja' => 'Gabinet — API. Interfejs użytkownika dochodzi w F7.'," + chr(10) + "]));",
+        "    'informacja' => 'Gabinet — API. Interfejs użytkownika dochodzi w F7.'," + chr(10) + "    ]); });",
+    )
+
+    # `DB` musi byc zaimportowane — inaczej „Class not found" jest awaria
+    # poboczna z listy AWARIE_POBOCZNE, a nie zapaleniem siatki.
+    podmien_jedyne(
+        TRASY,
+        "use Illuminate\\Support\\Facades\\Route;",
+        "use Illuminate\\Support\\Facades\\DB;" + chr(10) + "use Illuminate\\Support\\Facades\\Route;",
+    )
+
+
 def lockfile_rozjazd() -> None:
     """Podbija wersję w composer.lock, nie ruszając zainstalowanego vendora.
 
@@ -561,6 +607,7 @@ def biala_lista_zdjeta() -> None:
 
 
 POLECENIA = {
+    "d1b-podloz": d1b_podloz,
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
     "hasla-sprzataj": hasla_sprzataj,

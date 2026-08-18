@@ -48,6 +48,53 @@ final class Zrodlo
         return $wynik;
     }
 
+    /**
+     * Treść pliku PHP bez komentarzy ORAZ bez LITERAŁÓW NAPISOWYCH.
+     *
+     * Znalezisko R7-2 (runda 7): `bezKomentarzy()` usuwa `T_COMMENT`
+     * i `T_DOC_COMMENT`, ale NIE `T_CONSTANT_ENCAPSED_STRING`. Kontrola
+     * „szyfrowanie sesji włączone DOMYŚLNIE, czytane z TREŚCI pliku"
+     * przechodziła więc przy WYŁĄCZONYM szyfrowaniu, jeśli szukany literał
+     * stał w napisie:
+     *
+     *     'notatka' => "BYLO: 'encrypt' => env('SESSION_ENCRYPT', true)",
+     *     'encrypt' => env('SESSION_ENCRYPT', false),
+     *
+     * To jest NAWRÓT R6A-6 o krok dalej: zamknęliśmy „literał w komentarzu",
+     * a klasa wróciła jako „literał w napisie". Naprawa dokładnie pokazanej
+     * instancji, nie klasy — dlatego filtr obejmuje teraz OBIE postacie,
+     * a nie tylko tę, którą pokazał weryfikator.
+     *
+     * Dla kontroli pytającej „czy TEN KOD robi X" napisy są tak samo
+     * nieistotne jak komentarze: jedno i drugie to tekst, którego PHP
+     * nie wykonuje jako instrukcji.
+     */
+    public static function bezKomentarzyINapisow(string $tresc): string
+    {
+        $wynik = '';
+
+        foreach (token_get_all($tresc) as $token) {
+            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                $wynik .= str_repeat("\n", substr_count($token[1], "\n"));
+
+                continue;
+            }
+
+            // Napis zastępujemy PUSTYM napisem tego samego typu, a nie usuwamy
+            // w całości — inaczej kod przestaje być parsowalny dla kolejnych
+            // kontroli, które mogą chcieć go zbadać.
+            if (is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING) {
+                $wynik .= chr(39).chr(39);
+
+                continue;
+            }
+
+            $wynik .= is_array($token) ? $token[1] : $token;
+        }
+
+        return $wynik;
+    }
+
     /** Kod pliku spod ścieżki, bez komentarzy. */
     public static function kod(string $sciezka): string
     {

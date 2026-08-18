@@ -559,9 +559,24 @@ it('czyta role Z ACCESS TOKENU, a nie z userinfo — źródła podają RÓŻNE r
     $odpowiedz = test()->get('/auth/ja')->assertOk();
 
     // Rola z ACCESS TOKENU — i żadna inna.
-    expect($odpowiedz->json('role'))->toBe(['koordynator'])
-        ->and($odpowiedz->json('role'))->not->toContain('redaktor', 'Role czytane z ID TOKENU.')
-        ->and($odpowiedz->json('role'))->not->toContain('psycholog', 'Role czytane z USERINFO.');
+    //
+    // Komunikat przy PIERWSZEJ asercji, nie tylko przy dwóch następnych (R7-8):
+    // przy odczycie ze złego źródła pada właśnie ta, a bez komunikatu wypisuje
+    // gołe „two arrays are identical". Perturbacja `zrodlo_rol` musiała wtedy
+    // szukać w wyjściu napisu „ACCESS TOKENU" — czyli NAZWY TESTU, obecnej też
+    // w przebiegu zielonym. Allowlista przyczyny była pozorna.
+    expect($odpowiedz->json('role'))->toBe(['koordynator'],
+        'Zrodlo rol INNE niz access token — uprawnienia policzone z ID tokenu albo z userinfo.')
+        // NIE `->not->toContain('redaktor', 'Role czytane z ID TOKENU.')`: drugi
+        // argument `toContain()` to KOLEJNA IGŁA, nie komunikat. Te dwa napisy
+        // udawały komunikaty asercji od rundy 2 i NIGDY nie trafiały do wyjścia —
+        // dlatego perturbacja `zrodlo_rol` musiała szukać nazwy testu i przez
+        // trzy rundy figurowała jako dług „brak komunikatu asercji". Komunikat
+        // był napisany; połknął go matcher wariadyczny.
+        ->and(in_array('redaktor', (array) $odpowiedz->json('role'), true))
+        ->toBeFalse('Role czytane z ID TOKENU zamiast z access tokenu.')
+        ->and(in_array('psycholog', (array) $odpowiedz->json('role'), true))
+        ->toBeFalse('Role czytane z USERINFO zamiast z access tokenu.');
 
     // Uprawnienia też muszą pochodzić z tego jednego źródła: bramka redaktora
     // ma być ZAMKNIĘTA, mimo że ID token przypisuje tę rolę.

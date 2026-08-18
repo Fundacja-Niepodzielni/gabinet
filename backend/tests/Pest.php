@@ -137,11 +137,22 @@ $sondaBazy();
  */
 function zdekodowaneLadunki(string $tresc): string
 {
-    if (preg_match_all('/[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/', $tresc, $trafienia) === 0) {
-        return '';
-    }
-
+    // ⛔ R7-4: TU BYL WCZESNY `return` I CZYNIL DRUGA WARSTWE KODEM MARTWYM.
+    //
+    // Warstwa druga (zwykly base64) zostala dopisana 12.08 wlasnie dla wejscia
+    // BEZ kropek — a wczesny `return` wychodzil z funkcji, zanim do niej
+    // dotarl. Zmierzone przez weryfikatora rundy 7: noga „id-token tylko
+    // ZAKODOWANY" przechodzila na ZIELONO, a czerwien przynosil dopiero
+    // kierunek odwrotny (wyjatek deszyfrowania) — czyli P25 po stronie zieleni.
+    //
+    // Komentarz ponizej twierdzil wprost, ze warstwa to lapie. Twierdzenie bylo
+    // nieprawdziwe wobec kodu przez caly czas swojego istnienia.
+    //
+    // Dzis OBIE warstwy wykonuja sie zawsze; brak dopasowania JWT nie konczy
+    // funkcji, tylko zostawia pusty wklad pierwszej warstwy.
     $zdekodowane = '';
+
+    preg_match_all('/[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/', $tresc, $trafienia);
 
     foreach ($trafienia[0] as $jwt) {
         foreach (array_slice(explode('.', $jwt), 0, 2) as $czesc) {
@@ -166,8 +177,26 @@ function zdekodowaneLadunki(string $tresc): string
         foreach ($dlugie[0] as $kandydat) {
             $rozkodowany = base64_decode(strtr($kandydat, '-_', '+/'), false);
 
-            if (is_string($rozkodowany) && $rozkodowany !== '') {
-                $zdekodowane .= $rozkodowany;
+            if (! is_string($rozkodowany) || $rozkodowany === '') {
+                continue;
+            }
+
+            $zdekodowane .= $rozkodowany;
+
+            // JEDEN POZIOM REKURENCJI — i to jest sedno naprawy R7-4.
+            //
+            // Zmierzone po pierwszym podejsciu: samo przeniesienie warstwy przed
+            // wczesny `return` NIE WYSTARCZYLO. `base64_encode($idToken)` po
+            // zdekodowaniu daje SAM JWT, a e-mail siedzi w jego ladunku, czyli
+            // poziom nizej. Bez tego wywolania kontrola nadal meldowala
+            // „nieodzyskiwalny" dla wejscia, dla ktorego warstwe dopisano.
+            //
+            // Glebokosc JEDEN, nie petla: chodzi o kodowanie zamiast szyfrowania
+            // (jeden `base64_encode` nad tokenem), a nie o dowolnie zagniezdzone
+            // opakowania. Gdyby ktos opakowal dwa razy, kontrola tego nie zlapie
+            // — i to jest jej ZNANA granica, nie przeoczenie.
+            if (str_contains($rozkodowany, chr(46))) {
+                $zdekodowane .= zdekodowaneLadunki($rozkodowany);
             }
         }
     }

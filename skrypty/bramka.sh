@@ -162,10 +162,62 @@ znacznik_zaloz "bramka (projekt: $PROJEKT)"
 #
 # Napisalem wadliwa forme mimo istniejacej kontroli i opisu w repozytorium.
 # Zostawiam ten komentarz jako slad: kontrola byla warta swojego istnienia.
-przerwano_bramke() { znacznik_zdejmij; trap - EXIT; exit 130; }
+# ⛔ TU NIE MA `trap … EXIT` — I TO JEST NAPRAWA, NIE PRZEOCZENIE.
+#
+# Stalo tutaj `trap znacznik_zdejmij EXIT`, a czterdziesci wierszy nizej
+# `trap zwolnij_zamek EXIT`. `trap` PODMIENIA uchwyt sygnalu, nie dokłada
+# go do listy — wiec drugie wywolanie PO CICHU wyrzucalo pierwsze
+# i bramka NIGDY nie zdejmowala wlasnego znacznika przy normalnym wyjsciu.
+#
+# ZMIERZONE 18.08: po zielonym, zakonczonym poprawnie pelnym zestawie
+# perturbacji w korzeniu repozytorium stal `.przebieg-pomiarowy` nalezacy
+# do zagniezdzonej bramki (`co` = „bramka (projekt: gabinet-bramka-perturbacja)"),
+# a jej PID byl juz martwy.
+#
+# DLACZEGO TO GROZNE, a nie tylko brzydkie: osierocony znacznik sprawia,
+# ze straznik commita widzi „trwa przebieg pomiarowy" i ODMAWIA. Odmowa
+# po KAZDYM przebiegu bramki uczy jednego odruchu — `rm -rf .przebieg-pomiarowy`
+# — czyli kasowania ochrony bez patrzenia. Zabezpieczenie, ktore krzyczy
+# zawsze, przestaje cokolwiek znaczyc.
+#
+# To rodzina znaleziska U-5 („trap … EXIT INT TERM w jednej linii"): tam
+# jeden `trap` obslugiwal za duzo sygnalow, tu dwa `trap` walczyly o ten
+# sam. Oba razy roznica byla widoczna WYLACZNIE przy wyjsciu ze skryptu.
+#
+# Sprzatanie idzie odtad JEDNYM uchwytem, ustawionym raz — patrz
+# `sprzataj_po_bramce()` nizej. Znacznik pada OSTATNI, po zwolnieniu zamka.
+# Zamek jeszcze nie istnieje, a uchwyt ma juz dzialac — inaczej przerwanie
+# w oknie miedzy znacznikiem a zamkiem zostawia osierocony znacznik.
+# `set -u` nie wybacza odwolania do nieustawionej zmiennej, wiec pusta
+# wartosc jest tu CZESCIA mechanizmu, nie ozdoba.
+ZAMEK=""
 
-trap znacznik_zdejmij EXIT
-trap przerwano_bramke INT TERM
+zwolnij_zamek() {
+	[ -n "$ZAMEK" ] || return 0
+
+	# Tylko właściciel sprząta. Przy przejęciu porzuconego zamka poprzedni
+	# właściciel już nie żyje, więc nie ma kto skasować cudzego katalogu.
+	if [ -d "$ZAMEK" ] && [ "$(cat "$ZAMEK/pid" 2>/dev/null || echo '')" = "$$" ]; then
+		rm -rf "$ZAMEK"
+	fi
+}
+
+# JEDEN UCHWYT NA OBA ZASOBY, USTAWIONY RAZ.
+#
+# Kolejnosc nie jest dowolna: najpierw zamek, POTEM znacznik. Znacznik
+# mowi „drzewo moze byc zmutowane, nie commituj", wiec ma zniknac jako
+# OSTATNI — gdy sprzatanie jest juz skonczone. Zdjecie go pierwszym
+# otwiera okno, w ktorym zabicie procesu zostawia niesprzatany stan
+# z rozbrojonym straznikiem (ta sama wada byla w `perturbacje.sh`).
+sprzataj_po_bramce() { zwolnij_zamek; znacznik_zdejmij; }
+
+# `trap ... INT TERM` sam z siebie NIE kończy skryptu (U-5): po powrocie
+# z procedury bash wraca do przerwanej instrukcji i bramka mieli dalej.
+# Dlatego sygnały mają własną procedurę, która jawnie wychodzi.
+przerwano() { sprzataj_po_bramce; trap - EXIT; exit 130; }
+
+trap sprzataj_po_bramce EXIT
+trap przerwano INT TERM
 
 ZAMEK="${TMPDIR:-/tmp}/gabinet-bramka.${PROJEKT}.zamek"
 
@@ -186,20 +238,10 @@ if [ "$POKAZ_ZAMEK" -eq 1 ]; then
 	exit 0
 fi
 
-zwolnij_zamek() {
-	# Tylko właściciel sprząta. Przy przejęciu porzuconego zamka poprzedni
-	# właściciel już nie żyje, więc nie ma kto skasować cudzego katalogu.
-	if [ -d "$ZAMEK" ] && [ "$(cat "$ZAMEK/pid" 2>/dev/null || echo '')" = "$$" ]; then
-		rm -rf "$ZAMEK"
-	fi
-}
-
-# `trap ... INT TERM` sam z siebie NIE kończy skryptu (U-5): po powrocie
-# z procedury bash wraca do przerwanej instrukcji i bramka mieli dalej.
-# Dlatego sygnały mają własną procedurę, która jawnie wychodzi.
-przerwano() { zwolnij_zamek; trap - EXIT; exit 130; }
-trap zwolnij_zamek EXIT
-trap przerwano INT TERM
+# Uchwyty sprzatajace stoja WYZEJ i sa ustawione RAZ — patrz komentarz przy
+# `ZAMEK=""`. Nie powtarzamy ich tutaj: drugie `trap` dla tego samego
+# sygnalu po cichu wyrzuca pierwsze, i dokladnie tak zginelo zdejmowanie
+# znacznika (zmierzone 18.08).
 
 if mkdir "$ZAMEK" 2>/dev/null; then
 	echo "$$" > "$ZAMEK/pid"

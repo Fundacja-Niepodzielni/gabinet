@@ -64,15 +64,24 @@
 # PODNIESIENIE 09.08 (ZLECENIE-012/014): 195/683 → 199/695.
 # PODNIESIENIE 09.08 (dalsze zlecenia, stan zastany 12.08): 236/1936.
 #
+# PODNIESIENIE 12.08 (naprawy rundy 7, ZLECENIE-062): 265/2024 -> 284/2098.
+# PODNIESIENIE 12.08 (kolejnosc znacznika w klamrze): 284/2098 -> 286/2108.
+# PODNIESIENIE 12.08 (egzekutor N-3 dla magazynu pulsu): 286/2108 -> 287/2112.
+# PODNIESIENIE 18.08 (podwojone uchwyty trap w bramce): 287/2112 -> 289/2119.
+# Powod: siatka POMIAROWA tozsamosci (D-1b, 3 kontrole), egzekutor wpiecia
+# blokady wysylki (R7-3, 2), kontrole rejestru narzedzi compose i odmowy
+# na projekcie dewelopera (R7-7, 4), egzekutor WNETRZA sekcji stanu (R7-6, 4),
+# skaner matcherow wariadycznych (2).
+#
 # UWAGA DLA PODNOSZĄCEGO: te dwie liczby czyta TAKŻE `perturbacje.sh`.
 # Podniesienie ich bez uruchomienia perturbacji jest bezpieczne (perturbacje
 # porównują z nimi PEŁNY przebieg suity), ale podniesienie POWYŻEJ stanu
 # bieżącego wywali i bramkę, i perturbacje — i to jest zamierzone.
-MINIMUM_TESTOW=265
+MINIMUM_TESTOW=289
 
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Liczbę testów da się nadmuchać
 # (pominięte wliczały się do podłogi, aż weryfikator pokazał zieloną bramkę
 # przy 151 pominiętych i ZERZE asercji). Asercji nie da się nadmuchać, nie
 # wykonując ich.
-MINIMUM_ASERCJI=2024
+MINIMUM_ASERCJI=2119

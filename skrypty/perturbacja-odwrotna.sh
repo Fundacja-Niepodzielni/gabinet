@@ -57,6 +57,30 @@
 # DANĄ w deklaracji, a narzędzie ODMAWIA STARTU przy zestawie dobranym w słabą
 # stronę. Warunek przed strażnikiem: zestaw nie ma jak być za słaby.
 #
+# =================== CO NAPRAWIŁEM PO RUNDZIE 7 (R7-7) =====================
+#
+# Ten skrypt mielił STOS I DRZEWO DEWELOPERA. `dc()` wołało gołe
+# `docker compose`, więc bez `-p` i `--env-file` szło na projekt domyślny
+# `gabinet` — ten sam, którego `perturbacje.sh:81` ODMAWIA od rundy 4,
+# i ten sam, którego `.env` ma prawdziwe sekrety (R6B-16).
+#
+# Trzy wady naraz, wszystkie tej samej rodziny „narzędzie pomiaru jest
+# częścią pomiaru":
+#
+#   1. suita biegła na stosie dewelopera — a WYTYCZNE mówią wprost, że
+#      biegnąca suita destabilizuje środowisko, w którym stoi;
+#   2. cofanie szło przez `git checkout -- "$p"`, czyli operację, która
+#      kasuje KAŻDĄ niezacommitowaną zmianę pod tą ścieżką — także cudzą,
+#      powstałą już po starcie. To punkt 4 z listy sześciu złamań
+#      w `backend/tests/Feature/StraznikCommitaTest.php`;
+#   3. nie zakładał `.przebieg-pomiarowy`, więc strażnik commita nie
+#      wiedział, że drzewo jest właśnie zmutowane — dokładnie luka N-10,
+#      przez którą 09.08 wjechała do repozytorium żywa perturbacja.
+#
+# Odmowa przy brudnym drzewie ograniczała szkodę, ale sprawdzała stan
+# TYLKO NA STARCIE. Zmiana zapisana w trakcie przebiegu — a przebieg trwa
+# tyle, ile kilkanaście pełnych suit — ginęła bez śladu.
+#
 # UŻYCIE:  bash skrypty/perturbacja-odwrotna.sh [--tylko R-1]
 # KODY:    0 = pomiar wykonany · 2 = ODMOWA · 1 = pomiar nierozstrzygnięty
 # ===========================================================================
@@ -79,6 +103,34 @@ hp() {
 PY="${PY:-python}"
 command -v "$PY" >/dev/null 2>&1 || PY=python3
 
+# --- WŁASNY STOS (R7-7) ----------------------------------------------------
+#
+# Lista zabroniona przepisana z `perturbacje.sh` ŚWIADOMIE, a nie
+# zaimportowana: tamten plik jest skryptem wykonywalnym z własną klamrą
+# i `set -uo pipefail`, więc `source` uruchomiłby cały jego przebieg.
+# Kontrola `KlamraSkryptowTest` pilnuje, żeby obie listy zostały zgodne.
+PROJEKTY_ZABRONIONE="gabinet dev"
+PROJEKT="${GABINET_ODWROTNA_PROJEKT:-gabinet-odwrotna}"
+
+for ZABRONIONY in $PROJEKTY_ZABRONIONE; do
+	if [ "$PROJEKT" = "$ZABRONIONY" ]; then
+		printf "ODMOWA: perturbacja odwrotna nie działa na projekcie '%s' — to stos dewelopera.\n" "$ZABRONIONY" >&2
+		printf "Przebieg mutuje backend/app i mieli kilkanaście pełnych suit; jego danych nie ruszamy.\n" >&2
+		exit 2
+	fi
+done
+
+# Porty rozłączne ZARÓWNO z deweloperem, JAK I z perturbacjami — te dwa
+# narzędzia bywają uruchamiane jedno po drugim, a wolumeny zostają.
+# (V-12 z rundy 5: „własne porty" w nagłówku przy porcie HTTP identycznym
+# z deweloperskim.)
+PORT_HTTP="${GABINET_ODWROTNA_PORT_HTTP:-8095}"
+PORT_PG="${GABINET_ODWROTNA_PORT_POSTGRES:-55442}"
+PORT_REDIS="${GABINET_ODWROTNA_PORT_REDIS:-56389}"
+
+# Ustawiany niżej, tuż przed pierwszym `dc` — `set -u` nie wybacza.
+PLIK_ENV=""
+
 # Nadpisywalne WYŁĄCZNIE po to, żeby dało się uruchomić kontrole negatywne
 # samego narzędzia (pusty plik, zestaw dobrany w słabą stronę). Odmowa, której
 # nikt nigdy nie wywołał, jest deklaracją, nie zabezpieczeniem.
@@ -90,7 +142,19 @@ TYLKO=""
 
 odmowa() { printf '\nODMOWA: %s\n' "$1" >&2; exit 2; }
 
-dc() { docker compose "$@"; }
+# `--env-file` I `GABINET_PLIK_ENV` naraz, jak w `perturbacje.sh`: pierwsze
+# mówi compose, skąd brać podstawienia, drugie trafia do `docker-compose.yml`
+# jako ścieżka montowana do kontenera. Bez drugiego kontener dostaje `./.env`
+# DEWELOPERA mimo poprawnego pierwszego (R6B-16).
+dc() {
+	GABINET_PREFIX="$PROJEKT" \
+	GABINET_PORT_HTTP="$PORT_HTTP" \
+	GABINET_PORT_POSTGRES="$PORT_PG" \
+	GABINET_PORT_REDIS="$PORT_REDIS" \
+	GABINET_PLIK_ENV="$(hp "$PLIK_ENV")" \
+		docker compose --env-file "$(hp "$PLIK_ENV")" \
+			-p "$PROJEKT" -f "$(hp "$KATALOG_REPO/docker-compose.yml")" "$@"
+}
 
 # --- ADAPTACJA (A): suita z wynikiem PER TEST ------------------------------
 # `exec`, nie `run --rm`: mierzę TEN kontener, który stoi, w tym samym
@@ -135,7 +199,45 @@ if [ -n "$BRUDNE" ]; then
 fi
 
 command -v docker >/dev/null 2>&1 || odmowa "brak docker"
-dc exec -T app true >/dev/null 2>&1 || odmowa "kontener app nie odpowiada — pomiar biegłby w innym programie niż runtime"
+
+# --- ŚRODOWISKO PRZEBIEGU (R7-7) ------------------------------------------
+#
+# Ścieżkę pliku podaje SAMA BRAMKA, a budowa idzie jej mechanizmem. Drugi
+# wzór na nazwę pliku rozjechałby się po cichu — to lekcja `licz-testy.sh`.
+PLIK_ENV="$(bash "$KATALOG_REPO/skrypty/bramka.sh" --projekt "$PROJEKT" --pokaz-srodowisko)"
+[ -n "$PLIK_ENV" ] || odmowa "bramka nie potrafi podać ścieżki pliku środowiska"
+
+if [ ! -s "$PLIK_ENV" ]; then
+	printf "Buduję plik środowiska przebiegu z .env.example: %s\n" "$(basename "$PLIK_ENV")" >&2
+	PLIK_ENV="$(GABINET_BRAMKA_PORT_HTTP="$PORT_HTTP" \
+		GABINET_BRAMKA_PORT_POSTGRES="$PORT_PG" \
+		GABINET_BRAMKA_PORT_REDIS="$PORT_REDIS" \
+		bash "$KATALOG_REPO/skrypty/bramka.sh" --projekt "$PROJEKT" --przygotuj-srodowisko)"
+fi
+
+[ -n "$PLIK_ENV" ] && [ -s "$PLIK_ENV" ] || odmowa "brak pliku środowiska dla projektu '$PROJEKT' — bez niego compose zamontowałby './.env' dewelopera"
+
+# Stos stawiamy sami, jeśli nie stoi. Bez tego narzędzie byłoby po naprawie
+# NIEUŻYWALNE (własny projekt nigdy nie stoi), a nieużywalne narzędzie wraca
+# na stos dewelopera pierwszym „tymczasowym" ustawieniem zmiennej.
+if ! dc ps --status running --services 2>/dev/null | grep -q "^app$"; then
+	printf "Stos '%s' nie stoi — stawiam go.\n" "$PROJEKT" >&2
+
+	# Pytamy o STAN, nie o kod wyjścia `up` (zasada 1 z nagłówka bramki):
+	# `up` wraca niezerowo, gdy kontener mignie jako unhealthy w trakcie startu.
+	dc up -d >/dev/null 2>&1 || true
+
+	CZEKAM=0
+	while [ "$CZEKAM" -lt 60 ]; do
+		dc exec -T app true >/dev/null 2>&1 && break
+		sleep 2
+		CZEKAM=$((CZEKAM + 1))
+	done
+
+	dc exec -T app php artisan migrate --force >/dev/null 2>&1
+fi
+
+dc exec -T app true >/dev/null 2>&1 || odmowa "kontener app projektu '$PROJEKT' nie odpowiada — pomiar biegłby w innym programie niż runtime"
 mkdir -p "$WYNIKI" || odmowa "nie umiem utworzyć $WYNIKI"
 : > "$WYNIKI/.probny" 2>/dev/null || odmowa "katalog wyników nie jest zapisywalny: $WYNIKI"
 rm -f "$WYNIKI/.probny"
@@ -196,10 +298,33 @@ fi
 # ===========================================================================
 # KLAMRA
 # ===========================================================================
+# KOPIE ORYGINAŁÓW — cofamy `cp`, NIGDY `git checkout --` (R7-7).
+#
+# `git checkout -- plik` przywraca stan Z INDEKSU, czyli kasuje KAŻDĄ
+# niezacommitowaną zmianę pod tą ścieżką — także taką, która powstała już
+# po starcie przebiegu i nie ma z mutacją nic wspólnego. Odmowa przy brudnym
+# drzewie sprawdza stan TYLKO NA STARCIE, a przebieg trwa kilkanaście suit.
+#
+# `cp` z kopii zdjętej TUŻ PRZED mutacją przywraca dokładnie to, co ten
+# skrypt zepsuł, i ani znaku więcej.
+KOPIE="$(mktemp -d)"
+
+zachowaj() {
+	local cel
+	cel="$KOPIE/$(printf "%s" "$1" | tr "/" "_")"
+	[ -f "$cel" ] || cp "$1" "$cel"
+}
+
+przywroc() {
+	local cel
+	cel="$KOPIE/$(printf "%s" "$1" | tr "/" "_")"
+	[ -f "$cel" ] && cp "$cel" "$1"
+}
+
 PLIKI_DOTKNIETE=""
 cofnij_wszystko() {
 	local p
-	for p in $PLIKI_DOTKNIETE; do git checkout -- "$p" 2>/dev/null; done
+	for p in $PLIKI_DOTKNIETE; do przywroc "$p"; done
 	local reszta
 	reszta="$(git status --porcelain -- backend/app backend/tests backend/config backend/routes 2>/dev/null)"
 	if [ -n "$reszta" ]; then
@@ -221,8 +346,40 @@ cofnij_wszystko() {
 # Ten sam idiom stoi poprawnie w `bramka.sh:209` i `perturbacje.sh:203` od
 # znaleziska U-5 — a mimo to napisałem tu formę wadliwą. Wiedza zapisana
 # w komentarzu obok nie propaguje się sama.
-przerwano_odwrotna() { cofnij_wszystko; trap - EXIT; exit 130; }
-trap cofnij_wszystko EXIT
+# ZNACZNIK PRZEBIEGU POMIAROWEGO — dla strażnika commita (R7-7).
+#
+# Bez niego strażnik nie wie, że drzewo jest właśnie zmutowane, i wpuszcza
+# commit utrwalający żywą perturbację. Dokładnie luka N-10 z 09.08 — tam
+# przez `perturbacje.sh`, tutaj przez narzędzie napisane PO tamtej naprawie.
+. "$KATALOG_REPO/skrypty/znacznik-przebiegu.sh"
+znacznik_zaloz "perturbacja odwrotna"
+
+# ⛔ KOLEJNOSC: NAJPIERW PRZYWROCENIE, ZNACZNIK NA KONCU (zmierzone 12.08).
+#
+# Stalo tu `znacznik_zdejmij; przywroc_wszystko`. Roznica jest widoczna
+# dopiero przy zabiciu W TRAKCIE SPRZATANIA — sekwencja SIGTERM, a zaraz po
+# niej SIGKILL, ktora wysyla kazdy sensowny nadzorca procesow:
+#
+#   SIGTERM  -> uchwyt startuje -> znacznik ZDJETY -> SIGKILL w polowie
+#               przywracania -> drzewo ZOSTAJE ZMUTOWANE, a straznik commita
+#               juz NIE WIE, ze trwal przebieg pomiarowy.
+#
+# Zmierzone na wlasnym drzewie tego samego dnia: przerwany pelny przebieg
+# zostawil w `backend/routes/web.php` ZYWA TRASE `/wejscie/zaloz` z `Hash::make`,
+# a znacznika juz nie bylo. Czysty SIGTERM konczy sie poprawnie (kod 130,
+# mutacja cofnieta) — czyli wada ujawnia sie WYLACZNIE w oknie miedzy
+# zdjeciem znacznika a koncem przywracania.
+#
+# To jest ta sama mysl, ktora stoi juz w docbloku `znacznik_zdejmij`:
+# straznik przestaje chronic dokladnie wtedy, gdy jest najbardziej potrzebny.
+# Znacznik ma padac OSTATNI — po nim drzewo jest juz czyste.
+#
+# Ta sama kolejnosc wpisalem TUTAJ dzisiaj, przy naprawie R7-7 — czyli
+# przepisalem wade razem ze wzorcem, godzine po tym, jak w tym samym pliku
+# opisalem, ze wiedza w komentarzu obok nie propaguje sie sama.
+sprzataj_po_odwrotnej() { cofnij_wszystko; znacznik_zdejmij; }
+przerwano_odwrotna() { cofnij_wszystko; znacznik_zdejmij; trap - EXIT; exit 130; }
+trap sprzataj_po_odwrotnej EXIT
 trap przerwano_odwrotna INT TERM
 
 printf '\n== PERTURBACJA ODWROTNA (gabinet) — poprawiam zachowanie, szukam ZIELONYCH, które padną ==\n'
@@ -359,14 +516,17 @@ policz_utracone() {                     # $1 = tsv biezacy, $2 = plik wynikowy
 przebieg_z_mutacja() {                  # $1=id $2=plik $3=frag_szukaj $4=frag_docelowy $5=etykieta $6=przyrostek
 	local id="$1" plik="$2" fszukaj="$3" fdocel="$4" etyk="$5" suf="$6"
 
+	zachowaj "$plik"
+
 	if ! zastosuj "$plik" "$fszukaj" "$fdocel"; then
 		printf '   NIEROZSTRZYGNIĘTE (%s): mutacja nie dała się zastosować\n' "$etyk"
+		przywroc "$plik"
 		return 1
 	fi
 	PLIKI_DOTKNIETE="$PLIKI_DOTKNIETE $plik"
 
 	if ! dowod_mutacji "$plik" "$fszukaj" "$fdocel" "$etyk"; then
-		git checkout -- "$plik" 2>/dev/null
+		przywroc "$plik"
 		return 1
 	fi
 
@@ -375,15 +535,15 @@ przebieg_z_mutacja() {                  # $1=id $2=plik $3=frag_szukaj $4=frag_d
 	local kod=$?
 	if [ ! -s "$xml" ]; then
 		printf '   NIEROZSTRZYGNIĘTE (%s): brak XML, kod %s\n' "$etyk" "$kod"
-		git checkout -- "$plik" 2>/dev/null
+		przywroc "$plik"
 		return 1
 	fi
-	parsuj_wynik "$xml" "$tsv" >/dev/null || { git checkout -- "$plik" 2>/dev/null; return 1; }
+	parsuj_wynik "$xml" "$tsv" >/dev/null || { przywroc "$plik"; return 1; }
 
 	UTRACONE_PLIK="$WYNIKI/$id$suf.utracone.txt"
 	UTRACONE="$(policz_utracone "$tsv" "$UTRACONE_PLIK")"
 
-	git checkout -- "$plik" 2>/dev/null
+	przywroc "$plik"
 	if [ -n "$(git status --porcelain -- "$plik")" ]; then
 		odmowa "nie udało się cofnąć $plik — przerywam, żeby nie mierzyć na skażonym drzewie"
 	fi

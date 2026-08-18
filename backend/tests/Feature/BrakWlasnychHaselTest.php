@@ -7,6 +7,7 @@ use App\Wsparcie\Typy;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Tests\Wsparcie\Trasy;
 
 /**
  * Regresja na CLAUDE.md §2: „ŻADNYCH własnych haseł w tym systemie".
@@ -357,50 +358,13 @@ function plikiPhpProjektu(): array
     return $pliki;
 }
 
-/**
- * Czy trasa jest zdefiniowana w NASZYM kodzie?
- *
- * Rozstrzyga plik definicji, nie adres. Trasy pakietów (`Horizon`, `Scramble`)
- * mają kontrolery w `vendor/` i nie podlegają deklaracji — ale trasa schowana
- * pod `/horizon/coś` z naszym kontrolerem albo domknięciem zostanie policzona.
- */
-/**
- * Nazwa klasy z zapisu `Kontroler@metoda`.
- *
- * @return class-string
- */
-function klasaZAkcji(string $akcja): string
-{
-    /** @var class-string */
-    return explode('@', $akcja)[0];
-}
-
+// `trasaZNaszegoKodu()` i `klasaZAkcji()` przeniesione do
+// `Tests\Wsparcie\Trasy` — tej samej odpowiedzi potrzebuje siatka POMIAROWA
+// D-1b, a dwa opisy jednej rzeczy rozjezdzaja sie po cichu.
 function trasaZNaszegoKodu(Illuminate\Routing\Route $trasa): bool
 {
-    $akcja = $trasa->getAction('uses');
-
-    try {
-        $plik = match (true) {
-            $akcja instanceof Closure => (new ReflectionFunction($akcja))->getFileName(),
-            is_string($akcja) && str_contains($akcja, '@') => (new ReflectionClass(klasaZAkcji($akcja)))->getFileName(),
-            is_string($akcja) && class_exists($akcja) => (new ReflectionClass($akcja))->getFileName(),
-            default => null,
-        };
-    } catch (ReflectionException) {
-        return false;
-    }
-
-    if (! is_string($plik)) {
-        // Trasa bez rozpoznawalnego pliku (np. `Route::view`) traktowana jest
-        // jako NASZA — bezpieczniejszy kierunek: pojawi się na liście różnic.
-        return true;
-    }
-
-    $plik = str_replace(DIRECTORY_SEPARATOR, '/', $plik);
-
-    return ! str_contains($plik, '/vendor/');
+    return Trasy::zNaszegoKodu($trasa);
 }
-
 /** Kod bez komentarzy — kontrola patrzy na to, co się WYKONUJE. */
 function bezKomentarzy(string $kod): string
 {

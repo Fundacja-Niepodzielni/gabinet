@@ -7,7 +7,6 @@ use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Redis;
 use Tests\Wsparcie\FabrykaTokenow;
-use Tests\Wsparcie\Zrodlo;
 
 /**
  * Magazyn sesji nie może trzymać danych osobowych JAWNIE.
@@ -142,42 +141,49 @@ it('ma szyfrowanie sesji włączone DOMYŚLNIE — czytane z TREŚCI pliku, nie 
     //
     // Teraz czytamy TREŚĆ PLIKU. To ścieżka niezależna od środowiska: żadna
     // wartość w `.env` nie zmieni tego, co jest zapisane w kodzie.
-    $tresc = (string) file_get_contents(base_path('config/session.php'));
+    // ⛔ POMIAR WARTOSCI DOMYSLNEJ, NIE SZUKANIE LITERALU (R7-2, runda 7).
+    //
+    // HISTORIA, bo bez niej ta zmiana wyglada na kosmetyke:
+    //
+    //   · pierwsza wersja czytala `config()` — mierzyla SWIAT TESTOWY;
+    //   · druga czytala TRESC pliku i przechodzila, gdy literal stal
+    //     w KOMENTARZU (R6A-6);
+    //   · trzecia filtrowala komentarze parserem i przechodzila, gdy literal
+    //     stal w NAPISIE (R7-2) — klasa przeniosla sie o krok;
+    //   · czwarta proba (filtr napisow) OBALILA SIE SAMA: zaslepienie
+    //     literalow niszczy szukany napis, bo on sam zawiera literaly.
+    //
+    // Cztery podejscia tekstowe, trzy nawroty. Pytanie brzmi „jaka jest
+    // wartosc DOMYSLNA, gdy zmiennej NIE MA w srodowisku" — i da sie je
+    // zadac WPROST, zamiast szukac jego sladu w tekscie.
+    //
+    // Wykonujemy plik konfiguracji z USUNIETA zmienna i czytamy wynik.
+    // Zaden literal — w komentarzu, w napisie, w heredocu — tego nie zmieni,
+    // bo nic nie jest czytane jako TEKST. To zamyka KLASE, nie instancje.
+    $bylo = getenv('SESSION_ENCRYPT');
 
-    // KOMENTARZE ODFILTROWANE — inaczej kontrola ma gałąź zdegenerowaną (klasa 3).
-    //
-    // Zmierzone 09.08: po zmianie wartości domyślnej na `false` i zostawieniu
-    // starej linii W KOMENTARZU („// BYLO: 'encrypt' => env(…, true),”)
-    // ta asercja **PRZESZŁA przy WYŁĄCZONYM szyfrowaniu**. Trafienie w kodzie
-    // i trafienie w cytacie były nieodróżnialne — jedna wartość, dwa światy.
-    //
-    // Czerwień przyniosła wtedy dopiero DRUGA, niezależna asercja
-    // (`config('session.encrypt')`) — czyli test ocalał, ale nie dzięki tej
-    // kontroli. Dwa niezależne sygnały zrobiły robotę, którą miał zrobić jeden.
-    //
-    // Reguła ekosystemu: kontrola tekstowa nad kodem filtruje komentarze,
-    // albo jej zero jest bezwartościowe.
-    //
-    // ROZSZERZONE 12.08 z wyrażenia regularnego na PARSER. Poprzednia postać
-    // (`preg_replace('~^\s*//.*$~m', …)`) filtrowała WYŁĄCZNIE komentarze
-    // liniowe na początku wiersza, więc ten sam cytat w `/* … */`, w docbloku
-    // albo dopisany na końcu linii kodu nadal spełniałby asercję. Zamknięta
-    // była instancja, którą pokazał weryfikator, nie KLASA — a to dokładnie
-    // schemat, przez który w tym repozytorium nawróciły trzy naprawy naraz.
-    // `Zrodlo::bezKomentarzy()` używa leksera PHP, więc odróżnia komentarz
-    // od napisu zawierającego `//`, czego regex nie potrafi z zasady.
-    $kod = Zrodlo::bezKomentarzy($tresc);
+    putenv('SESSION_ENCRYPT');
+    unset($_ENV['SESSION_ENCRYPT'], $_SERVER['SESSION_ENCRYPT']);
 
-    // `toContain()` w Pest traktuje kolejne argumenty jako KOLEJNE IGŁY,
-    // nie jako komunikat — dlatego jawne `str_contains` z opisem błędu.
-    expect(str_contains($kod, "'encrypt' => env('SESSION_ENCRYPT', true)"))->toBeTrue(
-        'Wartość DOMYŚLNA szyfrowania sesji nie jest `true` w kodzie — środowisko bez tej zmiennej zapisuje sesję jawnie.'
+    try {
+        /** @var array<string, mixed> $domyslna */
+        $domyslna = require base_path('config/session.php');
+    } finally {
+        if ($bylo !== false) {
+            putenv('SESSION_ENCRYPT='.$bylo);
+            $_ENV['SESSION_ENCRYPT'] = $bylo;
+            $_SERVER['SESSION_ENCRYPT'] = $bylo;
+        }
+    }
+
+    expect($domyslna['encrypt'] ?? null)->toBeTrue(
+        'Wartość DOMYŚLNA szyfrowania sesji nie jest `true`. Środowisko bez zmiennej '.
+        '`SESSION_ENCRYPT` — w tym `.env` dewelopera — zapisuje wtedy e-mail pacjenta '.
+        'do magazynu sesji JAWNIE (RODO art. 9, CLAUDE.md zasada 10).'
     );
 
-    // Drugi, osobny sygnał: bieżąca konfiguracja też ma być włączona. Tu
-    // ŚWIADOMIE dopuszczamy zależność od `.env` — to jest inne pytanie
-    // („czy TU jest bezpiecznie") niż poprzednie („czy jest bezpiecznie
-    // DOMYŚLNIE"). Rozdzielenie tych dwóch pytań jest całym sensem naprawy.
+    // Drugi, osobny sygnal: biezaca konfiguracja tez ma byc wlaczona. To INNE
+    // pytanie („czy TU jest bezpiecznie") niz powyzsze („czy DOMYSLNIE").
     expect(config('session.encrypt'))->toBeTrue();
 });
 

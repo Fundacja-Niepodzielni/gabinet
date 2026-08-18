@@ -73,7 +73,13 @@ it('nie wpuszcza markera technicznego do uprawnień', function (): void {
         'default-roles-niepodzielni',
     ];
 
-    expect(Bramki::roleAutoryzujace($zTokenu))->toBe(['koordynator'])
+    // Komunikat NIE jest ozdobą: `perturbacje.sh` przypisuje czerwień przyczynie
+    // przez `grep` w wyjściu, a bez komunikatu jedyne, co tu pada, to „Failed
+    // asserting that two arrays are identical" — zdanie pasujące do dowolnej
+    // awarii. Wywołanie musiało więc szukać nazwy testu, czyli napisu obecnego
+    // także w przebiegu ZIELONYM (R7-8). Naprawa klasy zaczyna się tutaj.
+    expect(Bramki::roleAutoryzujace($zTokenu))->toBe(['koordynator'],
+        'Marker techniczny AUTORYZUJE — biala lista rol nie odsiewa markerow ani rol wbudowanych Keycloaka.')
         ->and(Bramki::markery($zTokenu))->toBe(['wymaga-2fa'])
         ->and(Bramki::wymaga2fa($zTokenu))->toBeTrue()
         // Uprawnienia takie same, jak przy samym `koordynator`.

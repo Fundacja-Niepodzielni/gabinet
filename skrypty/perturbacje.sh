@@ -264,8 +264,27 @@ przerwano_perturbacje() { przywroc_wszystko; trap - EXIT; exit 130; }
 . "$KORZEN/skrypty/znacznik-przebiegu.sh"
 znacznik_zaloz "zestaw perturbacji"
 
-sprzataj_po_przebiegu() { znacznik_zdejmij; przywroc_wszystko; }
-przerwano_z_znacznikiem() { znacznik_zdejmij; przerwano_perturbacje; }
+# ⛔ KOLEJNOSC: NAJPIERW PRZYWROCENIE, ZNACZNIK NA KONCU (zmierzone 12.08).
+#
+# Stalo tu `znacznik_zdejmij; przywroc_wszystko`. Roznica jest widoczna
+# dopiero przy zabiciu W TRAKCIE SPRZATANIA — sekwencja SIGTERM, a zaraz po
+# niej SIGKILL, ktora wysyla kazdy sensowny nadzorca procesow:
+#
+#   SIGTERM  -> uchwyt startuje -> znacznik ZDJETY -> SIGKILL w polowie
+#               przywracania -> drzewo ZOSTAJE ZMUTOWANE, a straznik commita
+#               juz NIE WIE, ze trwal przebieg pomiarowy.
+#
+# Zmierzone na wlasnym drzewie tego samego dnia: przerwany pelny przebieg
+# zostawil w `backend/routes/web.php` ZYWA TRASE `/wejscie/zaloz` z `Hash::make`,
+# a znacznika juz nie bylo. Czysty SIGTERM konczy sie poprawnie (kod 130,
+# mutacja cofnieta) — czyli wada ujawnia sie WYLACZNIE w oknie miedzy
+# zdjeciem znacznika a koncem przywracania.
+#
+# To jest ta sama mysl, ktora stoi juz w docbloku `znacznik_zdejmij`:
+# straznik przestaje chronic dokladnie wtedy, gdy jest najbardziej potrzebny.
+# Znacznik ma padac OSTATNI — po nim drzewo jest juz czyste.
+sprzataj_po_przebiegu() { przywroc_wszystko; znacznik_zdejmij; }
+przerwano_z_znacznikiem() { przywroc_wszystko; znacznik_zdejmij; trap - EXIT; exit 130; }
 
 trap sprzataj_po_przebiegu EXIT
 trap przerwano_z_znacznikiem INT TERM
@@ -601,7 +620,13 @@ p_hasla() {
 	perturbuj hasla-podloz || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
 	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 
-	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa PEŁNY mechanizm haseł pod polskimi nazwami" --przyczyna "BrakWlasnychHasel" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+	# R7-8: wzorzec "BrakWlasnychHasel" był NAZWĄ KLASY, którą raporter Pest
+	# wypisuje w nagłówku KAŻDEGO przebiegu (`PASS  Tests\Feature\BrakWlasnychHaselTest`
+	# — zmierzone 12.08 na przebiegu ZIELONYM, nie zdedukowane z formatu).
+	# Napis poniżej skopiowany DOSŁOWNIE z czerwieni tej perturbacji.
+	oczekuj_czerwone "BrakWlasnychHaselTest wykrywa PEŁNY mechanizm haseł pod polskimi nazwami" \
+		--przyczyna "Zbiór tabel domenowych różni się od zadeklarowanego" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
 
 	perturbuj hasla-sprzataj
 	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
@@ -622,7 +647,12 @@ p_hasla_v2() {
 	perturbuj hasla-podloz-v2 || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
 	dc exec -T app php artisan migrate:fresh --force >/dev/null 2>&1 || true
 
-	oczekuj_czerwone "test §2 wykrywa mechanizm ukryty pod obcymi nazwami" --przyczyna "BrakWlasnychHasel" 		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
+	# R7-8, ta sama wada co wyżej. Tu wzorzec celuje w SEDNO wariantu:
+	# prymityw pod nazwą spoza jakiegokolwiek wzorca ma zostać złapany
+	# allowlistą FUNKCJI, a nie listą zakazanych słów.
+	oczekuj_czerwone "test §2 wykrywa mechanizm ukryty pod obcymi nazwami" \
+		--przyczyna "Prymityw kryptograficzny POZA dopuszczonym zakresem: sodium_crypto_pwhash_str" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php
 
 	perturbuj hasla-sprzataj
 	cp "$KOPIE/$(printf '%s' "$migracja" | tr '/' '_')" "$migracja"
@@ -1122,12 +1152,10 @@ p_zrodlo_rol() {
 	dowod_mutacji "wszystkie trzy odczyty ról idą teraz z ID tokenu" \
 		bash -c "[ \"\$(grep -c 'roleZAccessTokenu(\$claimsId)' '$plik')\" = '3' ]"
 
-	# ⚠ DŁUG NAZWANY (R6B-15): „ACCESS TOKENU" to NAZWA TESTU. Komunikaty
-	# asercji w tym teście ISTNIEJĄ („Role czytane z ID TOKENU."), ale pada
-	# przed nimi asercja BEZ komunikatu (`toBe(['koordynator'])`), więc do
-	# wyjścia nie docierają. Naprawa: komunikat przy PIERWSZEJ asercji
-	# w `backend/tests/Feature/OdebranieRoliTest.php` — opisane w raporcie.
-	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" --przyczyna "ACCESS TOKENU" \
+	# DŁUG SPŁACONY 12.08 (był R6B-15, doliczony ponownie w R7-8). Pierwsza
+	# asercja testu dostała komunikat, więc wzorzec przestał być nazwą testu.
+	oczekuj_czerwone "test wykrywa role czytane ze złego źródła" \
+		--przyczyna "Zrodlo rol INNE niz access token" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ACCESS TOKENU"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -1189,23 +1217,25 @@ p_id_token_w_sesji() {
 	dowod_mutacji "kontroler koduje ID token zamiast go szyfrować" \
 		grep -q "base64_encode(\$idToken)" "$plik"
 
-	# ⚠ DŁUG NAZWANY, DWIE WADY NARAZ — obie wymagają zmiany w `backend/`:
+	# DŁUG SPŁACONY 12.08 — i spłaciła go naprawa R7-4, nie zmiana tutaj.
 	#
-	# 1. „ZASZYFROWANY" to NAZWA TESTU i wartość `--filter`, więc jako
-	#    allowlista nie zawęża niczego (R6B-15).
-	# 2. GORSZE: opis tego kroku jest NIEPRAWDZIWY. Zmierzone 12.08 na
-	#    odtworzeniu logiki `zdekodowaneLadunki()` (`backend/tests/Pest.php:138`):
-	#    jej wyrażenie wymaga DWÓCH KROPEK, a `base64_encode($idToken)` kropek
-	#    nie zawiera — więc dla tej mutacji funkcja zwraca pusty napis
-	#    i asercja „E-mail pacjenta odzyskiwalny z zapisanego ID tokenu"
-	#    PRZECHODZI. Czerwień przynosi dopiero kierunek odwrotny
-	#    (`Crypt::decryptString`) wyjątkiem deszyfrowania — czyli z innej
-	#    przyczyny niż badana (P25).
+	# Do 12.08 stały tu DWIE wady naraz. Pierwsza: „ZASZYFROWANY" to nazwa
+	# testu i zarazem wartość `--filter`, więc jako allowlista nie zawężała
+	# niczego (R6B-15). Druga, GORSZA: właściwa asercja NIE ZAPALAŁA SIĘ
+	# wcale — `zdekodowaneLadunki()` przerywała po pierwszej warstwie base64,
+	# a `base64_encode($idToken)` chowa JWT o warstwę głębiej. Czerwień
+	# przychodziła z wyjątku deszyfrowania, czyli z innego ogniwa (P25).
 	#
-	# Nie wpisuję tu wzorca z wyjątku deszyfrowania: utrwaliłby czerwień
-	# pochodzącą z niewłaściwego ogniwa. Naprawa należy do `backend/` i jest
-	# opisana w raporcie.
-	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" --przyczyna "ZASZYFROWANY" \
+	# Wzorca nie dało się wtedy poprawić: nie miał w co celować. Naprawił to
+	# R7-4 (rekurencja w `backend/tests/Pest.php`). ZMIERZONE po naprawie —
+	# ta sama mutacja, ta sama komenda:
+	#
+	#   ⨯ zapisuje ID token do sesji ZASZYFROWANY …
+	#   E-mail pacjenta odzyskiwalny z zapisanego ID tokenu.
+	#
+	# Czerwień pochodzi wreszcie z badanego ogniwa i wzorzec ją nazywa.
+	oczekuj_czerwone "kontrola wykrywa ID token TYLKO ZAKODOWANY — po zdekodowaniu, nie po różnicy napisów" \
+		--przyczyna "E-mail pacjenta odzyskiwalny z zapisanego ID tokenu" \
 		dc exec -T app ./vendor/bin/pest tests/Feature/OdebranieRoliTest.php --filter="ZASZYFROWANY"
 
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
@@ -1448,13 +1478,36 @@ p_puls() {
 	# naruszenie przeżywa tak długo, jak trzeba.
 	dc stop scheduler >/dev/null 2>&1
 
-	# MAGAZYNEM PULSU JEST DZIS BAZA, NIE CACHE (R6B-10, 12.08).
+	# MAGAZYNEM PULSU JEST PLIK — `storage/puls-harmonogramu` (12.08).
 	#
-	# Kasowanie klucza z cache przestalo cokolwiek lamac, wiec kontrola
-	# slusznie przechodzila — a scenariusz przestal cokolwiek mierzyc.
-	# To jest ta sama klasa co N-3: przeniesienie mechanizmu unieważnia
-	# perturbacje, ktore go cytuja, i robi to PO CICHU.
-	dc exec -T app php artisan tinker --execute="DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->delete();" >/dev/null 2>&1
+	# TRZECI ADRES TEGO SAMEGO MECHANIZMU, i za kazdym razem perturbacja
+	# zostawala przy poprzednim:
+	#
+	#   cache  → baza (`sygnaly_zdrowia`, R6B-10)  → PLIK (bo tabela kazala
+	#   sondzie zdrowia czekac na schemat tworzony pozniej i krok [5] bramki
+	#   stawal na `scheduler=starting`).
+	#
+	# Skutek za kazdym razem TEN SAM i po cichu: mutacja celowala w magazyn,
+	# ktorego nie ma, wiec puls zostawal na miejscu i scenariusz nie mierzyl
+	# NICZEGO. Tym razem wyszlo dopiero na pelnym zestawie, jako wyjatek
+	# „relation sygnaly_zdrowia does not exist" — czyli glosno tylko dlatego,
+	# ze tabela zniknela. Gdyby zostala pusta, perturbacja swiecilaby zielono.
+	#
+	# To jest N-3 w trzeciej odslonie. Dlatego mutacja NIE cytuje juz sciezki
+	# z pamieci: pyta o nia SAM MECHANIZM (`--gdzie`), wiec kolejna przenosine
+	# przezyje bez zmian tutaj.
+	local plik_pulsu
+	plik_pulsu="$(dc exec -T app php artisan gabinet:puls --gdzie 2>/dev/null | tr -d '[:space:]')"
+
+	if [ -z "$plik_pulsu" ]; then
+		printf '    ✗ NIE WIEM, GDZIE JEST PULS: `gabinet:puls --gdzie` nic nie oddalo — perturbacja nierozstrzygająca\n'
+		NIEUDANE=$((NIEUDANE + 1))
+		dc start scheduler >/dev/null 2>&1
+
+		return
+	fi
+
+	dc exec -T app rm -f "$plik_pulsu" >/dev/null 2>&1
 
 	# Dowód mutacji: puls NAPRAWDĘ zniknął, a nie „pewnie zniknął".
 	#
@@ -1462,15 +1515,19 @@ p_puls() {
 	# nie propaguje się do powłoki, więc pierwsza wersja tego dowodu meldowała
 	# „mutacja nie weszła w życie" przy poprawnie wykonanej mutacji. Znowu
 	# przyrząd, nie system — i znowu wykryte dopiero uruchomieniem.
+	# Dowod mutacji pyta o TEN SAM plik, ktory skasowalismy — sciezka pochodzi
+	# z jednego odczytu, wiec dowod i mutacja nie moga sie rozjechac.
 	local stan_pulsu
-	stan_pulsu="$(dc exec -T app php artisan tinker \
-		--execute="echo DB::table('sygnaly_zdrowia')->where('klucz', 'gabinet:puls-harmonogramu')->exists() ? 'JEST' : 'BRAK';" 2>/dev/null \
-		| tr -d '[:space:]')"
+	if dc exec -T app test -f "$plik_pulsu" >/dev/null 2>&1; then
+		stan_pulsu="JEST"
+	else
+		stan_pulsu="BRAK"
+	fi
 
 	if [ "$stan_pulsu" = "BRAK" ]; then
-		printf '    · dowód mutacji: wpis pulsu zniknął z magazynu trwałego\n'
+		printf '    · dowód mutacji: plik pulsu %s zniknął\n' "$plik_pulsu"
 	else
-		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: puls nadal w magazynie trwałym (%s) — perturbacja nierozstrzygająca\n' "$stan_pulsu"
+		printf '    ✗ MUTACJA NIE WESZŁA W ŻYCIE: plik pulsu %s nadal jest — perturbacja nierozstrzygająca\n' "$plik_pulsu"
 		NIEUDANE=$((NIEUDANE + 1))
 		dc start scheduler >/dev/null 2>&1
 
@@ -1515,7 +1572,47 @@ p_biala_lista() {
 	dowod_zniknieciem "filtr białej listy zniknął z Bramki.php" \
 		'return array_values(array_intersect($roleZTokenu, $biala));' "$plik"
 
-	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" --przyczyna "Bramki|marker" 		dc exec -T app ./vendor/bin/pest --filter="marker"
+	# R7-8: "Bramki|marker" to ALTERNATYWA ERE, a zdegenerowane były OBIE
+	# gałęzie — `marker` jako fragment nazw trzech testów, `Bramki` jako
+	# nazwa klasy w nagłówku (`PASS  Tests\Feature\BramkiTest`; oba wystąpienia
+	# zmierzone na przebiegu zielonym). Zapadka porównywała CAŁY literał
+	# przez `str_contains`, więc nie widziała żadnej z gałęzi.
+	oczekuj_czerwone "testy wykrywają marker techniczny w uprawnieniach" \
+		--przyczyna "Marker techniczny AUTORYZUJE" \
+		dc exec -T app ./vendor/bin/pest --filter="marker"
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_d1b() {
+	naglowek "D-1b — logowanie bez krypto, bez nowej kolumny, bez nowej trasy"
+	# Atak, ktory w rundzie 7 przeszedl przez OBIE siatki deklaratywne przy
+	# zielonej bramce (`BrakWlasnychHaselTest` → 9 passed, Larastan → No errors).
+	# Siatka POMIAROWA pyta o SKUTEK — zapis tozsamosci do sesji — wiec ma go
+	# zobaczyc niezaleznie od tego, jakim prymitywem porownano sekret.
+	local plik="backend/routes/web.php"
+	zachowaj "$plik"
+
+	perturbuj d1b-podloz || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "trasa GET / niesie mechanizm logowania obok OIDC" \
+		grep -q "session()->put('konta'" "$plik"
+
+	# DWA POMIARY, bo pojedynczy nie rozdziela swiatow:
+	#   1. siatka POMIAROWA ma ZAPALIC — inaczej nie zamyka niczego;
+	#   2. siatki DEKLARATYWNE maja pozostac ZIELONE — to nie jest ich wada
+	#      do naprawienia, tylko powod, dla ktorego trzecia siatka istnieje.
+	#      Gdyby zaczely tu czerwienic, wynik nadal bylby dobry, ale opis
+	#      w `SiatkaPomiarowaTozsamosciTest` przestalby byc prawdziwy.
+	oczekuj_czerwone "siatka POMIAROWA wykrywa logowanie poza OIDC" \
+		--przyczyna "TRASA SPOZA CALLBACKU USTANOWIŁA TOŻSAMOŚĆ W SESJI" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/SiatkaPomiarowaTozsamosciTest.php
+
+	if dc exec -T app ./vendor/bin/pest tests/Feature/BrakWlasnychHaselTest.php >/dev/null 2>&1; then
+		printf '    · siatki DEKLARATYWNE nadal ZIELONE — dokładnie dlatego trzecia siatka istnieje\n'
+	else
+		printf '    · uwaga: siatki DEKLARATYWNE też zaczerwieniły — opis D-1b wymaga aktualizacji\n'
+	fi
+
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
@@ -1542,7 +1639,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -1776,6 +1873,7 @@ for NAZWA in $WYBRANE; do
 		zdrowie) p_zdrowie ;;
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;
+		d1b) p_d1b ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)

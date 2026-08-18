@@ -143,8 +143,33 @@ regexes = ['''aGVsbG8td29ybGQtdGhpcy1pcy1hLXNlY3JldA''']
 # wlasnej implementacji — dokladnie klasa „dokumentacja klamiaca o kodzie",
 # ktora ta sesja zamyka gdzie indziej. Zmierzyl to niezalezny weryfikator:
 # doslowna przyneta w `perturbuj.py` dawala `no leaks found`.
+# ⛔ `condition = "AND"` — BEZ TEJ LINII WYJATEK NIE ZAWEZAL NICZEGO (R7-5).
+#
+# gitleaks laczy kryteria allowlisty przez OR, wiec `regexes` zwalnialo wartosc
+# WSZEDZIE, a `commits` zamiast zawezac — POSZERZALO. Opis mowil „domyka
+# wylacznie historie" i byl nieprawdziwy wobec wlasnej implementacji.
+#
+# Zmierzone przez weryfikatora rundy 7: bait w NOWYM commicie (poza trojka)
+# → `no leaks found`. Kontrola pozytywna: inny sekret w tym samym pliku
+# → `leaks found: 1`. Czyli zwolnienie dzialalo poza deklarowanym zakresem.
+condition = "AND"
+# ⛔ PELNE SHA, NIE SKROTY — druga wada tego samego wpisu, odsloniete dopiero
+# przez `condition = "AND"` (pelna bramka 12.08, krok [21] CZERWONY).
+#
+# gitleaks porownuje identyfikator commita DOKLADNIE (`strings.EqualFold`),
+# bez rozwijania skrotow. Stalo tu `31727fb215` — wiec kryterium `commits`
+# nie pasowalo do NICZEGO. Przy laczeniu przez OR nie bylo tego widac: wpis
+# przechodzil na samym `regexes`, czyli dokladnie tak szeroko, jak zarzucil
+# weryfikator. Po zawezeniu do AND wyjatek przestal obejmowac cokolwiek
+# i historyczna przyneta zapalila bramke.
+#
+# Dwie wady w jednym wpisie, obie tego samego rodzaju: opis mowil o zakresie,
+# ktorego implementacja nie miala. Naprawa pierwszej ujawnila druga.
 commits = [
-  "31727fb215",
-  "f24dfec",
-  "4ad5728",
+  "31727fb215efc41df024b620809456e12931d351",
+  "f24dfecc08c1600d998a3a4d1de3f76d59f2f0e0",
+  "4ad57280d1369f2f21534d28c335cd31916c7b15",
+  # Czwarty, znaleziony przy tej samej naprawie (`git log -S`): przyneta
+  # byla w repozytorium wczesniej, niz mowil poprzedni opis.
+  "69c9e3863670300f5deefb31cd50c6da54c32b70",
 ]
