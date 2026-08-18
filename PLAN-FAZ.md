@@ -11,18 +11,23 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
   Bez SHA — stan czytaj z `git log`.
 - **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
-  Zmierzone 12.08 na przebiegu OD ZERA, we własnym środowisku efemerycznym
+  Zmierzone **18.08 na ZAMROŻONYM SHA `179c05c`**, przebieg OD ZERA, we własnym
+  środowisku efemerycznym
   (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
 - **Testy — LICZBA Z DATĄ, NIE STAŁA: 289 zielonych, 0 czerwonych, 2 POMINIĘTE,
-  2119 asercji — zmierzone 12.08.**
+  2119 asercji — zmierzone **18.08** na tym samym przebiegu.**
   Podłogi bramki: **289 / 2119** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
   i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
   **Nie cytuj liczb przebiegu jako stanu bieżącego — zmierz je.**
   ⚠ Do 12.08 stało tu „258 / 2008" przy `podlogi.sh` mówiącym 265 / 2024 (R7-6).
   Zgodności pilnuje odtąd `JednoZrodloStanuTest`, który czyta OBA miejsca.
-- **Perturbacje: `PERTURBACJE OK` na sześciu naprawionych scenariuszach (12.08).**
-  Pełny zestaw 30 scenariuszy przebiegł dwukrotnie; wynik rozstrzygający pochodzi
-  z przebiegu na ZDROWYM stosie — patrz niżej.
+- **Perturbacje: `PERTURBACJE OK — 48 kontroli` (18.08), kod wyjścia 0.**
+  PEŁNY zestaw 31 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
+  ⚠ Przebieg z 18.08 obalił DWIE kontrole, które wyglądały na sprawne: `p_puls`
+  celowała w tabelę `sygnaly_zdrowia`, której nie ma (puls jest w PLIKU — trzeci
+  adres tego mechanizmu), a wzorzec przyczyny `p_sesja` różnił się od komunikatu
+  asercji znakami diakrytycznymi. Obie naprawione i przemierzone; szczegóły
+  w `docs/ZLECENIA/ODPOWIEDZ-062.md` §4.
 
 ### Co zamknęła sesja KOD-F1 dnia 12.08
 
