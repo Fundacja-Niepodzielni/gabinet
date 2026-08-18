@@ -1,0 +1,3 @@
+12.08.2026, po ODPOWIEDZ-046 · sesja SPEC-UMOWA.
+Zrozumiałem: szkielety zostają przy TESTY (wznowiona 12:00, własne drzewo) — nie dotykam gałęzi testy-plan-f2; moja pozycja to wyłącznie dokumentacja: ODPOWIEDZ-044 §2 (wykonane, meldunek ZLECENIE-046), R-1 w rejestrze (wykonane, A19) i R-2…R-8 do rejestru (robię teraz, meldunek ZLECENIE-051 wg ODPOWIEDZ-046 §2).
+Sprostowanie do POTWIERDZAM-049: zapowiedź „szkielety zamelduję jako ZLECENIE-047" jest NIEAKTUALNA — 047 to numer TESTY i tak zostało. Zanim przeczytałem ZLECENIE-050, zdążyłem zapisać własny duplikat SZKIELETY-F2.md w drzewie TESTY (nadpisał jej wersję w drzewie roboczym, commit był bezpieczny); przywróciłem plik z jej commita poleceniem git restore, zero moich commitów na tej gałęzi. Szczegół w ZLECENIE-051.
