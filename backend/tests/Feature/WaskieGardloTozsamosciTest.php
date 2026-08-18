@@ -217,7 +217,28 @@ it('zbiór plików produkcyjnych sięgających po TOŻSAMOŚĆ to ALLOWLISTA', f
     // klucza. Pominiecie fasady bylo cala trescia R7-1 — a fasada jest
     // ZAMIERZONA, jedyna legalna droga, wiec jej brak we wzorcu znaczyl, ze
     // kontrola nie widziala tego, co sama zaleca.
-    $siegajacy = plikiZeWzorcem(base_path('app'), '/TozsamoscSesji::|SesjaKonta::|[\'"]konta[\'"]\s*(?:,|\)|=>|;)/');
+    // ZASIEG: `app/` I `routes/` — do 18.08 stalo tu samo `app/`.
+    //
+    // Wyszlo z pytania „krok dalej" przy R8-1 i zmierzylem to wprost: mutacja
+    // `d1b` wpisuje `session()->put('konta', …)` do `backend/routes/web.php`,
+    // a ta kontrola dawala `5 passed` — z ZYWYM zapisem tozsamosci w drzewie.
+    //
+    // Powod, dla ktorego to bolesne: `routes/` to DOKLADNIE to miejsce, w ktorym
+    // mieszkal atak rundy 7. Docblock tego pliku obiecywal, ze „kazdy nowy plik
+    // siegajacy po tozsamosc zapala bramke", a jeden z dwoch katalogow
+    // wykonywalnych stal poza skanem. To ta sama klasa co samo R7-1:
+    // kontrola o zasiegu wezszym, niz deklaruje.
+    //
+    // `routes/` nie potrzebuje wpisu w allowliscie: nazwy tras (`'konta.callback'`)
+    // sa INNYMI literalami niz `'konta'`, wiec na czystym drzewie zbior zostaje pusty.
+    $wzorzecTozsamosci = '/TozsamoscSesji::|SesjaKonta::|[\'"]konta[\'"]\s*(?:,|\)|=>|;)/';
+
+    $siegajacy = array_merge(
+        plikiZeWzorcem(base_path('app'), $wzorzecTozsamosci),
+        plikiZeWzorcem(base_path('routes'), $wzorzecTozsamosci)
+    );
+    $siegajacy = array_values(array_unique($siegajacy));
+    sort($siegajacy);
 
     expect($siegajacy)->toBe(
         $dopuszczeni,

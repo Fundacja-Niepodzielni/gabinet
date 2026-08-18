@@ -1616,6 +1616,32 @@ p_d1b() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_d1b_zaklecie() {
+	naglowek "D-1b — ten sam atak pod nazwą pola SPOZA baterii siatki (zaklecie)"
+	# ZNALEZISKO RUNDY 8 (R8-1). Siatka reklamowała pomiar SKUTKU „niezależnie
+	# od sposobu", a wykrywała atak tylko wtedy, gdy pole nazywało się tak, jak
+	# zgadła jej bateria. Pod nazwą `zaklecie` mechanizm logował poza OIDC,
+	# a siatka, obie siatki deklaratywne, pełna suita, Larastan i Pint —
+	# wszystko zielone.
+	#
+	# Ten scenariusz jest KONTROLĄ NEGATYWNĄ samej siatki: mechanizm identyczny
+	# co do bajtu poza jedną nazwą. Jeśli siatka zapala się na `d1b`, a tutaj
+	# nie, to nie mierzy skutku — zgaduje nazwę wejścia.
+	local plik="backend/routes/web.php"
+	zachowaj "$plik"
+
+	perturbuj d1b-podloz-zaklecie || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "trasa GET / czyta sekret z pola spoza baterii siatki" \
+		grep -q "input('zaklecie'" "$plik"
+
+	oczekuj_czerwone "siatka POMIAROWA wykrywa logowanie pod nazwą pola spoza baterii" \
+		--przyczyna "TRASA SPOZA CALLBACKU USTANOWIŁA TOŻSAMOŚĆ W SESJI" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/SiatkaPomiarowaTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
@@ -1639,7 +1665,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -1874,6 +1900,7 @@ for NAZWA in $WYBRANE; do
 		tozsamosc) p_tozsamosc ;;
 		puls) p_puls ;;
 		d1b) p_d1b ;;
+		d1b_zaklecie) p_d1b_zaklecie ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)

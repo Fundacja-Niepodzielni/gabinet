@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Tozsamosc\TozsamoscSesji;
 use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Tests\Wsparcie\Trasy;
@@ -38,6 +39,22 @@ use Tests\Wsparcie\Trasy;
  * `===`, `hash()`, `sodium_*`, porównanie w bazie, cokolwiek jeszcze ktoś wymyśli,
  * bo każdy taki mechanizm MUSI zakończyć się zapisem tożsamości. Inaczej nikogo
  * nie zaloguje i nie jest mechanizmem logowania.
+ *
+ * GRANICE TEJ SIATKI, ZMIERZONE — nie deklarowane (18.08):
+ *
+ *   1. WERDYKT to zapis pod klucz sesji `konta` PO zadaniu. Mechanizm, ktory
+ *      ustanawia tozsamosc na trasie A dopiero przez ciasteczko odczytane
+ *      na trasie B, nie zostanie tu zlapany — siatka nie przenosi ciasteczek
+ *      miedzy zadaniami. Lapie go natomiast `WaskieGardloTozsamosciTest`,
+ *      bo hydratacja tozsamosci MUSI dotknac klucza albo fasady. Zasieg tamtej
+ *      kontroli rozszerzono 18.08 o `routes/` dokladnie z tego powodu:
+ *      zmierzone, ze zapis `konta` w `routes/web.php` dawal jej `5 passed`.
+ *   2. Sterownik sesji w testach to `array` (`phpunit.xml:56`), wiec zapis
+ *      wprost do magazynu trafia w TEN SAM obiekt, ktory czyta szpieg.
+ *      Mechanizm piszacy do INNEGO magazynu (np. wprost do tabeli sesji)
+ *      nie zalogowalby nikogo w tym srodowisku — to nie jest przeoczenie
+ *      siatki, tylko rzecz niemierzalna ta droga.
+ *   3. Naglowki HTTP nie sa sondowane; ladunek idzie parametrami.
  *
  * `CLAUDE.md` §2 mówi: „Logowanie wyłącznie przez Konta Niepodzielni". Zdanie
  * to ma dokładnie jedno maszynowe znaczenie: JEDYNĄ trasą, po której w sesji
@@ -76,6 +93,115 @@ function trasyDoObejrzenia(): array
     }
 
     return $trasy;
+}
+
+/**
+ * Nazwy pól wejściowych, które NASZ KOD gdziekolwiek czyta z żądania.
+ *
+ * ⛔ TO JEST NAPRAWA R8-1 I WARTO ROZUMIEĆ, CO DOKŁADNIE NAPRAWIA.
+ *
+ * Siatka reklamowała pomiar SKUTKU „niezależnie od sposobu", a sondowała
+ * ZAMKNIĘTĄ baterią dziewięciu nazw. Mechanizm czytający sekret pod nazwą
+ * spoza listy produkuje ten sam skutek — zapis tożsamości do sesji — ale
+ * siatka nigdy nie wysyłała takiego pola, więc go nie wyzwalała.
+ * Zmierzone przez rundę 8 na nazwie `zaklecie`:
+ *
+ *     siatka POMIAROWA  → 3 passed        (ŚLEPA)
+ *     siatki deklaratywne → 9 passed
+ *     pełna suita       → 289 passed
+ *     a `session()->has('konta')` → TAK   (logowanie poza OIDC)
+ *
+ * Pomiar skutku wrócił więc po cichu do pytania o SPOSÓB — o nazwę wejścia.
+ * Gorsze od samej luki było zdanie, które ją „znosiło": `ODPOWIEDZ-062` §8
+ * twierdziła, że nazwę spoza baterii łapie perturbacja `d1b` — a `d1b`
+ * czytała `nazwa_wyswietlana`, czyli nazwę Z BATERII. Sieć bezpieczeństwa
+ * nie istniała.
+ *
+ * ================== DLACZEGO ODCZYT ŹRÓDEŁ NIE JEST NAWROTEM ==================
+ *
+ * Czytamy kod, żeby dowiedzieć się, JAKIE POLA ten kod w ogóle czyta — i tylko
+ * po to, żeby zbudować ŁADUNEK. WERDYKT nadal wydaje SKUTEK: zapis tożsamości
+ * do sesji. To jest różnica między „sprawdzam, czy w kodzie jest krypto"
+ * (siatka deklaratywna, obalona w rundzie 7) a „pytam kod, gdzie ma usta,
+ * i wkładam tam sekret".
+ *
+ * Mechanizm musi skądś wziąć sekret. Jeśli czyta go pod nazwą `zaklecie`,
+ * to `zaklecie` STOI W ŹRÓDLE — inaczej nie miałby jak go odczytać.
+ *
+ * @return list<string>
+ */
+function nazwyPolWejsciowych(): array
+{
+    // Metody czytające żądanie. `get` i `header` wpuszczają szum (np.
+    // `Route::get('/auth/ja')`), i to jest kierunek BEZPIECZNY: nadmiarowe
+    // pole w ładunku niczego nie psuje, a pominięte oznaczałoby ślepotę.
+    $czytajace = [
+        'input', 'get', 'query', 'post', 'string', 'integer', 'boolean', 'float',
+        'date', 'enum', 'has', 'hasAny', 'filled', 'missing', 'whenFilled',
+        'header', 'cookie', 'old', 'request',
+    ];
+
+    $nazwy = [];
+    $pliki = [];
+
+    foreach (File::allFiles(base_path('app')) as $plik) {
+        if ($plik->getExtension() === 'php') {
+            $pliki[] = $plik->getPathname();
+        }
+    }
+    foreach (File::files(base_path('routes')) as $plik) {
+        if ($plik->getExtension() === 'php') {
+            $pliki[] = $plik->getPathname();
+        }
+    }
+
+    foreach ($pliki as $sciezka) {
+        $tokeny = token_get_all((string) file_get_contents($sciezka));
+        $ile = count($tokeny);
+
+        for ($i = 0; $i < $ile; $i++) {
+            $t = $tokeny[$i];
+
+            // (a) `->input('nazwa')`, `request('nazwa')` itd.
+            if (is_array($t) && $t[0] === T_STRING && in_array($t[1], $czytajace, true)
+                && ($tokeny[$i + 1] ?? null) === '(') {
+                $j = $i + 2;
+
+                while (is_array($tokeny[$j] ?? null) && $tokeny[$j][0] === T_WHITESPACE) {
+                    $j++;
+                }
+
+                $arg = $tokeny[$j] ?? null;
+
+                if (is_array($arg) && $arg[0] === T_CONSTANT_ENCAPSED_STRING) {
+                    $nazwy[] = trim($arg[1], "'\"");
+                }
+            }
+
+            // (b) `$request->nazwa` — odczyt właściwości, nie wywołanie.
+            if ($i > 0 && is_array($t) && $t[0] === T_OBJECT_OPERATOR) {
+                $poprzedni = $tokeny[$i - 1];
+                $nastepny = $tokeny[$i + 1] ?? null;
+
+                if (is_array($poprzedni) && $poprzedni[0] === T_VARIABLE && $poprzedni[1] === '$request'
+                    && is_array($nastepny) && $nastepny[0] === T_STRING
+                    && ($tokeny[$i + 2] ?? null) !== '(') {
+                    $nazwy[] = $nastepny[1];
+                }
+            }
+        }
+    }
+
+    // Ścieżki tras (`'/auth/ja'`) nie są nazwami pól — odsiewamy je kształtem,
+    // nie listą wyjątków, żeby filtr nie wymagał utrzymania.
+    $nazwy = array_values(array_unique(array_filter(
+        $nazwy,
+        static fn (string $n): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_.-]*$/', $n) === 1
+    )));
+
+    sort($nazwy);
+
+    return $nazwy;
 }
 
 /**
@@ -125,22 +251,62 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
 
     DB::table('users')->insert($konto);
 
-    // Bateria nazw parametrów: atakujący wybiera nazwę, więc żadna lista nie jest
-    // dowodem pokrycia — i mówimy to wprost. Bateria podnosi CZUŁOŚĆ siatki,
-    // ale nie na niej opiera się jej moc: mechanizm przyjmujący sekret pod nazwą
-    // spoza baterii zostanie złapany przez perturbację `d1b`, która wywołuje go
-    // dokładnie tak, jak zrobiłby to atakujący.
+    // ⛔ ŁADUNEK POCHODZI Z PÓL, KTÓRE KOD NAPRAWDĘ CZYTA (R8-1).
     //
-    // WARTOŚCI pochodzą z założonego konta, nie z wyobraźni — to jest różnica
-    // między sondą a życzeniem.
-    $bateria = [];
+    // Bateria ZOSTAJE, ale jako WZMOCNIENIE, nie jako nośnik czułości —
+    // i to jest cała różnica wobec stanu, który obaliła runda 8. Nośnikiem
+    // są `nazwyPolWejsciowych()`: nazwy wyczytane z naszych źródeł.
+    //
+    // Trzecim składnikiem jest nazwa, której NIKT nie czyta. Nie jest ozdobą:
+    // mechanizm skanujący `$request->all()` w poszukiwaniu wartości pasującej
+    // do sekretu nie potrzebuje ŻADNEJ konkretnej nazwy, więc żadna lista go
+    // nie wyzwoli — a dowolne pole niosące sekret owszem.
+    $odkryte = nazwyPolWejsciowych();
 
-    foreach (['haslo', 'password', 'pin', 'sekret', 'token', 'kod', 'nazwa_wyswietlana'] as $nazwa) {
-        $bateria[$nazwa] = Typy::napis($konto['nazwa_wyswietlana']);
+    expect(count($odkryte))->toBeGreaterThan(2, sprintf(
+        "Skaner pól wejściowych znalazł %d nazw w `app/` i `routes/`.\n".
+        "Przy tak ubogim odczycie ładunek wraca do samej baterii, czyli do stanu,\n".
+        'który runda 8 obaliła (R8-1). Znalezione: %s',
+        count($odkryte),
+        implode(', ', $odkryte)
+    ));
+
+    // Kontrola ŚRODKA, nie samej liczby: `code` i `state` czyta callback OIDC.
+    // Gdyby zniknęły, skaner mierzyłby coś innego, niż twierdzi.
+    foreach (['code', 'state'] as $spodziewana) {
+        expect(in_array($spodziewana, $odkryte, true))->toBeTrue(sprintf(
+            'Skaner nie widzi pola `%s`, które czyta `LogowanieController`. '.
+            'Parser rozjechał się ze źródłami (R8-1).',
+            $spodziewana
+        ));
     }
 
-    $bateria['email'] = Typy::napis($konto['email']);
-    $bateria['sub'] = Typy::napis($konto['keycloak_sub']);
+    $bateria = [
+        'haslo', 'password', 'pin', 'sekret', 'token', 'kod', 'nazwa_wyswietlana',
+        'email', 'sub',
+    ];
+
+    $nazwy = array_values(array_unique(array_merge($odkryte, $bateria, ['pole-bez-czytelnika'])));
+
+    // Sekret podajemy pod KAŻDĄ nazwą, w trzech wariantach wartości — bo
+    // mechanizm może porównywać z dowolną kolumną założonego konta.
+    $wartosci = [
+        'nazwa' => Typy::napis($konto['nazwa_wyswietlana']),
+        'email' => Typy::napis($konto['email']),
+        'sub' => Typy::napis($konto['keycloak_sub']),
+    ];
+
+    $ladunki = [[]];
+
+    foreach ($wartosci as $wartosc) {
+        $ladunek = [];
+
+        foreach ($nazwy as $nazwa) {
+            $ladunek[$nazwa] = $wartosc;
+        }
+
+        $ladunki[] = $ladunek;
+    }
 
     // Atrapa HTTP: bez niej przeglad wszystkich tras probuje realnie siegnac
     // do IdP (odkrycie OIDC na `/auth/login`) i czeka na limity czasu — 32 s
@@ -160,7 +326,7 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
         $uri = (string) preg_replace('/\{[^}]+\}/', '1', $t['uri']);
         $metoda = $t['metoda'];
 
-        foreach ([[], $bateria] as $ladunek) {
+        foreach ($ladunki as $ladunek) {
             session()->flush();
 
             try {
@@ -176,7 +342,7 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
                     '%s %s (ładunek: %s)',
                     $metoda,
                     $uri,
-                    $ladunek === [] ? 'pusty' : implode(', ', array_keys($ladunek))
+                    $ladunek === [] ? 'pusty' : count($ladunek).' pól, w tym '.implode(', ', array_slice(array_keys($ladunek), 0, 4)).' …'
                 );
             }
         }

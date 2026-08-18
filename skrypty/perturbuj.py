@@ -213,8 +213,21 @@ def nonce_fail_open() -> None:
     )
 
 
-def d1b_podloz() -> None:
+def _d1b_podloz(pole: str) -> None:
     """Atak D-1 weryfikatora rundy 7: logowanie BEZ krypto, kolumny i trasy.
+
+    NAZWA POLA JEST PARAMETREM — i to jest naprawa R8-1, nie kosmetyka.
+
+    Do rundy 8 mutacja czytala na sztywno `nazwa_wyswietlana`, czyli nazwe
+    Z BATERII siatki. Meldunek ODPOWIEDZ-062 §8 powolywal sie na te wlasnie
+    perturbacje jako na SIEC BEZPIECZENSTWA znoszaca ograniczenie baterii —
+    a ona nie wywolywala ZADNEJ nazwy spoza baterii, wiec nie mogla dowiesc
+    pokrycia, ktore reklamowala. Twierdzenie bylo nieprawdziwe wobec wlasnej
+    implementacji.
+
+    Odtad ta sama mutacja chodzi w DWOCH wariantach: nazwa z baterii
+    (kontrola pozytywna sondy) i nazwa, ktorej zadna lista nie przewiduje
+    (`zaklecie` — dokladnie ta z raportu rundy 8).
 
     Obie siatki DEKLARATYWNE `BrakWlasnychHaselTest` pytaja o SPOSOB:
     o funkcje kryptograficzna i o zadeklarowany schemat/trasy. Ten mechanizm
@@ -232,7 +245,7 @@ def d1b_podloz() -> None:
         TRASY,
         "Route::get('/', fn () => response()->json([",
         "Route::get('/', function () {" + chr(10)
-        + "    $podane = (string) request()->input('nazwa_wyswietlana', ''); " + chr(10)
+        + "    $podane = (string) request()->input('" + pole + "', ''); " + chr(10)
         + "    $konto = DB::table('users')->where('nazwa_wyswietlana', $podane)->first(); " + chr(10)
         + "    if ($podane !== '' && $konto !== null && $podane === $konto->nazwa_wyswietlana) { " + chr(10)
         + "        session()->put('konta', ['sub' => 'sub-lokalne', 'role' => ['pacjent']]); " + chr(10)
@@ -257,6 +270,21 @@ def d1b_podloz() -> None:
         "use Illuminate\\Support\\Facades\\Route;",
         "use Illuminate\\Support\\Facades\\DB;" + chr(10) + "use Illuminate\\Support\\Facades\\Route;",
     )
+
+
+def d1b_podloz() -> None:
+    """Wariant z nazwa Z BATERII — kontrola POZYTYWNA sondy siatki."""
+    _d1b_podloz('nazwa_wyswietlana')
+
+
+def d1b_podloz_zaklecie() -> None:
+    """Wariant z nazwa SPOZA baterii — to on obalil siatke w rundzie 8.
+
+    Mechanizm jest IDENTYCZNY co do bajtu poza jedna nazwa. Jesli siatka
+    zapala sie na jednym wariancie, a na drugim nie, to nie mierzy skutku,
+    tylko zgaduje nazwe wejscia.
+    """
+    _d1b_podloz('zaklecie')
 
 
 def lockfile_rozjazd() -> None:
@@ -608,6 +636,7 @@ def biala_lista_zdjeta() -> None:
 
 POLECENIA = {
     "d1b-podloz": d1b_podloz,
+    "d1b-podloz-zaklecie": d1b_podloz_zaklecie,
     "hasla-podloz": hasla_podloz,
     "hasla-podloz-v2": hasla_podloz_v2,
     "hasla-sprzataj": hasla_sprzataj,
