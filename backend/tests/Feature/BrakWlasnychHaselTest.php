@@ -229,9 +229,19 @@ const DOPUSZCZONE_PRYMITYWY = [
 
     // Atrapa IdP w suicie: wytwarza pare kluczy i podpisuje tokeny testowe.
     // Wylacznie kod testowy — w `app/` tych funkcji nie ma i nie ma ich prawa byc.
-    'openssl_pkey_new' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php'],
+    //
+    // `TypTozsamosciTest` DOPISANY 19.08 SWIADOMIE — naprawa szostego pietra.
+    //
+    // Ten test wytwarza klucz napastnika i podpisuje nim poprawny skadinad
+    // token, zeby udowodnic, ze taki token NIE DAJE roszczen. Bez wlasnego
+    // klucza nie da sie tego zmierzyc: cala roznica miedzy tokenem prawdziwym
+    // a podrobionym JEST klucz.
+    //
+    // Koszt wyjatku = koszt zgodnosci — stad jawny wpis, a nie rozluznienie
+    // kontroli. Allowlista wiaze funkcje z ZAKRESEM PLIKOW i ma tak zostac.
+    'openssl_pkey_new' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php', 'tests/Feature/TypTozsamosciTest.php'],
     'openssl_pkey_get_details' => ['tests/Wsparcie/FabrykaTokenow.php'],
-    'openssl_sign' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php'],
+    'openssl_sign' => ['tests/Wsparcie/FabrykaTokenow.php', 'tests/Feature/OdebranieRoliTest.php', 'tests/Feature/TypTozsamosciTest.php'],
 ];
 
 /**

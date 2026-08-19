@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Tozsamosc\KontaOidc;
 use App\Tozsamosc\RoszczeniaZweryfikowane;
 use App\Tozsamosc\SesjaKonta;
 use App\Tozsamosc\TozsamoscSesji;
+use App\Wsparcie\Typy;
 use Illuminate\Http\Request;
 use Tests\Wsparcie\FabrykaTokenow;
 use Tests\Wsparcie\Kod;
@@ -50,37 +52,27 @@ use Tests\Wsparcie\Kod;
  * używa `Reflection` ani `unserialize`.
  */
 
-/**
- * Wymagania walidacji ACCESS tokenu — te same, których używa produkcja.
+/*
+ * ⛔ POMOCNIKI PRZEPISANE 19.08 — i to jest CECHA, nie koszt.
  *
- * @param  array<string, mixed>  $nadpisania
- * @return array<string, mixed>
+ * Do naprawy „szóstego piętra" stały tu funkcje `wymaganiaAccess()`
+ * i `wymaganiaId()`, które SKŁADAŁY wymagania walidacji ręcznie — razem
+ * z `jwks`. Dokładnie ta możliwość była znaleziskiem: kto podaje materiał
+ * klucza, ten decyduje, wobec czego token jest „zweryfikowany".
+ *
+ * Po zamknięciu tej drogi obiektu roszczeń NIE DA SIĘ zdobyć inaczej niż
+ * przez konfigurację wskazującą nasze IdP. W teście znaczy to podstawione
+ * IdP (`udawajIdp()` + atrapa JWKS) — czyli tę samą drogę, którą idzie
+ * produkcja. Test stał się trudniejszy i to jest miara tego, że typ trzyma:
+ * gdyby dało się go łatwo obejść w teście, dałoby się i poza nim.
  */
-function wymaganiaAccess(array $nadpisania = []): array
-{
-    return array_merge([
-        'issuer' => 'https://idp.test/realms/niepodzielni',
-        'jwks' => FabrykaTokenow::jwks(),
-        'audience' => 'gabinet',
-        'typ' => 'Bearer',
-        'tolerancja' => 30,
-    ], $nadpisania);
-}
 
-/**
- * @param  array<string, mixed>  $nadpisania
- * @return array<string, mixed>
- */
-function wymaganiaId(array $nadpisania = []): array
+/** Konfiguracja OIDC wskazująca PODSTAWIONE IdP — jedyne źródło wymagań. */
+function oidcAtrapy(): KontaOidc
 {
-    return array_merge([
-        'issuer' => 'https://idp.test/realms/niepodzielni',
-        'jwks' => FabrykaTokenow::jwks(),
-        'audience' => 'gabinet',
-        'typ' => 'ID',
-        'nonce' => 'nonce-testowy',
-        'tolerancja' => 30,
-    ], $nadpisania);
+    udawajIdp();
+
+    return app(KontaOidc::class);
 }
 
 /**
@@ -90,18 +82,14 @@ function wymaganiaId(array $nadpisania = []): array
  */
 function roszczeniaAccess(array $nadpisaniaClaims = []): RoszczeniaZweryfikowane
 {
-    $wynik = RoszczeniaZweryfikowane::zTokenu(
+    $wynik = RoszczeniaZweryfikowane::zAccessTokenu(
         FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess($nadpisaniaClaims)),
-        wymaganiaAccess()
+        oidcAtrapy()
     );
 
-    // Wyjatek, nie `expect()`: sprawdzenie ma ZWEZIC TYP, zeby statyka
-    // wiedziala, ze ponizej obiekt JEST. `expect()` tego nie robi, bo dla
-    // PHPStana jest zwyklym wywolaniem — a wtedy caly plik zglasza
-    // „call to method on ...|null" i test przestaje przechodzic bramke.
-    //
-    // Pustka to blad, nie zero: bez obiektu wszystkie pomiary nizej
-    // mierzylyby `null` i milczaly o tym.
+    // Wyjątek, nie `expect()`: sprawdzenie ma ZWĘZIĆ TYP, żeby statyka
+    // wiedziała, że poniżej obiekt JEST. Pustka to błąd, nie zero — bez
+    // obiektu wszystkie pomiary niżej mierzyłyby `null` i milczały o tym.
     if ($wynik['ok'] !== true) {
         throw new RuntimeException(
             'Fabryka roszczeń ACCESS przestała wystawiać obiekt — dalsze pomiary byłyby o niczym.'
@@ -116,18 +104,12 @@ function roszczeniaAccess(array $nadpisaniaClaims = []): RoszczeniaZweryfikowane
  */
 function roszczeniaId(array $nadpisaniaClaims = []): RoszczeniaZweryfikowane
 {
-    $wynik = RoszczeniaZweryfikowane::zTokenu(
+    $wynik = RoszczeniaZweryfikowane::zIdTokenu(
         FabrykaTokenow::podpisz(FabrykaTokenow::claimsId($nadpisaniaClaims)),
-        wymaganiaId()
+        oidcAtrapy(),
+        'nonce-testowy'
     );
 
-    // Wyjatek, nie `expect()`: sprawdzenie ma ZWEZIC TYP, zeby statyka
-    // wiedziala, ze ponizej obiekt JEST. `expect()` tego nie robi, bo dla
-    // PHPStana jest zwyklym wywolaniem — a wtedy caly plik zglasza
-    // „call to method on ...|null" i test przestaje przechodzic bramke.
-    //
-    // Pustka to blad, nie zero: bez obiektu wszystkie pomiary nizej
-    // mierzylyby `null` i milczaly o tym.
     if ($wynik['ok'] !== true) {
         throw new RuntimeException(
             'Fabryka roszczeń ID przestała wystawiać obiekt — dalsze pomiary byłyby o niczym.'
@@ -467,7 +449,7 @@ it('obiekt roszczeń NIE POWSTAJE, gdy podpis nie przechodzi', function (): void
     // zawsze, „niepodrabialność" byłaby pustym słowem.
     $zepsuty = FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess()).'-doklejka';
 
-    $wynik = RoszczeniaZweryfikowane::zTokenu($zepsuty, wymaganiaAccess());
+    $wynik = RoszczeniaZweryfikowane::zAccessTokenu($zepsuty, oidcAtrapy());
 
     expect($wynik['ok'])->toBeFalse()
         ->and($wynik['roszczenia'])->toBeNull()
@@ -479,11 +461,117 @@ it('obiekt roszczeń niesie DOKŁADNIE ten token, który zweryfikował', functio
     // nie wiązało go z wynikiem walidacji. Można było zapisać do sesji
     // `id_token_hint` inny niż sprawdzony.
     $token = FabrykaTokenow::podpisz(FabrykaTokenow::claimsId());
-    $wynik = RoszczeniaZweryfikowane::zTokenu($token, wymaganiaId());
+    $wynik = RoszczeniaZweryfikowane::zIdTokenu($token, oidcAtrapy(), 'nonce-testowy');
 
     if ($wynik['ok'] !== true) {
         throw new RuntimeException('Poprawny token ID nie dał obiektu — pomiar byłby o niczym.');
     }
 
     expect($wynik['roszczenia']->tokenSurowy())->toBe($token);
+});
+
+// ---------------------------------------------------------------------------
+// PODSTAWA ZAUFANIA — znalezisko „szóste piętro" (`ZLECENIE-079` §1)
+// ---------------------------------------------------------------------------
+
+it('obiekt roszczeń NIE PRZYJMUJE tablicy od wołającego — także wymagań walidacji', function (): void {
+    // Poprzednia kontrola pytała tylko o metody ODDAJĄCE obiekt, więc nie
+    // widziała `zTokenu(string, array): array` — a to właśnie tamtą tablicą
+    // wchodził materiał klucza. Teraz pytamy o KAŻDĄ metodę publiczną.
+    //
+    // Kontrola pilnuje ISTOTY, nie nazwy: nieważne, jak metoda się nazywa
+    // i co zwraca — jeżeli jest publiczna i bierze tablicę, wołający znowu
+    // decyduje, wobec czego token jest „zweryfikowany".
+    $klasa = new ReflectionClass(RoszczeniaZweryfikowane::class);
+    $zTablica = [];
+
+    foreach ($klasa->getMethods(ReflectionMethod::IS_PUBLIC) as $metoda) {
+        foreach ($metoda->getParameters() as $parametr) {
+            if ((string) $parametr->getType() === 'array') {
+                $zTablica[] = sprintf('%s(array $%s)', $metoda->getName(), $parametr->getName());
+            }
+        }
+    }
+
+    expect($zTablica)->toBe([], sprintf(
+        'PUBLICZNA METODA OBIEKTU ROSZCZEŃ PRZYJMUJE TABLICĘ: %s.%s'.
+        'Tą drogą wchodziły WYMAGANIA WALIDACJI razem z `jwks`. Kto podaje materiał '.
+        'klucza, ten rozstrzyga, wobec czego podpis jest poprawny — a wtedy słowo '.
+        '„zweryfikowane" nie znaczy nic ponad „przeszło przez walidator".',
+        implode(', ', $zTablica),
+        PHP_EOL
+    ));
+
+    // Kontrola przyrządu: wejście składające wymagania MUSI istnieć i być PRYWATNE.
+    // Gdyby zniknęło, ta kontrola przechodziłaby nad pustką.
+    expect($klasa->hasMethod('zTokenu'))->toBeTrue('Wejście składające wymagania zniknęło — kontrola mierzy pustkę.')
+        ->and($klasa->getMethod('zTokenu')->isPrivate())->toBeTrue(
+            '`zTokenu()` znowu jest dostępne z zewnątrz — to jest dokładna droga „szóstego piętra".'
+        );
+});
+
+it('KLASY TOŻSAMOŚCI SĄ `final` — inaczej prywatny konstruktor obchodzi się dziedziczeniem', function (): void {
+    // ⛔ `ZLECENIE-079` §3: „`final` bez pomiaru jest deklaracją".
+    //
+    // Klasa potomna nie sięgnie po PRYWATNY konstruktor rodzica, ale może
+    // dodać własny publiczny i przekazać się dalej jako ten typ — o ile typ
+    // pozwala się rozszerzyć. `final` to zamyka, tylko dotąd nikt tego
+    // nie mierzył.
+    foreach ([RoszczeniaZweryfikowane::class, TozsamoscSesji::class] as $nazwa) {
+        expect((new ReflectionClass($nazwa))->isFinal())->toBeTrue(sprintf(
+            'Klasa %s NIE jest `final`. Prywatny konstruktor broni przed `new`, '.
+            'ale nie przed klasą potomną, która poda się za ten typ.',
+            $nazwa
+        ));
+    }
+});
+
+it('OBCY KLUCZ: token o poprawnym kształcie, podpisany NIE NASZYM kluczem, NIE daje roszczeń', function (): void {
+    // Najmocniejszy pomiar tej naprawy — bo mierzy SKUTEK, nie kształt kodu.
+    //
+    // Token jest pod każdym względem poprawny: właściwy wystawca, właściwa
+    // audiencja, świeże czasy, prawidłowy `alg`. Jedyna różnica to KLUCZ.
+    // Dopóki wołający mógł podać `jwks`, taki token dawał obiekt roszczeń.
+    $obcyKlucz = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
+
+    expect($obcyKlucz)->not->toBeFalse('Nie udało się wygenerować klucza napastnika — pomiar byłby o niczym.');
+
+    /** @var OpenSSLAsymmetricKey $obcyKlucz */
+    $naglowek = ['alg' => 'RS256', 'typ' => 'JWT', 'kid' => FabrykaTokenow::KID];
+    $claims = FabrykaTokenow::claimsAccess();
+
+    $czesci = [
+        rtrim(strtr(base64_encode((string) json_encode($naglowek)), '+/', '-_'), '='),
+        rtrim(strtr(base64_encode((string) json_encode($claims)), '+/', '-_'), '='),
+    ];
+
+    $podpis = '';
+    openssl_sign(implode('.', $czesci), $podpis, $obcyKlucz, OPENSSL_ALGO_SHA256);
+    $czesci[] = rtrim(strtr(base64_encode(Typy::napis($podpis)), '+/', '-_'), '=');
+
+    $wynik = RoszczeniaZweryfikowane::zAccessTokenu(implode('.', $czesci), oidcAtrapy());
+
+    expect($wynik['ok'])->toBeFalse(
+        'Token podpisany CUDZYM kluczem dał roszczenia. Podstawa zaufania nie pochodzi '.
+        'z naszej konfiguracji — obiekt nazywa się „zweryfikowany", nie mówiąc, wobec czego.'
+    )->and($wynik['roszczenia'])->toBeNull()
+        ->and($wynik['kontrole']['signature'] ?? null)->toBe('fail',
+            'Odmowa przyszła z INNEGO ogniwa niż podpis — czyli mierzę coś innego,'.
+            ' niż mi się wydaje. Nazwa kontroli pochodzi z `WalidatorTokenu`.');
+
+    // KONTROLA PRZYRZĄDU (`ZLECENIE-079` §1.3): podstawione IdP MUSI dawać
+    // tożsamość. Bez tego „nie da się zalogować" udawałoby bezpieczeństwo,
+    // a powyższa czerwień znaczyłaby tylko tyle, że nic nie działa.
+    $nasz = RoszczeniaZweryfikowane::zAccessTokenu(
+        FabrykaTokenow::podpisz(FabrykaTokenow::claimsAccess()),
+        oidcAtrapy()
+    );
+
+    expect($nasz['ok'])->toBeTrue(
+        'Token podpisany NASZYM kluczem też nie przechodzi — czyli kontrola wyżej '.
+        'mierzy awarię atrapy IdP, a nie odrzucenie obcego klucza.'
+    );
 });

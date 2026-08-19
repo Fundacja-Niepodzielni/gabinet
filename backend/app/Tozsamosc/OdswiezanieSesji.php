@@ -127,12 +127,10 @@ final class OdswiezanieSesji
     {
         $accessToken = Typy::napis($body['access_token'] ?? null);
 
-        $wynik = RoszczeniaZweryfikowane::zTokenu($accessToken, [
-            'issuer' => $this->oidc->issuerPubliczny(),
-            'jwks' => $this->oidc->jwksDlaKid(WalidatorTokenu::kidNiezweryfikowany($accessToken)),
-            'audience' => $this->oidc->wymaganaAudiencja(),
-            'tolerancja' => $this->oidc->tolerancjaZegara(),
-        ]);
+        // Wymagania z KONFIGURACJI — patrz komentarz przy `zTokenu`
+        // (znalezisko „szóste piętro"). Odświeżanie miało tę samą wadę co
+        // logowanie: składało wymagania na miejscu, razem z materiałem klucza.
+        $wynik = RoszczeniaZweryfikowane::zAccessTokenu($accessToken, $this->oidc);
 
         if (! $wynik['ok']) {
             SesjaKonta::zakoncz($request);

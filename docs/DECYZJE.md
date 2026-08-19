@@ -1444,6 +1444,7 @@ ze specyfikacją co do jednej. **Jedyną rzeczą, która groziła rozjazdem, by�
 Architekt odnotował, że dało się to sprawdzić w pięć minut, **bo komentarz przy każdej liczbie
 podaje jej źródło** — ta sama praktyka co przy pomiarach, zastosowana do konfiguracji.
 
+
 ---
 
 ## D-2026-08-12-01 · Kontrole bezpieczeństwa: zbiór zakazany pochodzi z RUNTIME'U, nie z pamięci autora
@@ -1521,3 +1522,90 @@ postaci. Sama kontrola przy pierwszym uruchomieniu złapała żywą instancję: 
 
 **Świadome rozróżnienie:** identyfikator nazywający **zdarzenie** się nie starzeje, więc zakaz
 wszystkich liczb kasowałby historię i sprostowania — czyli dokładnie to, co ma tam zostać.
+
+---
+
+## D-2026-08-12-04 — termin zwrotu komunikowany pacjentom: „zwykle 3–5 dni roboczych"
+
+**Kto podjął:** architekt (`ODPOWIEDZ-044` §1 poz. 1), na wniosek sesji SPEC-UMOWA
+(`ZLECENIE-044` §2 pkt 1). **Wpis wykonuje sesja SPEC-UMOWA, 12.08.2026.**
+
+**Decyzja.** Specyfikacja podaje dwa różne terminy zwrotu: „3 dni robocze" (mail o odwołaniu
+przez specjalistę) i „3–5 dni roboczych" (okno odwołania po stronie pacjentki) — i sama prosi
+o ujednolicenie (s. 53, 58–59; nieścisłość §0.3 `DO-OMOWIENIA-2026-08-10.md`). **Brzmienie
+robocze wszystkich treści: „zwykle 3–5 dni roboczych".**
+
+**Dlaczego.** Termin zwrotu na kartę zależy od operatora płatności i banku pacjenta — nie od
+nas. „3 dni" to obietnica cudzego czasu; „3–5 dni" z „zwykle" opisuje to, na co mamy wpływ,
+bez składania obietnicy, której nie egzekwujemy.
+
+**Status klientowski.** W dokumencie klienckim (`SPECYFIKACJA-UMOWNA.md` §4.3) stoi „kilka dni
+roboczych" ze znacznikiem [DO POTWIERDZENIA] — ostateczne brzmienie do przeglądu treści
+z Fundacją (brzmienie robocze = nasza rekomendacja na ten przegląd).
+
+**Gdzie się odbija.** Szablony treści powstają w F6 (I7) — do tego czasu wpis jest jedynym
+nośnikiem; przy budowie szablonów wartość wchodzi jako treść, nie jako parametr konfiguracji.
+
+**Odnotowanie procesowe:** pierwsza wersja tego wpisu weszła pod numerem `D-2026-08-12-01`
+w środek pliku — kolizja z równolegle dopisanym wpisem KOD-F1 o tym samym numerze (dwie sesje,
+jeden plik, „najwyższy numer" liczony w różnych chwilach — ta sama klasa co numeracja kanału
+zleceń, `ZLECENIE-045` §4.2). Usunięta i zapisana ponownie tutaj, z kolejnym wolnym numerem.
+
+---
+
+## D-2026-08-19-01 — tożsamość sesji egzekwowana TYPEM, nie skanowaniem kodu
+
+**Kto podjął:** architekt (`ZLECENIE-078` §1) po rundzie 11. **Wykonanie: sesja KOD-F1, 19.08.2026.**
+
+**Decyzja.** Pisarze tożsamości sesji przyjmują wyłącznie **obiekty wartości**, których jedyna
+droga powstania prowadzi przez sprawdzenie podpisu (`RoszczeniaZweryfikowane`). Tablice i napisy
+przestają być dopuszczalnym wejściem. `TozsamoscSesji::zPodmienionymi(array)` usunięte.
+
+**Dlaczego — i to jest właściwe uzasadnienie, nie „bo bezpieczniej".** Cztery rundy z rzędu
+(R8-1, R9-1, R10-1, R11-1/R11-2) znalazły TĘ SAMĄ klasę wady o piętro wyżej. Każda naprawa
+polegała na rozpoznawaniu ZŁEGO KSZTAŁTU KODU, a każdy skaner kształtu ma brzeg — i brzeg
+za każdym razem dawało się przekroczyć. Piąta warstwa dałaby szóste piętro. Zmienia się więc
+RODZAJ obrony: z wykrywania złego kształtu na **uniemożliwienie złego stanu**.
+
+**Co z tego wynika na przyszłość.** Nowa ścieżka logowania (pacjenci, guest checkout) NIE MOŻE
+ustanawiać tożsamości tablicą — musi przejść przez ten sam obiekt wartości albo dostać własny,
+zbudowany na tej samej zasadzie: konstruktor prywatny, jedyna fabryka za weryfikacją.
+
+**Nazwana granica.** Typ pilnuje, SKĄD pochodzi wartość tożsamości. NIE pilnuje, skąd pochodzą
+WYMAGANIA WALIDACJI (`jwks` podawane tablicą) — zmierzone i zgłoszone w `ODPOWIEDZ-078` §7
+jako szóste piętro, do rozstrzygnięcia zakresu przez architekta.
+
+---
+
+## D-2026-08-19-02 — podstawa zaufania pochodzi z KONFIGURACJI, nie od wołającego
+
+**Kto podjął:** architekt (`ZLECENIE-079` §1) na wniosek sesji KOD-F1 (`ODPOWIEDZ-078` §7).
+**Wykonanie: sesja KOD-F1, 19.08.2026.**
+
+**Decyzja.** Wejście składające wymagania walidacji tokenu (`issuer`, `jwks`, `audience`,
+`typ`, `tolerancja`) jest **prywatne**. Publiczne są wyłącznie dwie fabryki —
+`RoszczeniaZweryfikowane::zIdTokenu()` i `::zAccessTokenu()` — które biorą wymagania
+z `KontaOidc`, czyli z konfiguracji wskazującej NASZE IdP.
+
+**Dlaczego.** Ściana typu z `D-2026-08-19-01` zamykała pytanie „skąd pochodzi WARTOŚĆ
+tożsamości". Nie zamykała pytania **„skąd pochodzi PODSTAWA ZAUFANIA"**: dopóki wołający
+podawał `jwks`, mógł podać własny klucz — i dostawał obiekt całkowicie legalnie, bo
+walidator mówił `ok`. Zmierzone: mechanizm podmieniający `jwks` przechodził pełną suitę,
+statykę i format, a wszystkie kontrole tożsamości milczały. Obiekt nazywał się
+„zweryfikowany", nie mówiąc — wobec czego.
+
+**Co z tego wynika na przyszłość.** Każde nowe wejście weryfikujące token MUSI brać
+podstawę zaufania z konfiguracji. Materiał klucza nigdy nie jest parametrem wywołania.
+
+**Zmierzone granice (nie domysły):**
+
+- `nonce` pozostaje parametrem (`string`), bo pochodzi z NASZEJ sesji. Wektor „nonce
+  z żądania" jest pokryty DRUGĄ LINIĄ: zmierzone — zapala warstwę 3 wąskiego gardła
+  z komunikatem „CALLBACK OIDC CZYTA Z ŻĄDANIA COŚ SPOZA SWOJEGO KONTRAKTU".
+- `kid` pochodzi z NIEZWERYFIKOWANEGO nagłówka tokenu i wybiera, którego klucza szukamy —
+  ale zbiór kluczy pochodzi z naszego IdP, więc token podpisany obcym kluczem odpada
+  na kontroli `signature` (zmierzone testem OBCY KLUCZ).
+- **ZEGAR systemowy** rozstrzyga o `exp`/`iat` i NIE jest przez nas mierzony —
+  to nazwana granica, nie pokrycie.
+- Pamięć podręczna JWKS ma osobny warunek utrzymujący (`WzmacniaczZadanTest`:
+  „ZATRUTY cache JWKS nie odbudowuje się sam w oknie bramki").

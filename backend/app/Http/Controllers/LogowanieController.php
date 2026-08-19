@@ -10,7 +10,6 @@ use App\Tozsamosc\OdswiezanieSesji;
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\RoszczeniaZweryfikowane;
 use App\Tozsamosc\SesjaKonta;
-use App\Tozsamosc\WalidatorTokenu;
 use App\Wsparcie\Typy;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
@@ -90,20 +89,16 @@ final class LogowanieController extends Controller
             return response()->json(['ok' => false, 'blad' => 'wymiana_kodu', 'status' => $tokeny['status']], 401);
         }
 
-        $jwks = $this->oidc->jwksDlaKid(
-            WalidatorTokenu::kidNiezweryfikowany(Typy::napis($tokeny['body']['id_token'] ?? null))
-        );
-
-        // ID token: dowód TOŻSAMOŚCI. `aud` = client_id, `nonce` z naszej sesji.
+        // ID token: dowód TOŻSAMOŚCI.
+        //
+        // ⛔ WYMAGANIA WALIDACJI NIE SĄ JUŻ SKŁADANE TUTAJ — znalezisko
+        // „szóste piętro" (`ODPOWIEDZ-078` §7). Do 19.08 kontroler budował
+        // tablicę wymagań, a w niej `jwks`, czyli MATERIAŁ KLUCZA. Kod, który
+        // podstawił tam własny klucz, dostawał obiekt legalnie: podpis
+        // przechodził, tylko przeciw kluczowi napastnika. Podstawa zaufania
+        // pochodzi teraz z konfiguracji, nie od wołającego.
         $idToken = Typy::napis($tokeny['body']['id_token'] ?? null);
-        $wynikId = RoszczeniaZweryfikowane::zTokenu($idToken, [
-            'issuer' => $this->oidc->issuerPubliczny(),
-            'jwks' => $jwks,
-            'audience' => $this->oidc->clientId(),
-            'typ' => 'ID',
-            'nonce' => $nonce,
-            'tolerancja' => $this->oidc->tolerancjaZegara(),
-        ]);
+        $wynikId = RoszczeniaZweryfikowane::zIdTokenu($idToken, $this->oidc, $nonce);
 
         if (! $wynikId['ok']) {
             return $this->odmowa('id_token', $wynikId);
@@ -111,13 +106,7 @@ final class LogowanieController extends Controller
 
         // ACCESS token: dowód UPRAWNIEŃ. Role są WYŁĄCZNIE tutaj (kontrakt §2b).
         $accessToken = Typy::napis($tokeny['body']['access_token'] ?? null);
-        $wynikAccess = RoszczeniaZweryfikowane::zTokenu($accessToken, [
-            'issuer' => $this->oidc->issuerPubliczny(),
-            'jwks' => $jwks,
-            'audience' => $this->oidc->wymaganaAudiencja(),
-            'typ' => 'Bearer',
-            'tolerancja' => $this->oidc->tolerancjaZegara(),
-        ]);
+        $wynikAccess = RoszczeniaZweryfikowane::zAccessTokenu($accessToken, $this->oidc);
 
         if (! $wynikAccess['ok']) {
             return $this->odmowa('access_token', $wynikAccess);

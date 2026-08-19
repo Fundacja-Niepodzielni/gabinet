@@ -64,8 +64,53 @@ final readonly class RoszczeniaZweryfikowane
     private function __construct(private array $roszczenia, private string $tokenSurowy) {}
 
     /**
-     * JEDYNA droga do instancji — przez sprawdzenie podpisu, wystawcy,
-     * odbiorcy i czasu.
+     * ID TOKEN — dowód TOŻSAMOŚCI. Wymagania z KONFIGURACJI, nie od wołającego.
+     *
+     * @return array{ok: true, roszczenia: self, kontrole: array<string, string>, nieudane: list<string>}|array{ok: false, roszczenia: null, kontrole: array<string, string>, nieudane: list<string>}
+     */
+    public static function zIdTokenu(string $jwt, KontaOidc $oidc, string $nonce): array
+    {
+        return self::zTokenu($jwt, [
+            'issuer' => $oidc->issuerPubliczny(),
+            'jwks' => $oidc->jwksDlaKid(WalidatorTokenu::kidNiezweryfikowany($jwt)),
+            'audience' => $oidc->clientId(),
+            'typ' => 'ID',
+            'nonce' => $nonce,
+            'tolerancja' => $oidc->tolerancjaZegara(),
+        ]);
+    }
+
+    /**
+     * ACCESS TOKEN — dowód UPRAWNIEŃ. Inna audiencja, brak `nonce`.
+     *
+     * @return array{ok: true, roszczenia: self, kontrole: array<string, string>, nieudane: list<string>}|array{ok: false, roszczenia: null, kontrole: array<string, string>, nieudane: list<string>}
+     */
+    public static function zAccessTokenu(string $jwt, KontaOidc $oidc): array
+    {
+        return self::zTokenu($jwt, [
+            'issuer' => $oidc->issuerPubliczny(),
+            'jwks' => $oidc->jwksDlaKid(WalidatorTokenu::kidNiezweryfikowany($jwt)),
+            'audience' => $oidc->wymaganaAudiencja(),
+            'typ' => 'Bearer',
+            'tolerancja' => $oidc->tolerancjaZegara(),
+        ]);
+    }
+
+    /**
+     * Sprawdzenie podpisu, wystawcy, odbiorcy i czasu.
+     *
+     * ⛔ PRYWATNA OD 19.08 — znalezisko „szóste piętro" (`ODPOWIEDZ-078` §7).
+     *
+     * Dopóki była publiczna i brała `array $wymagania`, wołający podawał
+     * w tej tablicy **`jwks`, czyli materiał klucza**. Kod, który podał własny
+     * klucz, dostawał obiekt CAŁKOWICIE LEGALNIE: walidator mówił `ok`, bo
+     * podpis przechodził — tylko przeciw kluczowi napastnika. Zmierzone:
+     * mechanizm podmieniający `jwks` przechodził PEŁNĄ suitę (315 zielonych),
+     * statykę i format, a wszystkie kontrole tożsamości milczały.
+     *
+     * Ściana typu chroniła wtedy KSZTAŁT, a nie PRAWDĘ: obiekt nazywał się
+     * „zweryfikowane", nie mówiąc — wobec czego. Teraz podstawa zaufania
+     * pochodzi z konfiguracji (`KontaOidc`), a nie od tego, kto woła.
      *
      * Zwracany kształt zachowuje SZCZEGÓŁ NIEPOWODZENIA (`kontrole`,
      * `nieudane`), bo ścieżka logowania musi umieć powiedzieć, co odpadło —
@@ -79,7 +124,7 @@ final readonly class RoszczeniaZweryfikowane
      * @param  array<string, mixed>  $wymagania
      * @return array{ok: true, roszczenia: self, kontrole: array<string, string>, nieudane: list<string>}|array{ok: false, roszczenia: null, kontrole: array<string, string>, nieudane: list<string>}
      */
-    public static function zTokenu(string $jwt, array $wymagania): array
+    private static function zTokenu(string $jwt, array $wymagania): array
     {
         $wynik = WalidatorTokenu::sprawdz($jwt, $wymagania);
 

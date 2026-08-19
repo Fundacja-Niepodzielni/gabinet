@@ -1870,6 +1870,47 @@ p_kotwica() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_wymagania_wolajacego() {
+	naglowek 'podstawa zaufania: wolajacy znowu sklada wymagania walidacji [szoste pietro]'
+	# Wektor zmierzony w ODPOWIEDZ-078 §7: kto podaje `jwks`, ten rozstrzyga,
+	# wobec czego podpis jest poprawny. Obiekt nazywal sie „zweryfikowany",
+	# nie mowiac — wobec czego.
+	local plik="backend/app/Tozsamosc/RoszczeniaZweryfikowane.php"
+	zachowaj "$plik"
+
+	perturbuj wymagania-od-wolajacego || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "wejscie skladajace wymagania jest znowu publiczne" \
+		grep -q "public static function zTokenu" "$plik"
+
+	oczekuj_czerwone "podstawa zaufania: wolajacy znowu sklada wymagania walidacji [szoste pietro]" \
+		--przyczyna "PUBLICZNA METODA OBIEKTU ROSZCZE" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_roszczenia_final() {
+	naglowek 'podstawa zaufania: klasa roszczen przestaje byc final'
+	# ZLECENIE-079 §3: „final bez pomiaru jest deklaracja". Klasa potomna nie
+	# siegnie po prywatny konstruktor rodzica, ale moze dodac wlasny publiczny
+	# i podac sie za ten typ.
+	local plik="backend/app/Tozsamosc/RoszczeniaZweryfikowane.php"
+	zachowaj "$plik"
+
+	perturbuj roszczenia-bez-final || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "klasa roszczen nie jest juz final" \
+		grep -q "^readonly class RoszczeniaZweryfikowane" "$plik"
+
+	oczekuj_czerwone "podstawa zaufania: klasa roszczen przestaje byc final" \
+		--przyczyna "NIE jest .final." \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+
 
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
@@ -1894,7 +1935,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda typ_zaloz podmienionymi roszczenia_ctor odswiezanie_sub kotwica zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda typ_zaloz podmienionymi roszczenia_ctor odswiezanie_sub kotwica wymagania_wolajacego roszczenia_final zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -2163,6 +2204,8 @@ for NAZWA in $WYBRANE; do
 		roszczenia_ctor) p_roszczenia_ctor ;;
 		odswiezanie_sub) p_odswiezanie_sub ;;
 		kotwica) p_kotwica ;;
+		wymagania_wolajacego) p_wymagania_wolajacego ;;
+		roszczenia_final) p_roszczenia_final ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)

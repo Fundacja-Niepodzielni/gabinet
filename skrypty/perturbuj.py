@@ -778,6 +778,29 @@ def odswiezanie_podmienia_sub() -> None:
     )
 
 
+def wymagania_od_wolajacego() -> None:
+    """Otwiera wejscie skladajace wymagania walidacji — droga „szostego pietra".
+
+    Dopoki `zTokenu(string, array)` bylo publiczne, wolajacy podawal w tej
+    tablicy `jwks`, czyli MATERIAL KLUCZA — i sam rozstrzygal, wobec czego
+    token jest „zweryfikowany".
+    """
+    podmien_jedyne(
+        ROSZCZENIA,
+        "    private static function zTokenu(string $jwt, array $wymagania): array",
+        "    public static function zTokenu(string $jwt, array $wymagania): array",
+    )
+
+
+def roszczenia_bez_final() -> None:
+    """Zdejmuje `final` — prywatny konstruktor obchodzi sie wtedy dziedziczeniem."""
+    podmien_jedyne(
+        ROSZCZENIA,
+        "final readonly class RoszczeniaZweryfikowane",
+        "readonly class RoszczeniaZweryfikowane",
+    )
+
+
 def kotwica_falszywa() -> None:
     """Falszywa liczba obok PRAWDZIWEGO SHA — dokladny wektor R11-3.
 
@@ -861,6 +884,8 @@ POLECENIA = {
     "roszczenia-ctor-publiczny": roszczenia_ctor_publiczny,
     "odswiezanie-podmienia-sub": odswiezanie_podmienia_sub,
     "kotwica-falszywa": kotwica_falszywa,
+    "wymagania-od-wolajacego": wymagania_od_wolajacego,
+    "roszczenia-bez-final": roszczenia_bez_final,
     "gardlo-para": gardlo_para,
     "gardlo-naglowek": gardlo_naglowek,
     "gardlo-all": gardlo_all,
