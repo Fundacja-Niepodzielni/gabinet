@@ -63,13 +63,17 @@ obietnicę.
 
 ## 3. Naprawa PRZYCZYNY — gotowa, niezacommitowana
 
-W drzewie roboczym skróciłem wartość w raporcie:
+W drzewie roboczym skróciłem wartość w raporcie: pełny ciąg (przedrostek
+`GOCSPX-` plus 32 znaki szesnastkowe) zastąpiony postacią z wielokropkiem.
 
-```
-- GOOGLE_CALENDAR_CLIENT_SECRET=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8c07
-+ GOOGLE_CALENDAR_CLIENT_SECRET=GOCSPX-9f2b…c07  (wartość SKRÓCONA 19.08 …)
-```
-
+> ⛔ **DOPISANE 19.08 — TEN AKAPIT SAM BYŁ WYCIEKIEM.**
+>
+> Pierwotnie stał tu DIFF, którego linia „przed" niosła pełną wartość.
+> Dokument opisujący redakcję odtworzył zredagowany sekret, a commit z tym
+> plikiem zapalił krok [21] po raz drugi — w `661e8a6`.
+>
+> Stąd opis słowny zamiast diffu: **cytat sekretu nie przestaje być cytatem
+> sekretu przez to, że stoi w zdaniu o jego usuwaniu.**
 Wartość dowodowa raportu nie ucierpiała: dowód R9-3 polega na RÓŻNICY między dwoma
 przebiegami (`.env.example` → `no leaks`, `docs/probka` → `leaks found: 1`), a nie
 na pełnym ciągu znaków. Nie commituję — cisza obowiązuje, a rozstrzygnięcie

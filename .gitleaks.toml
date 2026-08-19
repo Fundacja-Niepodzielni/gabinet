@@ -164,6 +164,12 @@ condition = "AND"
 regexes = ['''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8c07''']
 commits = [
   "527f1b7e35585a6e6ffd01570fddf4e939b9eb2d",
+  # Ten sam cytat wrocil 19.08 w commicie dokumentacyjnym: opis naprawy
+  # pokazywal DIFF, ktorego linia "przed" niosla pelna wartosc. Dokument
+  # o redakcji odtworzyl zredagowany sekret. Jeden wpis na jedna wartosc
+  # (rozstrzygniecie ODPOWIEDZ-076): trzy wpisy rozjechalyby sie przy
+  # zdejmowaniu, a O-2b czyni rozjazd znaleziskiem.
+  "661e8a66b4980d70f93421f688110f20382734dd",
 ]
 
 [[allowlists]]

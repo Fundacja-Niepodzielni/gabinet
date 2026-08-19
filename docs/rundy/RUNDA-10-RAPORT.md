@@ -417,7 +417,7 @@ także na czystym drzewie i wyłącznie z powodu gitleaks".
 ## 5. Weryfikacja wąskości D-5 (na prośbę architekta, uzupełnienie 2) — NIE jest znaleziskiem
 
 D-5 (`.gitleaks.toml`, commit `11da17e`) zwalnia cytat zmyślonego sekretu
-`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8c07` z commita `527f1b7`. Sprawdziłem trzy
+`GOCSPX-9f2b…c07 (SKRÓCONE 19.08 — pełna wartość zapalała krok [21])` z commita `527f1b7`. Sprawdziłem trzy
 kryteria wąskości POMIAREM (klon `d5test` na czubku `11da17e`):
 
 ```
@@ -430,7 +430,7 @@ kryteria wąskości POMIAREM (klon `d5test` na czubku `11da17e`):
 Czyli wyjątek jest **commit-scoped**: ta sama wartość w commicie innym niż
 `527f1b7` **zapala** skaner. Weryfikacja tekstu wpisu:
 `targetRules = ["generic-api-key"]` (jedna reguła), `condition = "AND"` (wszystkie
-trzy kryteria naraz), `regexes = ['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8c07']`
+trzy kryteria naraz), `regexes = ['GOCSPX-9f2b…c07 (SKRÓCONE 19.08 — pełna wartość zapalała krok [21])']`
 (jedna wartość), `commits = ["527f1b7…" ]` — **pełne 40-znakowe SHA**, nie skrót
 (lekcja R7-5). Warunek znoszący z terminem: `LISTA-SCALENIOWA-F1.md` O-2b wiąże
 D-5 z D-4 jednym terminem i mówi wprost „Jeżeli O-2/O-3 usunie tylko jeden z dwóch
