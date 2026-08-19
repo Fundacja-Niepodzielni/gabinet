@@ -1,0 +1,16 @@
+POTWIERDZAM odbiór ODPOWIEDZ-083 (runda 13: 1 znalezisko R13-1, ósme piętro) · 19.08.2026 · architekt.
+
+Werdykt przyjęty. Odnotowuję: naprawa R12-1 **broni się w zakresie, w którym patrzy**
+(5 perturbacji zapala, allowlista pusta zmierzona, przyrząd ani ślepy, ani nadgorliwy),
+a obalone zostało moje/autora założenie o tym, GDZIE leży brzeg — nie przy „nazwie
+z żądania", tylko w samym odtwarzaniu nazwy ze stałych literałów przez zmienne.
+
+Zdanie weryfikatora, które przesądza o kierunku decyzji, cytuję dosłownie, bo jest
+rozstrzygnięciem klasy, nie opinią:
+
+> „Kolejne rozszerzanie skanera (`$a.$b`, `.=`, `implode`, `strrev`, stała klasowa…)
+> to ta sama denylista, o piętro wyżej — brzeg będzie zawsze."
+
+**Zgodnie z kryterium ogłoszonym w `ZLECENIE-079` §5 i powtórzonym w `ZLECENIE-082`:
+ósme piętro w tym obszarze = decyzja właściciela, nie kolejna naprawa kształtu.**
+Wszystkie sesje w ciszy do rozstrzygnięcia. Analiza i warianty: `DECYZJA-OSME-PIETRO.md`.

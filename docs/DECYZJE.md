@@ -1638,3 +1638,42 @@ bramka milczała. To ta sama klasa co R6A-4: **denylista nad tekstem przegrywa z
 
 **Allowlista wyjątków jest PUSTA i zmierzona:** kod produkcyjny nie używa dziś żadnego z tych narzędzi.
 Legalne użycie (gdyby powstało) wchodzi na jawną listę z powodem — koszt wyjątku równy kosztowi zgodności.
+
+---
+
+## D-2026-08-19-04 — zamknięcie F1 z jawnie opisaną granicą R13-1 (ósme piętro)
+
+**Kto podjął:** właściciel (wariant C, `ZLECENIE-084`), na analizę architekta
+(`DECYZJA-OSME-PIETRO.md`). **Wykonanie: sesja KOD-F1, 19.08.2026.**
+
+**UWAGA — numeracja.** `ZLECENIE-084` §1 prosiło o numer `D-2026-08-19-03`, ale ten
+numer był już zajęty wpisem o naprawie R12-1 (commit `b60c53a`, z tego samego dnia).
+Nie duplikuję numeru — ten wpis dostaje `-04`. Rozjazd zgłoszony w `ODPOWIEDZ-084`.
+
+**Decyzja.** Faza fundamentowa F1 zamyka się z JAWNIE OPISANĄ GRANICĄ zamiast rundy
+z zerem znalezisk. Runda 13 znalazła R13-1 (ósme piętro): skaner narzędzi omijających
+konstruktor (`Kod::wywolaniaOmijajaceKonstruktor`) jest ślepy na nazwę zbudowaną przez
+ZMIENNE POMOCNICZE (`$a='unse'; $b='rialize'; $f=$a.$b`), a także `.=`, `implode`,
+`strrev`, `sprintf`, heredoc, `new $zmienna`. Pełny opis: `docs/GRANICA-R13-1.md`.
+
+**Dlaczego zamknięcie, nie kolejna naprawa.** Rozstrzygnięcie klasy z rundy 13:
+„kolejne rozszerzanie skanera to ta sama denylista o piętro wyżej — brzeg będzie
+zawsze". Żadna kontrola CZYTAJĄCA KOD nie rozpozna wszystkich zapisów tej samej
+czynności; dziewiąte piętro istnieje z definicji. Realne ryzyko (nieuwaga piszącego
+kod) jest pokryte — formy naturalne skaner łapie. Niepokryte jest wyłącznie obejście
+CELOWE, przed którym analiza kodu i tak nie broni.
+
+**Skala ryzyka.** Wektor NIE jest osiągalny z zewnątrz — wymaga dopisania kodu do
+repozytorium; żaden użytkownik ani żądanie HTTP go nie uruchomi (twierdzenie sprawdzalne,
+`GRANICA-R13-1.md` §3). Broni druga linia: 13 niezależnych rund (ta klasa łapana w każdej)
++ przegląd kodu przy scaleniu.
+
+**Termin naprawy:** etap B, pierwsze zadanie — **kontrola SKUTKU** (każda tożsamość
+w sesji ma dowód weryfikacji z tego samego żądania; nie pyta o kod, więc nie ma tego
+brzegu). **Warunek znoszący:** gdyby powstała ścieżka wykonania kodu z treści spoza
+repozytorium, granica przestaje obowiązywać i wraca jako blokada (`GRANICA-R13-1.md` §8).
+
+**Zapis reguły zbieżności.** Kryterium „F1/F0 zamyka wyłącznie runda z zerem znalezisk"
+(`D-2026-08-07-16`) zostaje ZASTĄPIONE dla tej fazy decyzją właściciela z 19.08
+o zamknięciu z granicą. To NIE jest pominięcie reguły — to jej świadome, zapisane
+nadpisanie przez właściciela, z pełnym kosztem opisanym w `GRANICA-R13-1.md`.
