@@ -18,6 +18,29 @@
 set -euo pipefail
 
 KATALOG=/srv/gabinet/backend
+
+# --- REPOZYTORIUM ZAMONTOWANE Z HOSTA JEST „CUDZE" DLA GITA ----------------
+#
+# ZNALEZIONE 19.08 przez CI (A-4 — druga noga pomiaru), na `main` po scaleniu F1.
+# W przebiegu chmurowym właściciel plików repozytorium różni się od użytkownika
+# procesu w kontenerze, więc git odmawia:
+#
+#     fatal: detected dubious ownership in repository at '/srv/gabinet'
+#
+# Skutek był gorszy niż sama odmowa: kontrola kotwic (`JednoZrodloStanuTest`,
+# R9-5) woła `git cat-file` i czytała kod ≠ 0 jako „ten commit nie istnieje" —
+# czyli oskarżała TRZY PRAWDZIWE kotwice o bycie zmyślonymi. Kontrola myliła
+# „nie mogę sprawdzić" ze „sprawdziłem i nie ma".
+#
+# Naprawa jest dwustronna i obie strony są potrzebne:
+#   · TUTAJ — git przestaje odmawiać, więc kontrola może realnie pytać;
+#   · w samej kontroli — pyta najpierw o HEAD (commit istniejący NA PEWNO)
+#     i przy jego niepowodzeniu melduje AWARIĘ PRZYRZĄDU, a nie znalezisko.
+#
+# Zakres jest wąski: dokładnie ten jeden katalog, nie `*`. Zwolnienie „wszystko
+# jest bezpieczne" wyłączyłoby ochronę, którą git wprowadził celowo.
+git config --global --add safe.directory /srv/gabinet 2>/dev/null || true
+
 cd "$KATALOG"
 
 # `app` startuje php-fpm; pozostałe role wołają `php artisan ...`.

@@ -1,0 +1,22 @@
+POTWIERDZAM odbiór ODPOWIEDZ-086 · 19.08.2026 · architekt. PRZEGLĄD WYKONANY — POZYTYWNY.
+
+Weryfikacja własna (uruchomiona, nie przepisana z meldunku):
+- **niezależny przebieg suity przez architekta: 326 passed, 2 skipped, 2282 asercji** —
+  zgodne co do cyfry z Twoją deklaracją;
+- `75b84e2` czubek; `git status` poza `docs/` PUSTY; kopia `kopia-przed-merge-19-08`
+  = `b60c53a` (stan wejściowy) istnieje;
+- **merge do `main` będzie fast-forward** (`main` = `a5a4d8b` jest przodkiem) — bez
+  scalania rozbieżnych historii, czyli bez ryzyka konfliktu;
+- `GRANICA-R13-1.md` zawiera **wszystkie osiem elementów** z `ZLECENIE-084` §1 (sprawdzone
+  po jednym); 7 wpisów `D-2026-08-19-*`; **Q-16 nadal otwarte** i jawnie oznaczone jako
+  niezamknięte scaleniem — dobrze;
+- istnieją obie nowe kontrole (`WaskoscWyjatkowGitleaksTest`, `KsztaltWartosciWDokumentachTest`)
+  oraz wersjonowana deklaracja `skrypty/zakresy/KOD-F1.zakres`.
+
+Trzy rzeczy odnotowuję z uznaniem: **kalibracja O-6c do zera fałszywych alarmów** przez
+różnorodność klas znaków (bez listy nazw) — i to, że nowa kontrola **od razu znalazła
+realne wystąpienia** w starym raporcie; **pierwszeństwo lokalnej deklaracji** w strażniku
+z uzasadnieniem, że inaczej wypchnęlibyśmy ludzi w wyłączanie strażnika; oraz zgłoszenie
+własnej wady z `reset --hard` wraz ze zmianą procedury zamiast obietnicy.
+
+**O-9 (merge + wypchnięcie) wykonuję ja po zgodzie właściciela.** Właściciel zapytany.

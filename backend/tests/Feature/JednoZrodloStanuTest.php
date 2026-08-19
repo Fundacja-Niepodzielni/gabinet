@@ -323,20 +323,51 @@ it('R9-5: pomiary w sekcji stanu są ZAKOTWICZONE W SHA, nie w dacie', function 
         'W sekcji stanu NIE MA ani jednej kotwicy `zmierzone na <SHA>`. Liczby przebiegu '.
         'bez kotwicy są twierdzeniem o TERAZ i starzeją się po cichu (R9-5).');
 
-    // Każda kotwica musi wskazywać commit, który ISTNIEJE. Kotwica do SHA
-    // zmyślonego byłaby gorsza od daty: wygląda na sprawdzalną.
-    $martwe = [];
-
-    foreach (array_unique($kotwice[1]) as $sha) {
+    // ⛔ NAJPIERW KONTROLA PRZYRZĄDU: czy JA W OGÓLE UMIEM PYTAĆ o commity.
+    //
+    // ZNALEZIONE 19.08 przez CI (A-4 — druga noga pomiaru), na `main` po
+    // scaleniu F1. W przebiegu chmurowym git odmawiał:
+    //
+    //     fatal: detected dubious ownership in repository at '/srv/gabinet'
+    //
+    // (właściciel plików repozytorium ≠ użytkownik w kontenerze). `cat-file`
+    // zwracał kod ≠ 0 dla KAŻDEGO SHA, a ta kontrola czytała to jako
+    // „commit nie istnieje" i oskarżała trzy PRAWDZIWE kotwice o bycie
+    // zmyślonymi.
+    //
+    // To jest wada GROŹNIEJSZA niż czerwone CI: kontrola myliła „NIE MOGĘ
+    // SPRAWDZIĆ" z „SPRAWDZIŁEM I NIE MA". Pierwszy stan to awaria przyrządu,
+    // drugi to znalezisko — i mylenie ich działa w obie strony: tak samo
+    // mogłaby przepuścić kotwicę zmyśloną, gdyby `git` zwracał zero na wszystko.
+    //
+    // Dlatego pytamy najpierw o commit, który ISTNIEJE NA PEWNO (HEAD).
+    // Jeśli na nim przyrząd zawodzi — to awaria środowiska, nie znalezisko,
+    // i mówimy to wprost zamiast wskazywać niewinne kotwice.
+    $pytajOCommit = static function (string $rewizja): int {
         $kod = 0;
         $wyjscie = [];
         exec(sprintf(
             'cd %s && git cat-file -e %s^{commit} 2>&1',
             escapeshellarg(base_path('..')),
-            escapeshellarg($sha)
+            escapeshellarg($rewizja)
         ), $wyjscie, $kod);
 
-        if ($kod !== 0) {
+        return $kod;
+    };
+
+    expect($pytajOCommit('HEAD'))->toBe(0,
+        'PRZYRZĄD NIE DZIAŁA: `git cat-file` nie potrafi potwierdzić nawet HEAD, '.
+        'czyli commita, który istnieje na pewno. To awaria środowiska (np. '.
+        '„detected dubious ownership" — właściciel plików repozytorium różny od '.
+        'użytkownika procesu), NIE dowód, że kotwice są zmyślone. Napraw dostęp '.
+        'do repozytorium; bez tego ta kontrola oskarżałaby prawdziwe kotwice.');
+
+    // Dopiero teraz: każda kotwica musi wskazywać commit, który ISTNIEJE.
+    // Kotwica do SHA zmyślonego byłaby gorsza od daty: wygląda na sprawdzalną.
+    $martwe = [];
+
+    foreach (array_unique($kotwice[1]) as $sha) {
+        if ($pytajOCommit($sha) !== 0) {
             $martwe[] = $sha;
         }
     }
