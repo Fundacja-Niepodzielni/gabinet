@@ -124,6 +124,50 @@ paths = ['''docs/noc-2026-08-08/.*''']
 
 [[allowlists]]
 description = """
+D-5 — CYTAT SEKRETU W RAPORCIE RUNDY 9, w commicie 527f1b7. WYLACZONY NAJWEZEJ.
+
+Co to jest: `docs/rundy/RUNDA-9-RAPORT.md` cytowal PELNA wartosc uzyta w dowodzie
+znaleziska R9-3 (`GOCSPX-` + 32 znaki hex). Wartosc jest ZMYSLONA — pochodzi
+z perturbacji weryfikatora, nie jest zadnym zywym poswiadczeniem.
+
+Skad sie wziela w historii: raport napisala sesja WERYFIKATOR (ktora ma zakaz
+commitowania), a zacommitowala go sesja KOD-F1 razem z meldunkiem — nie czytajac
+go pod katem kroku [21], ktory sama przez cztery cykle naprawiala. Bramka na
+zamrozonym KODZIE (`528adc3`) byla wtedy zielona 22/22; czerwien wniosl dopiero
+commit DOKUMENTACYJNY. To jedyna kontrola w tej bramce, ktorej przedmiotem jest
+HISTORIA, wiec jako jedyna potrafi zaczerwienic sie od commita niezmieniajacego
+ani jednej linii kodu.
+
+PRZYCZYNA JEST JUZ USUNIETA W DRZEWIE: wartosc w raporcie zostala SKROCONA
+(`GOCSPX-9f2b…c07`). Wartosc dowodowa raportu nie ucierpiala, bo dowod R9-3
+polega na ROZNICY miedzy dwoma przebiegami, a nie na pelnym ciagu znakow.
+Ten wpis domyka WYLACZNIE HISTORIE.
+
+DLACZEGO NIE PRZEPISALEM HISTORII: commit `527f1b7` jest juz na
+`origin/faza-1-retencja`, wiec przepisanie oznacza WYMUSZONY PUSH — a to
+w oknie rundy 10 uniewazniloby SHA, ktory runda wlasnie mierzy. Rozstrzygniecie
+architekta (ODPOWIEDZ-072): wariant A, tym samym precedensem co D-4.
+
+⛔ WARUNEK ZNOSZACY, Z TERMINEM: ten wpis znika RAZEM Z D-4 w operacji O-2/O-3
+listy scaleniowej (`docs/ZLECENIA/LISTA-SCALENIOWA-F1.md`). Jezeli O-1..O-3 nie
+usunie OBU, jest to ZNALEZISKO — dwa dlugi tej samej rodziny maja jeden termin
+i jedno wykazanie.
+
+Dlaczego to nie jest dziura: wyjatek dopasowuje DOKLADNIE JEDNA znana wartosc
+zmyslona, w DOKLADNIE JEDNYM commicie, dla DOKLADNIE JEDNEJ reguly — i wszystkie
+trzy kryteria musza zajsc naraz (`condition = "AND"`). Pelne SHA, nie skrot:
+gitleaks porownuje identyfikator commita doslownie, wiec skrot nie pasowalby
+do niczego i wyjatek zwalnialby wartosc WSZEDZIE (lekcja R7-5).
+"""
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexes = ['''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8c07''']
+commits = [
+  "527f1b7e35585a6e6ffd01570fddf4e939b9eb2d",
+]
+
+[[allowlists]]
+description = """
 PRZYNETA PERTURBACJI w HISTORII commita 31727fb — WYLACZONA NAJWEZEJ.
 
 Co to jest: perturbacja `p_sekrety` wpisuje do `.env.example` wartosc udajaca

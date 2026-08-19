@@ -337,7 +337,7 @@ Zmienna sekretna o dowolnej innej nazwie nie jest objęta ani jednym, ani drugim
 Pomiar na klonie r9b (wpis zacommitowany, bo gitleaks w bramce skanuje historię):
 
 ```
-.env.example + GOOGLE_CALENDAR_CLIENT_SECRET=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8c07
+.env.example + GOOGLE_CALENDAR_CLIENT_SECRET=GOCSPX-9f2b…c07  (wartość SKRÓCONA 19.08 — pełna zapalała krok [21] bramki)
 
   gitleaks (dokładnie polecenie kroku [21] bramki)  → 154 commits scanned, NO LEAKS FOUND (kod 0)
   SekretyTest                                       → 3 passed (34 assertions)

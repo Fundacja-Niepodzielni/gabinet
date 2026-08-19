@@ -96,6 +96,21 @@ cp .git/filter-branch/map  docs/rundy/MAPA-SHA-<data>.txt     # wariant C
 **Ryzyko:** przy wariancie C mapa musi powstać **przed** zniknięciem katalogu
 `.git/filter-branch` — to jedyny moment, w którym istnieje.
 
+### O-2b · D-5 — cytat sekretu w raporcie rundy 9 (TEN SAM TERMIN CO D-4)
+**Kto:** architekt · **Wejście:** O-2
+**Co:** commit `527f1b7` wniósł do historii pełną wartość cytowaną w dowodzie R9-3
+(`docs/rundy/RUNDA-9-RAPORT.md`). Przyczyna usunięta w drzewie 19.08 (wartość
+skrócona); w `.gitleaks.toml` stoi wąski wyjątek na ten jeden commit.
+**Dlaczego razem z D-4:** obie wartości są zmyślone, obie siedzą wyłącznie
+w historii i obie znikają tym samym przepisaniem. Rozdzielenie ich znaczyłoby
+dwa przepisania historii zamiast jednego.
+**Dowód ukończenia — DWUSTRONNY, jak przy D-4:**
+1. `gitleaks detect` **bez** obu wpisów w `.gitleaks.toml` → `no leaks found`;
+2. przynęta o kształcie sekretu w dokumencie → nadal zapala.
+
+⚠ **Jeżeli O-2/O-3 usunie tylko jeden z dwóch wpisów — to jest ZNALEZISKO.**
+Dług, który przeżył własny termin, przestaje być długiem, a staje się stanem.
+
 ### O-3 · Usunięcie wpisu z `.gitleaks.toml`
 **Kto:** architekt · **Wejście:** O-2 zielone
 **Dlaczego TU:** natychmiast po przepisaniu, w tym samym oknie ciszy. Stan pośredni,
