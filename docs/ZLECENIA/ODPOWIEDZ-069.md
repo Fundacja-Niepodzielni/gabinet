@@ -106,8 +106,26 @@ Dopisanie katalogu zmienia odtąd zasięg **wszystkich** kontroli naraz.
    bo szuka wywołania zapisującego z kluczem tożsamości niezależnie od odbiorcy
    (`session()`, `$request->session()`, `Session::`). Kontrola negatywna
    obejmuje wszystkie trzy formy.
-3. **Mechanizm wewnątrz `powrot()`** — zamyka warstwa 3 (kontrakt OIDC to `code`
-   i `state`; cokolwiek innego czytane z żądania jest tam obce).
+3. ~~**Mechanizm wewnątrz `powrot()`** — zamyka warstwa 3 (kontrakt OIDC to `code`
+   i `state`; cokolwiek innego czytane z żądania jest tam obce).~~
+
+   > ⛔ **SPROSTOWANIE 19.08 (R10-1) — to twierdzenie było NIEPRAWDZIWE.**
+   >
+   > Warstwa 3 zamykała ten wektor **wyłącznie dla odczytu metodą z 15-elementowej
+   > listy**. Dostęp tablicowy (`$request['zaklecie']`) i metody spoza listy
+   > (`str`, `boolean`, `enum`, właściwość dynamiczna) były dla niej niewidzialne.
+   > Runda 10 zmierzyła: mechanizm własnego hasła w `powrot()` przechodził CAŁĄ
+   > bramkę (301 passed, Larastan i Pint zielone) i realnie logował.
+   >
+   > Zostawiam oryginał przekreślony, nie podmieniam go po cichu: zdanie „krok
+   > dalej: sprawdziłem X" podlega obaleniu tak samo jak każde inne, a ślad po
+   > obaleniu jest wart więcej niż gładki tekst.
+   >
+   > **Brzmienie po naprawie (`ODPOWIEDZ-074`):** warstwa 3 pyta o ODCZYTANE POLE,
+   > nie o składnię odczytu — dostęp tablicowy, dowolna metoda, właściwość
+   > dynamiczna, pomocnik `request()`, superglobale i `php://input` są objęte;
+   > lista dozwolonych została wyłącznie po stronie WEJŚCIA (`code`, `state`),
+   > gdzie uzasadnia ją kontrakt OIDC.
 4. **Ciasteczko ustawione na trasie A, hydratacja na trasie B** — hydratacja
    musi dotknąć klucza albo fasady, więc widzą ją warstwy 1–2.
 

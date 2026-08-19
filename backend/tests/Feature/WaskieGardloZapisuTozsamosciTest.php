@@ -317,87 +317,516 @@ it('WARSTWA 2: `SesjaKonta::zaloz()` wołane WYŁĄCZNIE z metody callbacku OIDC
 // WARSTWA 3 — callback czyta tylko kontrakt OIDC
 // ---------------------------------------------------------------------------
 
-it('WARSTWA 3: metoda callbacku czyta z żądania TYLKO parametry kontraktu OIDC', function (): void {
-    // Ta warstwa istnieje dla wektora, wobec którego dwie poprzednie są
-    // bezradne z definicji: mechanizmu wstawionego do JEDYNEGO miejsca, które
-    // ma prawo pisać tożsamość. Kontrakt OIDC mówi, że callback konsumuje
-    // `code` i `state` — cokolwiek innego czytane z żądania jest tam obce.
+/*
+ * Pola żądania czytane w danej funkcji — NIEZALEŻNIE OD SKŁADNI ODCZYTU.
+ *
+ * TO JEST NAPRAWA R10-1, A RÓŻNICA SIEDZI W PYTANIU, NIE W DŁUGOŚCI LISTY.
+ *
+ * Poprzednia wersja pytała „czy wywołano metodę Z LISTY 15 nazw" i przez to
+ * przepuszczała dwa idiomatyczne odczyty, oba zmierzone przez rundę 10:
+ *
+ *   · dostęp tablicowy — `Request` implementuje `ArrayAccess`, więc nie ma
+ *     ani tokenu metody, ani strzałki; pętla nie mogła go zobaczyć NIGDY;
+ *   · metoda spoza listy — `str`, `boolean`, `enum`, `date`, a także
+ *     właściwość dynamiczna obsługiwana magicznym `__get`.
+ *
+ * Przy obu mechanizm własnego hasła w `powrot()` przechodził CAŁĄ bramkę
+ * (301 passed, Larastan i Pint zielone) i realnie logował: tożsamość w sesji
+ * pojawiała się dla poprawnego sekretu, a nie pojawiała dla błędnego ani przy
+ * jego braku.
+ *
+ * Trzeci raz z rzędu ta sama klasa, za każdym razem o piętro wyżej:
+ * nazwa pola (R8-1) → sposób dostarczenia (R9-1) → SKŁADNIA ODCZYTU (R10-1).
+ * Dlatego nie dopisuję nazw do listy — usuwam listę z miejsca, w którym stała.
+ *
+ * PYTANIE BRZMI ODTĄD: jakie POLE zostało odczytane. Lista dozwolonych zostaje
+ * wyłącznie po stronie WEJŚCIA (`code`, `state`) — tam uzasadnia ją kontrakt
+ * OIDC i ma dokładnie dwa elementy. Po stronie WYKRYWANIA listy nie ma: formy
+ * składniowe są zamknięte przez gramatykę PHP, nie przez czyjąś pamięć.
+ *
+ * Odczyt pola pod nazwą NIELITERALNĄ jest zgłaszany, bo nie da się dowieść,
+ * że mieści się w kontrakcie — a milczenie w takiej sytuacji byłoby gałęzią
+ * zdegenerowaną.
+ *
+ * ⚠ Ta proza stoi w komentarzu ZWYKŁYM, nie dokumentacyjnym, i to jest
+ * świadome: gdy była w `/**`, PHPStan przestawał widzieć znaczniki `@param`
+ * (40 błędów zamiast 14 — zmierzone bisekcją). Opis w środku docbloku potrafi
+ * unieważnić typy, a wtedy statyka cicho przestaje sprawdzać tę funkcję.
+ */
+/**
+ * @param  list<array{0: int, 1: string, 2: int}|string>  $tokeny
+ * @param  array{nazwa: string, od: int, do: int, linia: int}  $funkcja
+ * @return list<string>
+ */
+function polaZadaniaCzytaneW(array $tokeny, array $funkcja): array
+{
+    $odczyty = [];
+
+    for ($i = $funkcja['od']; $i <= $funkcja['do']; $i++) {
+        $t = $tokeny[$i];
+
+        // (A) SUPERGLOBALE i wejście surowe — wartość z zewnątrz BEZ `$request`.
+        //     Odpowiedź na pytanie „krok dalej" ze zlecenia: pokrywamy, nie nazywamy.
+        if (is_array($t) && $t[0] === T_VARIABLE
+            && in_array($t[1], ['$_POST', '$_GET', '$_REQUEST', '$_COOKIE', '$_FILES', '$_SERVER'], true)) {
+            $odczyty[] = sprintf('wiersz %d: superglobal %s', $t[2], $t[1]);
+
+            continue;
+        }
+
+        if (is_array($t) && $t[0] === T_CONSTANT_ENCAPSED_STRING && str_contains($t[1], 'php://')) {
+            $odczyty[] = sprintf('wiersz %d: strumień wejścia %s', $t[2], trim($t[1], '\'"'));
+
+            continue;
+        }
+
+        // (B) Wszystko, co JEST żądaniem: zmienna, pomocnik `request()`, fasada.
+        $toZadanie = (is_array($t) && $t[0] === T_VARIABLE && $t[1] === '$request')
+            || (is_array($t) && $t[0] === T_STRING && $t[1] === 'request' && ($tokeny[$i + 1] ?? null) === '(')
+            || (is_array($t) && $t[0] === T_STRING && $t[1] === 'Request'
+                && is_array($tokeny[$i + 1] ?? null) && $tokeny[$i + 1][0] === T_DOUBLE_COLON);
+
+        if (! $toZadanie) {
+            continue;
+        }
+
+        // Przeskakujemy nawias pomocnika `request()`, żeby stanąć na tym,
+        // co następuje PO obiekcie żądania.
+        $k = $i + 1;
+
+        if (($tokeny[$k] ?? null) === '(') {
+            $glebokosc = 0;
+
+            for (; $k < count($tokeny); $k++) {
+                if ($tokeny[$k] === '(') {
+                    $glebokosc++;
+                } elseif ($tokeny[$k] === ')') {
+                    $glebokosc--;
+
+                    if ($glebokosc === 0) {
+                        $k++;
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        while (is_array($tokeny[$k] ?? null) && $tokeny[$k][0] === T_WHITESPACE) {
+            $k++;
+        }
+
+        $nastepny = $tokeny[$k] ?? null;
+
+        // (B1) DOSTĘP TABLICOWY — wektor A rundy 10.
+        if ($nastepny === '[') {
+            $m = $k + 1;
+
+            while (is_array($tokeny[$m] ?? null) && $tokeny[$m][0] === T_WHITESPACE) {
+                $m++;
+            }
+
+            $arg = $tokeny[$m] ?? null;
+            $pole = is_array($arg) && $arg[0] === T_CONSTANT_ENCAPSED_STRING
+                ? trim($arg[1], '\'"')
+                : '(nieliterałowa nazwa pola)';
+
+            $odczyty[] = sprintf('wiersz %d: dostęp tablicowy → %s', $t[2], $pole);
+
+            continue;
+        }
+
+        // (B2) `->coś`
+        if (is_array($nastepny) && in_array($nastepny[0], [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR], true)) {
+            $nazwa = $tokeny[$k + 1] ?? null;
+
+            if (! is_array($nazwa) || $nazwa[0] !== T_STRING) {
+                $odczyty[] = sprintf('wiersz %d: dostęp dynamiczny', $t[2]);
+
+                continue;
+            }
+
+            // `session()` NIE jest odczytem pola wejściowego — to magazyn sesji.
+            if ($nazwa[1] === 'session') {
+                continue;
+            }
+
+            // Właściwość (bez nawiasu) — magiczne `__get`, wektor rundy 10.
+            if (($tokeny[$k + 2] ?? null) !== '(') {
+                $odczyty[] = sprintf('wiersz %d: właściwość dynamiczna → %s', $t[2], $nazwa[1]);
+
+                continue;
+            }
+
+            // DOWOLNA metoda — nie pytamy, jak się nazywa, tylko CO CZYTA.
+            $m = $k + 3;
+
+            while (is_array($tokeny[$m] ?? null) && $tokeny[$m][0] === T_WHITESPACE) {
+                $m++;
+            }
+
+            $arg = $tokeny[$m] ?? null;
+
+            // Metoda bez argumentów (`->all()`, `->keys()`) czyta WSZYSTKO,
+            // więc z definicji wykracza poza kontrakt dwóch pól.
+            if ($arg === ')') {
+                $odczyty[] = sprintf('wiersz %d: ->%s() → CAŁE wejście', $t[2], $nazwa[1]);
+
+                continue;
+            }
+
+            $pole = is_array($arg) && $arg[0] === T_CONSTANT_ENCAPSED_STRING
+                ? trim($arg[1], '\'"')
+                : '(nieliterałowa nazwa pola)';
+
+            $odczyty[] = sprintf('wiersz %d: ->%s() → %s', $t[2], $nazwa[1], $pole);
+
+            continue;
+        }
+
+        // (B3) `$request` przekazany dalej / przypisany — NIE jest odczytem pola.
+        //      Gdyby współpracownik czytał z niego sekret i ustanawiał tożsamość,
+        //      zapaliłaby WARSTWA 2 (`zaloz` spoza callbacku) albo WARSTWA 1
+        //      (zapis klucza poza fasadą). Warstwy nie są niezależne i to jest ich sens.
+    }
+
+    return $odczyty;
+}
+
+it('WARSTWA 3: callback czyta z żądania WYŁĄCZNIE pola kontraktu OIDC — niezależnie od składni', function (): void {
+    // Ta warstwa istnieje dla wektora, wobec którego dwie poprzednie są bezradne
+    // z definicji: mechanizmu wstawionego do JEDYNEGO miejsca, które ma prawo
+    // pisać tożsamość. Kontrakt OIDC mówi, że callback konsumuje `code` i `state`.
     $sciezka = base_path('app/Http/Controllers/LogowanieController.php');
 
     expect(file_exists($sciezka))->toBeTrue('Nie widzę kontrolera logowania — kontrola mierzy pustkę.');
 
     $tokeny = token_get_all((string) file_get_contents($sciezka));
     $funkcje = Kod::funkcje($tokeny);
-    $czytajace = ['input', 'query', 'post', 'string', 'get', 'all', 'only', 'except',
-        'json', 'collect', 'validate', 'header', 'cookie', 'has', 'filled'];
+    $callback = null;
+
+    foreach ($funkcje as $f) {
+        if ($f['nazwa'] === 'powrot') {
+            $callback = $f;
+        }
+    }
+
+    expect($callback)->not->toBeNull(
+        'Nie znalazłem metody `powrot()` w kontrolerze — kontrola mierzyłaby pustkę.'
+    );
+
+    /** @var array{nazwa: string, od: int, do: int, linia: int} $callback */
+    $odczyty = polaZadaniaCzytaneW($tokeny, $callback);
+
+    // ⛔ PUSTKA TO BŁĄD, NIE ZERO. Callback MUSI czytać `code` i `state` —
+    // gdyby skaner nie widział niczego, jego zielone znaczyłoby „nie umiem
+    // czytać", a nie „nic obcego tam nie ma".
+    expect(count($odczyty))->toBeGreaterThan(1, sprintf(
+        'Skaner widzi %d odczytów żądania w `powrot()`, a kontrakt OIDC wymaga co'.
+        ' najmniej dwóch (`code`, `state`). Parser rozjechał się z kodem (R10-1).',
+        count($odczyty)
+    ));
 
     $obce = [];
-    $zbadane = 0;
+
+    foreach ($odczyty as $odczyt) {
+        $pole = trim((string) (explode('→', $odczyt)[1] ?? ''));
+
+        if (! in_array($pole, PARAMETRY_CALLBACKU, true)) {
+            $obce[] = $odczyt;
+        }
+    }
+
+    expect($obce)->toBe([], sprintf(
+        'CALLBACK OIDC CZYTA Z ŻĄDANIA COŚ SPOZA SWOJEGO KONTRAKTU:%s  %s%s%s'.
+        'To jedyne miejsce, w którym wolno ustanowić tożsamość — więc jedyne, w którym%s'.
+        'mechanizm własnych haseł byłby niewidzialny dla warstw 1 i 2.%s'.
+        'Kontrakt OIDC konsumuje wyłącznie: %s.',
+        PHP_EOL,
+        implode(PHP_EOL.'  ', $obce),
+        PHP_EOL,
+        PHP_EOL,
+        PHP_EOL,
+        PHP_EOL,
+        implode(', ', PARAMETRY_CALLBACKU)
+    ));
+});
+
+/**
+ * Tokeny DRUGIEGO argumentu `SesjaKonta::zaloz(…)` — czyli DANYCH tożsamości.
+ *
+ * @param  list<array{0: int, 1: string, 2: int}|string>  $tokeny
+ * @return list<array{0: int, 1: string, 2: int}|string>
+ */
+function daneTozsamosciWZaloz(array $tokeny): array
+{
     $ile = count($tokeny);
 
     for ($i = 2; $i < $ile; $i++) {
         $t = $tokeny[$i];
 
-        if (! is_array($t) || $t[0] !== T_STRING || ! in_array($t[1], $czytajace, true)) {
+        if (! is_array($t) || $t[0] !== T_STRING || $t[1] !== 'zaloz') {
             continue;
         }
         if (($tokeny[$i + 1] ?? null) !== '(') {
             continue;
         }
 
-        $operator = $tokeny[$i - 1] ?? null;
+        $glebokosc = 0;
+        $przecinki = 0;
+        $drugi = [];
 
-        if (! is_array($operator) || $operator[0] !== T_OBJECT_OPERATOR) {
+        for ($j = $i + 1; $j < $ile; $j++) {
+            $x = $tokeny[$j];
+
+            if ($x === '(' || $x === '[') {
+                $glebokosc++;
+
+                if ($glebokosc === 1) {
+                    continue;
+                }
+            } elseif ($x === ')' || $x === ']') {
+                $glebokosc--;
+
+                if ($glebokosc === 0) {
+                    break;
+                }
+            } elseif ($x === ',' && $glebokosc === 1) {
+                $przecinki++;
+
+                continue;
+            }
+
+            if ($przecinki >= 1) {
+                $drugi[] = $x;
+            }
+        }
+
+        return $drugi;
+    }
+
+    return [];
+}
+
+it('WARSTWA 4: tożsamość pochodzi ze ZWERYFIKOWANEGO tokenu, nie z pola żądania', function (): void {
+    // ⛔ CZWARTE PIĘTRO — pytanie obowiązkowe ze `ZLECENIE-074`.
+    //
+    // Trzy warstwy zamykają: GDZIE stoi zapis (1), SKĄD go wołano (2)
+    // i CO callback czyta z żądania (3). Zostaje wektor, którego żadna
+    // z nich nie widzi, bo używa wyłącznie rzeczy DOZWOLONYCH:
+    //
+    //     SesjaKonta::zaloz($request, ['sub' => $request->query('code')]);
+    //
+    // Pole `code` JEST w kontrakcie OIDC, więc warstwa 3 milczy słusznie.
+    // Zapis stoi w fasadzie i jest wołany z callbacku, więc warstwy 1 i 2
+    // milczą słusznie. A tożsamość ustanawia napis podany przez atakującego,
+    // z pominięciem wymiany kodu i weryfikacji podpisu.
+    //
+    // Niezmiennik: **dane tożsamości nie mogą pochodzić z żądania.** Dziś
+    // pochodzą z `$claimsId` — ładunku tokenu SPRAWDZONEGO przez
+    // `WalidatorTokenu` (podpis, issuer, audiencja, czas). To jest jedyne
+    // źródło, które kontrakt §2 dopuszcza.
+    $sciezka = base_path('app/Http/Controllers/LogowanieController.php');
+    $tokeny = token_get_all((string) file_get_contents($sciezka));
+    $dane = daneTozsamosciWZaloz($tokeny);
+
+    // Pustka to błąd, nie zero: bez odczytu argumentu kontrola nie mierzy nic.
+    expect(count($dane))->toBeGreaterThan(3,
+        'Nie odczytałem drugiego argumentu `SesjaKonta::zaloz()` — parser rozjechał się '.
+        'z kodem, a kontrola mierzyłaby pustkę (warstwa 4).');
+
+    $skazone = [];
+
+    foreach ($dane as $t) {
+        if (! is_array($t) || $t[0] !== T_VARIABLE) {
             continue;
         }
 
-        // ODBIORCĄ musi być ŻĄDANIE. Bez tego `response()->json(...)` wygląda
-        // identycznie jak odczyt pola — i tak właśnie pierwszy przebieg tej
-        // kontroli oskarżył trzy poprawne odpowiedzi kontrolera. Nazwa metody
-        // nie mówi, na czym ją wywołano; mówi to dopiero odbiorca.
-        if (! odbiorcaToZadanie($tokeny, $i - 2)) {
-            continue;
-        }
-
-        // Interesuje nas WYŁĄCZNIE wnętrze callbacku.
-        if (Kod::funkcjaDla($funkcje, $i) !== 'powrot') {
-            continue;
-        }
-
-        $zbadane++;
-        $j = $i + 2;
-
-        while (is_array($tokeny[$j] ?? null) && $tokeny[$j][0] === T_WHITESPACE) {
-            $j++;
-        }
-
-        $arg = $tokeny[$j] ?? null;
-        $nazwa = is_array($arg) && $arg[0] === T_CONSTANT_ENCAPSED_STRING
-            ? trim($arg[1], '\'"')
-            : '(nieliterałowy argument)';
-
-        if (! in_array($nazwa, PARAMETRY_CALLBACKU, true)) {
-            $obce[] = sprintf('wiersz %d: ->%s(%s)', $t[2], $t[1], $nazwa);
+        if ($t[1] === '$request'
+            || in_array($t[1], ['$_POST', '$_GET', '$_REQUEST', '$_COOKIE', '$_SERVER'], true)) {
+            $skazone[] = sprintf('wiersz %d: %s', $t[2], $t[1]);
         }
     }
 
-    expect($zbadane)->toBeGreaterThan(0,
-        'W metodzie `powrot()` nie widzę ANI JEDNEGO odczytu żądania, a kontrakt OIDC '.
-        'wymaga `code` i `state`. Skaner rozjechał się z kodem.');
-
-    expect($obce)->toBe([], sprintf(
-        "CALLBACK OIDC CZYTA Z ŻĄDANIA COŚ SPOZA SWOJEGO KONTRAKTU:\n  %s\n\n".
-        "To jedyne miejsce, w którym wolno ustanowić tożsamość — więc jedyne, w którym\n".
-        "mechanizm własnych haseł byłby niewidzialny dla warstw 1 i 2. Kontrakt OIDC\n".
-        'konsumuje wyłącznie: %s.',
-        implode("\n  ", $obce),
-        implode(', ', PARAMETRY_CALLBACKU)
+    expect($skazone)->toBe([], sprintf(
+        'DANE TOŻSAMOŚCI POCHODZĄ Z ŻĄDANIA, NIE ZE ZWERYFIKOWANEGO TOKENU:%s  %s%s%s'.
+        'Warstwy 1–3 milczą tu SŁUSZNIE: zapis jest w fasadzie, wołany z callbacku,%s'.
+        'a czytane pole może być w kontrakcie OIDC. Mimo to tożsamość ustanawia%s'.
+        'wartość podana przez żądającego, z pominięciem weryfikacji podpisu tokenu.',
+        PHP_EOL,
+        implode(PHP_EOL.'  ', $skazone),
+        PHP_EOL,
+        PHP_EOL,
+        PHP_EOL,
+        PHP_EOL
     ));
 });
 
-// ---------------------------------------------------------------------------
-// KIERUNEK ODWROTNY — trzy wektory rundy 9 na materiale zbudowanym pod rękę
-// ---------------------------------------------------------------------------
+it('KIERUNEK ODWROTNY W4: skaner danych tożsamości widzi skażenie — na PLIKU pod rękę', function (): void {
+    $katalog = sys_get_temp_dir().'/gabinet-w4-'.getmypid();
+    @mkdir($katalog, 0777, true);
+    $plik = $katalog.'/probka.php';
+
+    $material = [
+        // skażone — wartość z żądania jako tożsamość
+        'z-zadania' => 'SesjaKonta::zaloz($request, [\'sub\' => $request->query(\'code\')]);',
+        'superglobal' => 'SesjaKonta::zaloz($request, [\'sub\' => $_GET[\'sub\']]);',
+        // czyste — wartość z claimów zweryfikowanego tokenu
+        'z-claimow' => 'SesjaKonta::zaloz($request, [\'sub\' => Typy::napis($claimsId[\'sub\'])]);',
+    ];
+
+    $wynik = [];
+
+    try {
+        foreach ($material as $etykieta => $tresc) {
+            file_put_contents($plik, "<?php\n".$tresc."\n");
+
+            $dane = daneTozsamosciWZaloz(token_get_all((string) file_get_contents($plik)));
+            $skazone = 0;
+
+            foreach ($dane as $t) {
+                if (is_array($t) && $t[0] === T_VARIABLE
+                    && ($t[1] === '$request' || str_starts_with($t[1], '$_'))) {
+                    $skazone++;
+                }
+            }
+
+            $wynik[$etykieta] = $skazone;
+        }
+    } finally {
+        @unlink($plik);
+        @rmdir($katalog);
+    }
+
+    expect($wynik['z-zadania'])->toBeGreaterThan(0,
+        'Skaner NIE widzi tożsamości zbudowanej z pola żądania — to czwarte piętro '.
+        'tej samej klasy i bez tego warstwa 4 nie istnieje.');
+
+    expect($wynik['superglobal'])->toBeGreaterThan(0, 'Skaner nie widzi superglobala w danych tożsamości.');
+
+    expect($wynik['z-claimow'])->toBe(0,
+        'Skaner oskarża tożsamość zbudowaną z CLAIMÓW zweryfikowanego tokenu — '.
+        'czyli jedyną poprawną drogę. Fałszywe oskarżenie uczyniłoby warstwę nieużywalną.');
+});
+
+it('KIERUNEK ODWROTNY W3: skaner pól widzi KAŻDĄ składnię odczytu — na PLIKU pod rękę', function (): void {
+    // Materiał musi być PLIKIEM: skaner parsuje kod, więc forma podana jako
+    // napis byłaby dla niego — słusznie — zwykłym tekstem.
+    //
+    // Ta kontrola jest odpowiedzią na pytanie „skąd wiadomo, że nowa warstwa 3
+    // nie ma po prostu DŁUŻSZEJ listy". Materiał zawiera formy, których żadna
+    // lista nazw nie przewidzi: dostęp tablicowy, metodę zmyśloną na potrzeby
+    // tego testu, właściwość dynamiczną, superglobal i strumień wejścia.
+    $katalog = sys_get_temp_dir().'/gabinet-w3-'.getmypid();
+    @mkdir($katalog, 0777, true);
+    $plik = $katalog.'/probka.php';
+
+    $material = [
+        // --- MUSZĄ być zgłoszone: odczyt pola spoza kontraktu ---
+        'tablica' => '$sekret = $request[\'zaklecie\'];',
+        'metoda-nieznana' => '$sekret = $request->wymyslonaMetoda(\'zaklecie\');',
+        'wlasciwosc' => '$sekret = $request->zaklecie;',
+        'pomocnik' => '$sekret = request()->str(\'zaklecie\');',
+        'bez-argumentu' => '$wszystko = $request->all();',
+        'nieliteralowe' => '$sekret = $request[$nazwaPola];',
+        'superglobal' => '$sekret = $_POST[\'zaklecie\'];',
+        'superglobal-get' => '$sekret = $_GET[\'zaklecie\'];',
+        'superglobal-request' => '$sekret = $_REQUEST[\'zaklecie\'];',
+        'superglobal-cookie' => '$sekret = $_COOKIE[\'zaklecie\'];',
+        'superglobal-server' => '$sekret = $_SERVER[\'HTTP_X_ZAKLECIE\'];',
+        'strumien' => '$sekret = file_get_contents(\'php://input\');',
+        // --- NIE WOLNO zgłaszać: kontrakt OIDC i praca na sesji ---
+        'kontrakt-metoda' => '$kod = $request->query(\'code\');',
+        'kontrakt-tablica' => '$kod = $request[\'code\'];',
+        'kontrakt-filled' => 'if (! $request->filled(\'code\')) { return null; }',
+        'sesja' => '$request->session()->regenerate();',
+        'przekazanie' => 'SesjaKonta::zaloz($request, []);',
+    ];
+
+    $wynik = [];
+
+    try {
+        foreach ($material as $etykieta => $tresc) {
+            file_put_contents($plik, "<?php\nfunction powrot(\$request) {\n".$tresc."\n}\n");
+
+            $tokeny = token_get_all((string) file_get_contents($plik));
+            $funkcje = Kod::funkcje($tokeny);
+
+            expect($funkcje)->toHaveCount(1);
+
+            $odczyty = polaZadaniaCzytaneW($tokeny, $funkcje[0]);
+            $obce = [];
+
+            foreach ($odczyty as $odczyt) {
+                $pole = trim((string) (explode('→', $odczyt)[1] ?? ''));
+
+                if (! in_array($pole, PARAMETRY_CALLBACKU, true)) {
+                    $obce[] = $odczyt;
+                }
+            }
+
+            $wynik[$etykieta] = count($obce);
+        }
+    } finally {
+        @unlink($plik);
+        @rmdir($katalog);
+    }
+
+    // ---- MUSZĄ zapalić. Dwa pierwsze to dokładnie wektory rundy 10. ----
+    expect($wynik['tablica'] ?? -1)->toBe(1,
+        'Skaner NIE widzi dostępu tablicowego `$request[…]` — to wektor A rundy 10, '.
+        'przez który mechanizm własnych haseł przeszedł całą bramkę.');
+
+    expect($wynik['metoda-nieznana'] ?? -1)->toBe(1,
+        'Skaner NIE widzi metody, której nie zna z nazwy. Jeśli tu jest zielono, '.
+        'to warstwa 3 znowu jest LISTĄ — tylko dłuższą (wektor B rundy 10).');
+
+    expect($wynik['wlasciwosc'] ?? -1)->toBe(1, 'Skaner nie widzi właściwości dynamicznej (`__get`).');
+    expect($wynik['pomocnik'] ?? -1)->toBe(1, 'Skaner nie widzi odczytu przez pomocnik `request()`.');
+    expect($wynik['bez-argumentu'] ?? -1)->toBe(1, 'Skaner nie widzi `->all()`, czyli odczytu CAŁEGO wejścia.');
+    expect($wynik['nieliteralowe'] ?? -1)->toBe(1,
+        'Skaner milczy przy nazwie pola z ZMIENNEJ. Nie da się dowieść, że mieści się '.
+        'w kontrakcie, więc milczenie byłoby gałęzią zdegenerowaną.');
+
+    // ⛔ KAŻDY ELEMENT LISTY OSOBNO, NIE JEDEN REPREZENTANT.
+    //
+    // Sprawdzanie jednego przedstawiciela WŁAŚNIE ZAWIODŁO. Literały
+    // `$_GET`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, `$_SERVER` stały w kodzie
+    // zapisane z ukośnikiem, który w apostrofach PHP jest ZWYKŁYM ZNAKIEM —
+    // więc porównanie nie mogło trafić NIGDY. Kontrola świeciła zielono, bo
+    // mierzyła wyłącznie `$_POST`, jedyny zapisany poprawnie.
+    //
+    // Lista, której kontrola dotyka w jednym miejscu, jest sprawdzona
+    // w jednym miejscu; reszta jest deklaracją.
+    foreach (['superglobal', 'superglobal-get', 'superglobal-request',
+        'superglobal-cookie', 'superglobal-server'] as $przypadek) {
+        expect($wynik[$przypadek] ?? -1)->toBe(1, sprintf(
+            'Skaner nie widzi superglobala w przypadku `%s`. Wartość z zewnątrz BEZ '.
+            'dotykania `\$request` to odpowiedź na pytanie „krok dalej" ze ZLECENIE-074 '.
+            '— i musi być sprawdzona dla KAŻDEGO elementu listy, nie dla jednego.',
+            $przypadek
+        ));
+    }
+
+    expect($wynik['superglobal'] ?? -1)->toBe(1,
+        'Skaner nie widzi superglobali — a to wartość z zewnątrz BEZ dotykania `$request` '.
+        '(odpowiedź na pytanie „krok dalej" ze ZLECENIE-074).');
+
+    expect($wynik['strumien'] ?? -1)->toBe(1, 'Skaner nie widzi odczytu `php://input`.');
+
+    // ---- NIE WOLNO zapalić. Fałszywe oskarżenie jest równie kosztowne: ----
+    // uczyniłoby wąskie gardło nieużywalnym, a wtedy ktoś je rozluźni.
+    expect($wynik['kontrakt-metoda'] ?? -1)->toBe(0, 'Skaner oskarża legalny odczyt `code` metodą.');
+    expect($wynik['kontrakt-tablica'] ?? -1)->toBe(0,
+        'Skaner oskarża legalny odczyt `code` DOSTĘPEM TABLICOWYM. Kontrakt dotyczy POLA, '.
+        'nie składni — inaczej naprawa R10-1 zamieniłaby jedną listę na drugą.');
+
+    expect($wynik['kontrakt-filled'] ?? -1)->toBe(0, 'Skaner oskarża `filled(\'code\')`, które jest w kontrakcie.');
+    expect($wynik['sesja'] ?? -1)->toBe(0, 'Skaner myli pracę na SESJI z odczytem pola wejściowego.');
+    expect($wynik['przekazanie'] ?? -1)->toBe(0,
+        'Skaner oskarża PRZEKAZANIE obiektu żądania. Gdyby współpracownik czytał z niego '.
+        'sekret i ustanawiał tożsamość, zapaliłaby warstwa 1 albo 2.');
+});
 
 it('KIERUNEK ODWROTNY: skaner zapisu widzi wszystkie formy — na PLIKACH pod rękę', function (): void {
     // Materiał musi być PLIKAMI: skaner parsuje kod, więc forma podana jako

@@ -356,6 +356,62 @@ def gardlo_all() -> None:
     )
 
 
+def _callback_podloz(odczyt: str, etykieta: str) -> None:
+    """Mechanizm wlasnego hasla w JEDYNYM legalnym miejscu — metodzie `powrot()`.
+
+    Runda 10 postawila go dokladnie tutaj i to nie byl przypadek: `powrot()`
+    ma prawo pisac tozsamosc, wiec warstwy 1 i 2 sa wobec niego bezradne
+    Z DEFINICJI. Zostaje warstwa 3 — i ona przepuszczala dwa idiomatyczne
+    odczyty pola, bo pytala o SKLADNIE, nie o czytane POLE.
+
+    Zmierzone wtedy: pelna suita 301 passed, Larastan i Pint zielone,
+    a mechanizm realnie logowal (has(konta): TAK / NIE / NIE dla
+    poprawnego / blednego / braku sekretu).
+
+    Zapis idzie przez LEGALNA fasade `SesjaKonta::zaloz` z legalnego miejsca,
+    wiec warstwy 1 i 2 pozostaja zielone — i tak ma byc. Ten scenariusz mierzy
+    WYLACZNIE warstwe 3.
+    """
+    podmien_jedyne(
+        KONTROLER_LOGOWANIA,
+        "    public function powrot(Request $request): RedirectResponse|JsonResponse" + chr(10)
+        + "    {" + chr(10),
+        "    public function powrot(Request $request): RedirectResponse|JsonResponse" + chr(10)
+        + "    {" + chr(10)
+        + "        // PERTURBACJA " + etykieta + chr(10)
+        + odczyt
+        + "        if (is_string($sekretPerturbacji) && $sekretPerturbacji !== '') {" + chr(10)
+        + "            $kontoPerturbacji = DB::table('users')->where('nazwa_wyswietlana', $sekretPerturbacji)->first();" + chr(10)
+        + "            if ($kontoPerturbacji !== null) {" + chr(10)
+        + "                SesjaKonta::zaloz($request, ['sub' => 'sub-lokalne', 'role' => ['pacjent']]);" + chr(10)
+        + "                return redirect('/');" + chr(10)
+        + "            }" + chr(10)
+        + "        }" + chr(10),
+    )
+
+    podmien_jedyne(
+        KONTROLER_LOGOWANIA,
+        "use Illuminate\\Support\\Facades\\Crypt;",
+        "use Illuminate\\Support\\Facades\\Crypt;" + chr(10) + "use Illuminate\\Support\\Facades\\DB;",
+    )
+
+
+def callback_tablica() -> None:
+    """WEKTOR A rundy 10: dostep tablicowy — brak tokenu metody i brak `->`."""
+    _callback_podloz(
+        "        $sekretPerturbacji = $request['zaklecie'] ?? null;" + chr(10),
+        'dostep tablicowy',
+    )
+
+
+def callback_metoda() -> None:
+    """WEKTOR B rundy 10: metoda spoza dotychczasowej 15-elementowej listy."""
+    _callback_podloz(
+        "        $sekretPerturbacji = (string) $request->str('zaklecie');" + chr(10),
+        'metoda spoza listy',
+    )
+
+
 def lockfile_rozjazd() -> None:
     """Podbija wersję w composer.lock, nie ruszając zainstalowanego vendora.
 
@@ -704,6 +760,8 @@ def biala_lista_zdjeta() -> None:
 
 
 POLECENIA = {
+    "callback-tablica": callback_tablica,
+    "callback-metoda": callback_metoda,
     "gardlo-para": gardlo_para,
     "gardlo-naglowek": gardlo_naglowek,
     "gardlo-all": gardlo_all,

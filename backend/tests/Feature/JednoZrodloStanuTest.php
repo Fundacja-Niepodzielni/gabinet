@@ -365,7 +365,33 @@ it('R9-5: liczba scenariuszy perturbacji w sekcji stanu zgadza się ze SKRYPTEM'
     expect($wSkrypcie)->toBeGreaterThan(10,
         'Lista scenariuszy wyszła podejrzanie krótka — parser rozjechał się ze skryptem.');
 
-    preg_match_all('/(\d+)\s+scenariusz/u', $sekcja, $trafienia);
+    // ⛔ ZDANIE ZAKOTWICZONE OPISUJE PRZESZŁOŚĆ I NIE STARZEJE SIĘ.
+    //
+    // Sekcja stanu trzyma dwie różne rzeczy naraz: liczbę scenariuszy
+    // W SKRYPCIE (stan bieżący, sprawdzalny) oraz zapis POMIARU sprzed
+    // zamrożenia („52 kontroli, 35 scenariuszy — zmierzone na `528adc3`").
+    // Ten drugi był prawdziwy wtedy i ma prawo tak zostać — dokładnie po to
+    // wprowadziliśmy kotwice po R9-5.
+    //
+    // Kontrola bez tego rozróżnienia wymuszałaby przepisywanie historii pomiarów
+    // przy każdej nowej perturbacji, czyli kasowanie śladu. To ta sama zasada,
+    // którą stosuje kontrola liczb bramki poza sekcją stanu.
+    $wiersze = explode(PHP_EOL, $sekcja);
+    $trafienia = [[], []];
+
+    foreach ($wiersze as $nr => $wiersz) {
+        if (preg_match('/(\d+)\s+scenariusz/u', $wiersz, $t) !== 1) {
+            continue;
+        }
+
+        $kontekst = $wiersz.(($wiersze[$nr - 1] ?? '').($wiersze[$nr + 1] ?? ''));
+
+        if (preg_match('/zmierzone na `[0-9a-f]{7,40}`/u', $kontekst) === 1) {
+            continue;   // zdanie o PRZESZŁYM pomiarze — ma kotwicę, zostaje
+        }
+
+        $trafienia[1][] = $t[1];
+    }
 
     expect(count($trafienia[1]))->toBeGreaterThan(0,
         'W sekcji stanu nie ma liczby scenariuszy perturbacji — a jest sprawdzalna (R9-5).');

@@ -144,7 +144,12 @@ sens jako nazwa; do `git show` używaj `X`."*
 `ObietniceKomentarzyTest` przechodzi (egzekwuje, że znaczniki powołane w kodzie mają
 świadka).
 
-### O-6 · Automatyzacja podłóg (D-5 / R-C)
+### O-6 · Automatyzacja podłóg (~~D-5~~ / R-C)
+
+> **Sprostowanie architekta 19.08** (sygnał weryfikatora rundy 10): etykieta „D-5" była
+> tu użyta w innym znaczeniu niż w O-2b. **Obowiązuje: D-5 = wyjątek gitleaks na cytat
+> sekretu (O-2b).** Automatyzacja podłóg nie jest długiem D-numerowanym — pozostaje
+> operacją O-6 wywodzącą się z rozstrzygnięcia R-C (`ODPOWIEDZ-048`).
 **Kto:** sesja kodująca · **Wejście:** O-5
 **Dlaczego TU, a nie wcześniej:** to **zmiana kodu**, więc wymaga własnej zielonej
 bramki. Wciśnięta między operacje na historii kazałaby przepisywać ją razem z nimi.

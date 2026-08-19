@@ -1714,6 +1714,46 @@ p_gardlo_all() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_callback_tablica() {
+	naglowek 'waskie gardlo warstwa 3 — dostep tablicowy w callbacku (wektor A rundy 10)'
+	# Mechanizm siedzi w `powrot()`, czyli w JEDYNYM miejscu z prawem
+	# do zapisu tozsamosci, i uzywa LEGALNEJ fasady. Warstwy 1 i 2 maja
+	# tu zostac ZIELONE — to nie jest ich zakres. Mierzymy warstwe 3.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj callback-tablica || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "callback czyta pole spoza kontraktu OIDC" \
+		grep -q "zaklecie" "$plik"
+
+	oczekuj_czerwone "warstwa 3 wykrywa odczyt pola spoza kontraktu (tablica)" \
+		--przyczyna "CALLBACK OIDC CZYTA Z ŻĄDANIA COŚ SPOZA SWOJEGO KONTRAKTU" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloZapisuTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_callback_metoda() {
+	naglowek 'waskie gardlo warstwa 3 — metoda spoza listy w callbacku (wektor B rundy 10)'
+	# Mechanizm siedzi w `powrot()`, czyli w JEDYNYM miejscu z prawem
+	# do zapisu tozsamosci, i uzywa LEGALNEJ fasady. Warstwy 1 i 2 maja
+	# tu zostac ZIELONE — to nie jest ich zakres. Mierzymy warstwe 3.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj callback-metoda || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "callback czyta pole spoza kontraktu OIDC" \
+		grep -q "zaklecie" "$plik"
+
+	oczekuj_czerwone "warstwa 3 wykrywa odczyt pola spoza kontraktu (metoda)" \
+		--przyczyna "CALLBACK OIDC CZYTA Z ŻĄDANIA COŚ SPOZA SWOJEGO KONTRAKTU" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloZapisuTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
@@ -1737,7 +1777,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -1976,6 +2016,8 @@ for NAZWA in $WYBRANE; do
 		gardlo_para) p_gardlo_para ;;
 		gardlo_naglowek) p_gardlo_naglowek ;;
 		gardlo_all) p_gardlo_all ;;
+		callback_tablica) p_callback_tablica ;;
+		callback_metoda) p_callback_metoda ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)
