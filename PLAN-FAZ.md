@@ -13,8 +13,8 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
   Przebieg OD ZERA we własnym środowisku efemerycznym
   (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
-- **Testy: 320 zielonych, 0 czerwonych, 2 POMINIĘTE, 2261 asercji.**
-  Podłogi bramki: **320 / 2261** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
+- **Testy: 324 zielonych, 0 czerwonych, 2 POMINIĘTE, 2272 asercji.**
+  Podłogi bramki: **324 / 2272** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
   i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
 - **Perturbacje: `PERTURBACJE OK — 66 kontroli`, kod wyjścia 0.**
   PEŁNY zestaw 49 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.

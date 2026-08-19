@@ -148,10 +148,16 @@ DLACZEGO NIE PRZEPISALEM HISTORII: commit `527f1b7` jest juz na
 w oknie rundy 10 uniewazniloby SHA, ktory runda wlasnie mierzy. Rozstrzygniecie
 architekta (ODPOWIEDZ-072): wariant A, tym samym precedensem co D-4.
 
-⛔ WARUNEK ZNOSZACY, Z TERMINEM: ten wpis znika RAZEM Z D-4 w operacji O-2/O-3
-listy scaleniowej (`docs/ZLECENIA/LISTA-SCALENIOWA-F1.md`). Jezeli O-1..O-3 nie
-usunie OBU, jest to ZNALEZISKO — dwa dlugi tej samej rodziny maja jeden termin
-i jedno wykazanie.
+⛔ WARUNEK ZNOSZACY, NOWY TERMIN (wariant B, ZLECENIE-085, 19.08):
+Historii NIE przepisujemy przy scaleniu F1 — force-push wypchnietej galezi
+rozjechalby prace sesji TESTY (`testy-plan-f2` odbita od `faza-1-retencja`).
+Ten wpis znika RAZEM Z D-4 przy PIERWSZYM przepisaniu historii tej galezi,
+JEZELI kiedykolwiek nastapi (gdy galezie odbite beda scalone/porzucone,
+a drzewo ciche) — etap B. Termin jest powiazany ze ZDARZENIEM (przepisanie
+historii), nie z data. Jezeli przepisanie usunie tylko jeden z dwoch wpisow,
+jest to ZNALEZISKO — dwa dlugi tej samej rodziny maja jeden termin i jedno
+wykazanie. Waskosci obu pilnuje `WaskoscWyjatkowGitleaksTest` (warunek
+przyjecia wariantu B).
 
 Dlaczego to nie jest dziura: wyjatek dopasowuje DOKLADNIE JEDNA znana wartosc
 zmyslona, w DOKLADNIE JEDNYM commicie, dla DOKLADNIE JEDNEJ reguly — i wszystkie
@@ -196,9 +202,13 @@ lezy WPIS INNEJ SESJI w `docs/DECYZJE.md` (D-2026-08-12-04). Schowanie cudzej,
 niezapisanej pracy na czas przepisywania grozi jej utrata — a to gorsze niz
 waski wyjatek na wartosc, ktora nie jest sekretem.
 
-WARUNEK ZNOSZACY, i to jest dlug z terminem: przy scalaniu F1 do `main`,
-gdy drzewo bedzie ciche, historie tego zakresu NALEZY przepisac i TEN WPIS
-USUNAC. Kopia galezi sprzed proby: `kopia-przed-filtrem-12-08`.
+WARUNEK ZNOSZACY, NOWY TERMIN (wariant B, ZLECENIE-085, 19.08): przy scalaniu
+F1 do `main` historii NIE przepisano — force-push wypchnietej galezi rozjechalby
+`testy-plan-f2` (galaz TESTY odbita od tej). Ten wpis znika RAZEM Z D-5 przy
+PIERWSZYM przepisaniu historii tej galezi, JEZELI kiedykolwiek nastapi (etap B,
+gdy galezie odbite beda scalone/porzucone). Usuniecie tylko jednego z dwoch
+wpisow jest ZNALEZISKIEM. Waskosci pilnuje `WaskoscWyjatkowGitleaksTest`.
+Kopie galezi: `kopia-przed-filtrem-12-08`, `kopia-przed-merge-19-08`.
 
 Dlaczego to nie jest dziura: wyjatek dopasowuje DOKLADNIE JEDNA znana wartosc
 zmyslona, a nie sciezke ani katalog. Kazdy inny sekret w tym samym pliku
