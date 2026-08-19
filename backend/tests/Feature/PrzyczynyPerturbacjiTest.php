@@ -421,22 +421,72 @@ function polknieteKomunikaty(string $sciezka): array
             continue;
         }
 
-        // Ostatni argument: POJEDYNCZY literał napisowy wyglądający na zdanie
-        // (ma spację i kończy się kropką albo dwukropkiem). Lista wartości
-        // — `'pacjent', 'psycholog'` — tego nie spełnia.
+        // Ostatni argument: napis wyglądający na zdanie (ma spację i kończy się
+        // kropką albo dwukropkiem). Lista wartości — `'pacjent', 'psycholog'`
+        // — tego nie spełnia.
+        //
+        // ⛔ WADA WŁASNA ZNALEZIONA 19.08, przy naprawie R11-1.
+        //
+        // Ta kontrola żądała POJEDYNCZEGO literału i przez to nie widziała
+        // komunikatu SKLEJANEGO:
+        //
+        //     ->toContain('igła', 'Zdanie ciągnące się '.
+        //                         'przez dwa literały.')
+        //
+        // czyli formy, którą w tym repozytorium ma WIĘKSZOŚĆ dłuższych
+        // komunikatów — bo linia 120 znaków się nie mieści. Kontrola powstała
+        // po to, żeby łapać połknięte komunikaty, a była ślepa na ich
+        // najczęstszy kształt. Złapałem to własnym błędem, nie rozumowaniem:
+        // napisałem dokładnie taką asercję i dostałem czerwień o szukaniu
+        // zdania w treści pliku.
+        //
+        // To ta sama klasa, którą naprawiam w tożsamości: kontrola rozpoznawała
+        // JEDEN KSZTAŁT przedmiotu zamiast pytać o jego istotę. Istotą jest
+        // „ostatni argument jest ZDANIEM", a nie „ostatni argument jest jednym
+        // tokenem".
         $ostatni = array_values(array_filter(
             $argumenty[count($argumenty) - 1],
             fn ($x) => ! (is_array($x) && in_array($x[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true))
         ));
 
-        if (count($ostatni) !== 1 || ! is_array($ostatni[0]) || $ostatni[0][0] !== T_CONSTANT_ENCAPSED_STRING) {
+        if ($ostatni === []) {
             continue;
         }
 
-        $tresc = trim($ostatni[0][1], '\'"');
+        // Wyłącznie literały napisowe sklejone kropką. Obecność czegokolwiek
+        // innego (zmiennej, wywołania, tablicy) znaczy, że to WARTOŚĆ, a nie
+        // zdanie — i wtedy oskarżenie byłoby fałszywe.
+        $tresc = '';
+        $linia = 0;
+
+        foreach ($ostatni as $poz => $x) {
+            if ($poz % 2 === 0) {
+                if (! is_array($x) || $x[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                    $tresc = '';
+
+                    break;
+                }
+
+                $tresc .= trim($x[1], '\'"');
+                $linia = $linia === 0 ? $x[2] : $linia;
+
+                continue;
+            }
+
+            if ($x !== '.') {
+                $tresc = '';
+
+                break;
+            }
+        }
+
+        if ($tresc === '') {
+            continue;
+        }
 
         if (preg_match('/\s/', $tresc) === 1 && preg_match('/[.:]$/', $tresc) === 1) {
-            $trafienia[] = sprintf('%d  ->%s(…, %s)', $ostatni[0][2], $t[1], $ostatni[0][1]);
+            $skrot = mb_strlen($tresc) > 40 ? mb_substr($tresc, 0, 40).'…' : $tresc;
+            $trafienia[] = sprintf('%d  ->%s(…, \'%s\')', $linia, $t[1], $skrot);
         }
     }
 
@@ -513,6 +563,12 @@ it('KIERUNEK ODWROTNY: skaner matcherów wariadycznych widzi — na PLIKU zbudow
         'jedna.php' => "<?php\nexpect(\$r)->toContain('Perturbacje:');\n",
         'komentarz.php' => "<?php\n// ->toContain('redaktor', 'Role czytane z ID TOKENU.') — tak NIE wolno\n",
         'w-napisie.php' => "<?php\n\$x = \"->toContain('redaktor', 'Role czytane z ID TOKENU.')\";\n",
+        // ⛔ KSZTAŁT, NA KTÓRY SKANER BYŁ ŚLEPY DO 19.08: komunikat
+        // SKLEJANY z kilku literałów — czyli forma, jaką ma większość
+        // dłuższych komunikatów w tym repozytorium.
+        'sklejony.php' => "<?php\nexpect(\$r)->toContain('igla', 'Zdanie ciagnie sie '.\n'przez dwa literaly.');\n",
+        // Sklejenie ze ZMIENNĄ to WARTOŚĆ, nie zdanie — oskarżenie byłoby fałszywe.
+        'sklejony-zmienna.php' => "<?php\nexpect(\$r)->toContain('igla', 'prefiks-'.\$x);\n",
     ];
 
     foreach ($material as $nazwa => $tresc) {
@@ -547,6 +603,16 @@ it('KIERUNEK ODWROTNY: skaner matcherów wariadycznych widzi — na PLIKU zbudow
 
     expect($trafienia['w-napisie.php'])->toBe([],
         'Skaner oskarża formę wadliwą zapisaną w LITERALE NAPISOWYM — nawrót R7-2.');
+
+    // Wada własna z 19.08: kontrola żądała POJEDYNCZEGO literału, więc nie
+    // widziała komunikatu sklejanego — a tak wygląda większość dłuższych
+    // komunikatów w tym repozytorium. Rozpoznawała JEDEN KSZTAŁT przedmiotu
+    // zamiast pytać o jego istotę.
+    expect($trafienia['sklejony.php'])->toHaveCount(1,
+        'Skaner NIE widzi komunikatu SKLEJANEGO z literałów — a to jego najczęstszy kształt.');
+
+    expect($trafienia['sklejony-zmienna.php'])->toBe([],
+        'Skaner oskarża sklejenie ze ZMIENNĄ — to wartość, nie zdanie, i oskarżenie jest fałszywe.');
 });
 
 it('KIERUNEK ODWROTNY: skaner naprawdę widzi — na materiale zbudowanym pod rękę', function (): void {

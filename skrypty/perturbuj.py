@@ -39,6 +39,14 @@ WEJSCIE = KORZEN / "backend/app/Wejscie/Poswiadczenia.php"
 ZADANIE = KORZEN / "backend/app/Retencja/ZadanieRetencji.php"
 TYPY = KORZEN / "backend/app/Wsparcie/Typy.php"
 BRAMKI = KORZEN / "backend/app/Tozsamosc/Bramki.php"
+# Naprawa R11-1 przeniosla mapowanie roszczen na sesje z kontrolera do fasady,
+# a odswiezanie do samego typu tozsamosci. Mutacje musza isc za kodem —
+# inaczej celuja we wzorzec, ktorego juz nie ma, i bateria cicho przestaje
+# mierzyc B7 i B2.
+FASADA_SESJI = KORZEN / "backend/app/Tozsamosc/SesjaKonta.php"
+TOZSAMOSC = KORZEN / "backend/app/Tozsamosc/TozsamoscSesji.php"
+ROSZCZENIA = KORZEN / "backend/app/Tozsamosc/RoszczeniaZweryfikowane.php"
+PLAN = KORZEN / "PLAN-FAZ.md"
 GABINET = KORZEN / "backend/config/gabinet.php"
 PRZYKLAD_ENV = KORZEN / ".env.example"
 
@@ -561,20 +569,20 @@ def role_ze_zlego_zrodla() -> None:
     to samo. Ta mutacja sprawdza, czy test pyta „Z KTOREGO ZRODLA", a nie
     „czy role sa".
     """
-    # WSZYSTKIE wystapienia, nie pierwsze. Pierwsza wersja tej mutacji
-    # podmieniala tylko `role_surowe`, a autoryzujace `role` szly dalej
-    # z access tokenu — perturbacja meldowala, ze test nie rozroznia zrodel,
-    # podczas gdy nie rozroznial ich sama mutacja.
-    tresc = czytaj(KONTROLER)
-    stare = "Bramki::roleZAccessTokenu($wynikAccess['claims'])"
-
-    if tresc.count(stare) < 3:
-        raise SystemExit(
-            "PERTURBACJA NIEUDANA: oczekiwano co najmniej 3 odczytow rol "
-            f"z access tokenu, znaleziono {tresc.count(stare)}"
-        )
-
-    pisz(KONTROLER, tresc.replace(stare, "Bramki::roleZAccessTokenu($claimsId)"))
+    # Do 19.08 mutacja podmieniala TRZY wystapienia w kontrolerze i pilnowala,
+    # zeby bylo ich co najmniej trzy — bo `role_surowe`, `role` i `markery`
+    # czytaly zrodlo kazde osobno. Po naprawie R11-1 zrodlo jest JEDNO
+    # (`$surowe` w `SesjaKonta::zaloz`), a pozostale dwa licza sie z niego.
+    #
+    # Warunek „co najmniej trzy" nie zostal wiec zluzowany, tylko przeliczony
+    # tym samym zdarzeniem: jedno podstawienie zmienia teraz WSZYSTKIE trzy
+    # listy rol. `podmien_jedyne` krzyczy i przy zerze, i przy zwielokrotnieniu,
+    # wiec rozjazd w druga strone tez nie przejdzie po cichu.
+    podmien_jedyne(
+        FASADA_SESJI,
+        "$surowe = Bramki::roleZAccessTokenu($access->wszystkie());",
+        "$surowe = Bramki::roleZAccessTokenu($id->wszystkie());",
+    )
 
 
 def logout_na_niezweryfikowanym_sid() -> None:
@@ -600,7 +608,7 @@ def id_token_jawny() -> None:
     z wnetrza ID tokenu lezy w Redisie, zakodowany base64url. Skaner
     szukajacy tekstu jawnego go MIJA.
     """
-    podmien(KONTROLER, "Crypt::encryptString($idToken)", "$idToken")
+    podmien(FASADA_SESJI, "Crypt::encryptString($id->tokenSurowy())", "$id->tokenSurowy()")
 
 
 def id_token_zakodowany() -> None:
@@ -611,7 +619,11 @@ def id_token_zakodowany() -> None:
     jest w pelni odzyskiwalny. Ta mutacja rozstrzyga, czy kontrola pyta
     o ODZYSKIWALNOSC DANYCH, czy tylko o roznice napisow.
     """
-    podmien(KONTROLER, "Crypt::encryptString($idToken)", "base64_encode($idToken)")
+    podmien(
+        FASADA_SESJI,
+        "Crypt::encryptString($id->tokenSurowy())",
+        "base64_encode($id->tokenSurowy())",
+    )
 
 
 def retencja_bez_kasowania() -> None:
@@ -708,6 +720,88 @@ def typ_zerwany() -> None:
     pisz(TYPY, czytaj(TYPY) + PERTURBACJA_TYPU)
 
 
+def typ_zaloz_zluzowany() -> None:
+    """Luzuje TYP pisarza tozsamosci — odwrocenie naprawy R11-1.
+
+    Nie przywracam `array $dane` w calosci, bo to zepsulo by cialo metody
+    i czerwien przyszlaby z bledu wykonania, a nie z badanej przyczyny.
+    Zamiast tego robie to, co zrobilby czlowiek „w dobrej wierze": ROZSZERZAM
+    typ o tablice. Legalne wywolania dalej dzialaja, a droga R11-1 wraca.
+    """
+    podmien_jedyne(
+        FASADA_SESJI,
+        "        RoszczeniaZweryfikowane $id,",
+        "        array|RoszczeniaZweryfikowane $id,",
+    )
+
+
+def podmienionymi_wraca() -> None:
+    """Przywraca `zPodmienionymi(array)` — dokladna droga R11-2."""
+    podmien_jedyne(
+        TOZSAMOSC,
+        "    public function zOdswiezonymi(",
+        "    /** @param array<string, mixed> $zmiany */\n"
+        "    public function zPodmienionymi(array $zmiany): self\n"
+        "    {\n"
+        "        return new self(array_merge($this->dane, $zmiany));\n"
+        "    }\n\n"
+        "    public function zOdswiezonymi(",
+    )
+
+
+def roszczenia_ctor_publiczny() -> None:
+    """Otwiera konstruktor obiektu wartosci — „zweryfikowane" staje sie nazwa.
+
+    Sedno zmiany rodzaju obrony: gdy konstruktor jest publiczny, dowolny kod
+    wytwarza roszczenia, ktorych nikt nie weryfikowal, a typ przestaje cokolwiek
+    znaczyc. Kontrola strukturalna ma to zobaczyc.
+    """
+    podmien_jedyne(
+        ROSZCZENIA,
+        "    private function __construct(private array $roszczenia, private string $tokenSurowy) {}",
+        "    public function __construct(private array $roszczenia, private string $tokenSurowy) {}",
+    )
+
+
+def odswiezanie_podmienia_sub() -> None:
+    """Pozwala odswiezeniu ruszyc `sub` — SKUTEK R11-2 bez jego skladni.
+
+    Ta mutacja nie przywraca `zPodmienionymi`; robi to samo INNA droga.
+    Jesli kontrola pyta wylacznie o istnienie metody o tej nazwie, przejdzie
+    tu na zielono — i wtedy wiadomo, ze mierzy nazwe, a nie skutek.
+    """
+    podmien_jedyne(
+        TOZSAMOSC,
+        "            'access_exp' => $access->liczba('exp'),\n        ];",
+        "            'access_exp' => $access->liczba('exp'),\n"
+        "            'sub' => $access->napis('sub'),\n        ];",
+    )
+
+
+def kotwica_falszywa() -> None:
+    """Falszywa liczba obok PRAWDZIWEGO SHA — dokladny wektor R11-3.
+
+    Weryfikator rundy 11 wpisal „999 scenariuszy — zmierzone na 528adc3"
+    (naprawde 35) i kontrola przeszla, bo kotwica ZWALNIALA z pomiaru.
+    """
+    tresc = czytaj(PLAN)
+    znacznik = "## CURRENT WORK"
+
+    if znacznik not in tresc:
+        raise SystemExit("PERTURBACJA NIEUDANA: brak sekcji CURRENT WORK w PLAN-FAZ.md")
+
+    i = tresc.index(znacznik)
+    j = tresc.index(chr(10), i)
+    pisz(
+        PLAN,
+        tresc[: j + 1]
+        + chr(10)
+        + "- FALSZYWA PROBA: 999 scenariuszy — zmierzone na `528adc3`."
+        + chr(10)
+        + tresc[j + 1 :],
+    )
+
+
 def przyneta(ziarno: str) -> str:
     """Wartosc udajaca sekret, SKLADANA W CZASIE DZIALANIA.
 
@@ -762,6 +856,11 @@ def biala_lista_zdjeta() -> None:
 POLECENIA = {
     "callback-tablica": callback_tablica,
     "callback-metoda": callback_metoda,
+    "typ-zaloz-zluzowany": typ_zaloz_zluzowany,
+    "podmienionymi-wraca": podmienionymi_wraca,
+    "roszczenia-ctor-publiczny": roszczenia_ctor_publiczny,
+    "odswiezanie-podmienia-sub": odswiezanie_podmienia_sub,
+    "kotwica-falszywa": kotwica_falszywa,
     "gardlo-para": gardlo_para,
     "gardlo-naglowek": gardlo_naglowek,
     "gardlo-all": gardlo_all,

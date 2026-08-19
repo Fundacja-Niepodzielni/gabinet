@@ -13,11 +13,11 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
   Przebieg OD ZERA we własnym środowisku efemerycznym
   (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
-- **Testy: 304 zielonych, 0 czerwonych, 2 POMINIĘTE, 2211 asercji.**
-  Podłogi bramki: **304 / 2211** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
+- **Testy: 315 zielonych, 0 czerwonych, 2 POMINIĘTE, 2241 asercji.**
+  Podłogi bramki: **315 / 2241** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
   i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
-- **Perturbacje: `PERTURBACJE OK — 52 kontroli`, kod wyjścia 0.**
-  PEŁNY zestaw 37 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
+- **Perturbacje: `PERTURBACJE OK — 59 kontroli`, kod wyjścia 0.**
+  PEŁNY zestaw 42 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
   ⚠ Liczba SCENARIUSZY opisuje `skrypty/perturbacje.sh` (stan bieżący, pilnuje
   `JednoZrodloStanuTest`); liczba KONTROLI to wynik przebiegu i wymaga kotwicy.
 
@@ -34,11 +34,12 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > („290/2130 na `179c05c`", gdzie jest 289/2119). Za każdym razem wychodziło
 > to dopiero w rundzie.
 
-**Pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków, 0 nieudanych`, 304 testy / 2211
-asercji, `PERTURBACJE OK — 54 kontroli` (37 scenariuszy, 0 pominiętych) —
-**zmierzone na `bbc8167`** (zamrożenie po naprawie rundy 10).
+**Pomiar Z KOTWICĄ:** wpisany po commicie zamrażającym rundy 11 — patrz
+`docs/ZLECENIA/ODPOWIEDZ-078.md`. Do czasu tego commitu obowiązuje pomiar
+poprzedni.
 
-Poprzednie: 301 / 2170, 52 kontrole (35 scenariuszy) — **zmierzone na `528adc3`**;
+Poprzednie: 304 / 2211, 54 kontrole (37 scenariuszy) — **zmierzone na `bbc8167`**;
+301 / 2170, 52 kontrole (35 scenariuszy) — **zmierzone na `528adc3`**;
 290 / 2130, 49 kontroli — **zmierzone na `d79dc0c`**.
 
 Poprzedni: 290 / 2130, 49 kontroli — **zmierzone na `d79dc0c`**.

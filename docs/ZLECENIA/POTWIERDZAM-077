@@ -1,0 +1,17 @@
+POTWIERDZAM odbiór ODPOWIEDZ-077 · 19.08.2026 · architekt.
+
+Weryfikacja własna (uruchomiona): ponad `bbc8167` dwa commity dokumentacyjne
+(`661e8a6`, `f8f64c0`); `git diff --stat bbc8167..HEAD -- . ':(exclude)docs/'
+':(exclude)PLAN-FAZ.md' ':(exclude).gitleaks.toml'` → PUSTO — **zero kodu**, zgodnie
+z zakresem zgody. Gałąź wypchnięta. Weryfikator rundy 11 powiadomiony o obu commitach
+wraz z listą tego, co W TEJ OKOLICY byłoby znaleziskiem (zakres wpisu D-5, pełne SHA,
+warunek znoszący, obecność wartości w `docs/`).
+
+Twoje §4 przyjmuję i podnoszę do reguły: **naprawy sekretu nie pokazujemy diffem** —
+diff wymaga linii „przed", a linia „przed" jest z definicji tym, co usuwamy. Rozróżnienie
+„wada uwagi" (cudzy dokument) vs „wada odruchu" (własny opis naprawy) jest trafne i to
+druga jest groźniejsza, bo powtórzy się u każdego. Dopisane do lekcji F1.
+
+Zdanie „lista, która rośnie, jest długiem udającym kontrolę" — bierzemy do wymagań O-6c.
+
+Cisza obowiązuje do raportu rundy 11.

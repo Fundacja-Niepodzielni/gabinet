@@ -127,7 +127,7 @@ final class OdswiezanieSesji
     {
         $accessToken = Typy::napis($body['access_token'] ?? null);
 
-        $wynik = WalidatorTokenu::sprawdz($accessToken, [
+        $wynik = RoszczeniaZweryfikowane::zTokenu($accessToken, [
             'issuer' => $this->oidc->issuerPubliczny(),
             'jwks' => $this->oidc->jwksDlaKid(WalidatorTokenu::kidNiezweryfikowany($accessToken)),
             'audience' => $this->oidc->wymaganaAudiencja(),
@@ -140,33 +140,36 @@ final class OdswiezanieSesji
             return null;
         }
 
-        $claims = $wynik['claims'];
+        $roszczenia = $wynik['roszczenia'];
 
         // Wiązanie po `sub` (CLAUDE.md §2). Gdyby IdP zwrócił token innego
         // podmiotu, kończymy sesję zamiast po cichu podmienić tożsamość.
-        if (Typy::napis($claims['sub'] ?? null) !== $obecna->sub()) {
+        //
+        // To sprawdzenie zostaje TUTAJ, mimo że `zOdswiezonymi()` i tak `sub`
+        // nie rusza — bo tu chodzi o co innego: token innego podmiotu znaczy,
+        // że coś jest nie tak z sesją, i wtedy właściwą odpowiedzią jest jej
+        // ZAKOŃCZENIE, a nie ciche zachowanie starej tożsamości.
+        if ($roszczenia->napis('sub') !== $obecna->sub()) {
             SesjaKonta::zakoncz($request);
 
             return null;
         }
 
-        $surowe = Bramki::roleZAccessTokenu($claims);
-
-        $zmiany = [
-            'role_surowe' => $surowe,
-            'role' => Bramki::roleAutoryzujace($surowe),
-            'markery' => Bramki::markery($surowe),
-            'access_exp' => Typy::liczba($claims['exp'] ?? null),
-        ];
-
-        if (isset($body['refresh_token'])) {
-            $zmiany['refresh_token'] = Typy::napis($body['refresh_token']);
-        }
-
         // AKTUALIZACJA istniejącej tożsamości — `$obecna` jest dowodem, że
         // tożsamość istniała.
+        //
+        // Do 19.08 stało tu `zPodmienionymi($zmiany)` z tablicą budowaną
+        // W TYM MIEJSCU — czyli droga R11-2: publiczna metoda przyjmująca
+        // dowolne pola pozwalała podmienić `sub` wartością z żądania,
+        // a warstwy 2 i 4 wąskiego gardła skanowały wyłącznie `zaloz`.
+        // Teraz odświeżenie NIE MA parametru, którym dałoby się ruszyć
+        // tożsamość: role i termin liczy `zOdswiezonymi` ze zweryfikowanych
+        // roszczeń, reszta pochodzi z `$obecna`.
         // @dowod: R6A-3 — wcześniejsze „bez niej nie da się napisać" obalone.
-        $nowa = $obecna->zPodmienionymi($zmiany);
+        $nowa = $obecna->zOdswiezonymi(
+            $roszczenia,
+            isset($body['refresh_token']) ? Typy::napis($body['refresh_token']) : null,
+        );
         SesjaKonta::zaktualizuj($request, $nowa);
 
         return $nowa->dane;

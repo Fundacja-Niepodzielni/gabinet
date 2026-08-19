@@ -118,18 +118,59 @@ final readonly class TozsamoscSesji
         return Typy::liczba($this->dane['access_exp'] ?? null);
     }
 
-    /**
-     * Nowa tożsamość z podmienionymi polami — WYŁĄCZNIE aktualizacja.
+    /*
+     * ⛔ `zPodmienionymi(array $zmiany)` USUNIĘTE — znalezisko R11-2.
      *
-     * Zwraca instancję tej samej klasy, więc wynik nadal jest dowodem, że
-     * tożsamość istniała — o ile sama instancja powstała z magazynu.
+     * Ta metoda była publiczna i brała DOWOLNĄ tablicę, więc
+     * `$moja->zPodmienionymi(['sub' => $request->query('code')])` zmieniało,
+     * KIM jest tożsamość, a nie tylko ją odświeżało. Warstwy 2 i 4 wąskiego
+     * gardła skanowały wyłącznie `zaloz`, więc bramka na to milczała.
      *
-     * @dowod: R6A-3 — warunek przeniósł się o poziom wyżej, do `zMagazynu()`.
+     * Nie zastąpiłem jej listą pól dozwolonych, bo lista dozwolonych pól to
+     * znowu obrona przez rozpoznawanie kształtu — a te padały w rundach 8–11
+     * jedna po drugiej. Zastąpiło ją `zOdswiezonymi()` poniżej: metoda, która
+     * NIE MA parametru zdolnego ruszyć tożsamość.
      *
-     * @param  array<string, mixed>  $zmiany
+     * USTANOWIENIA tożsamości nie ma tu wcale — mieszka w `SesjaKonta::zaloz()`,
+     * czyli u jedynego pisarza. Świadomie NIE dodałem tu publicznej fabryki
+     * statycznej: `WaskieGardloTozsamosciTest` trzyma allowlistę typów, jakie
+     * wolno takiej fabryce przyjąć, i jest tam dziś jeden typ (`Request`).
+     * Fabryka biorąca `string $idTokenSurowy` zmusiłaby do dopisania `string`
+     * do tej allowlisty — czyli do TRWAŁEGO osłabienia strażnika R6A-3
+     * w zamian za naprawę R11-1. Naprawa, która psuje inną kontrolę, nie jest
+     * naprawą.
      */
-    public function zPodmienionymi(array $zmiany): self
+
+    /**
+     * ODŚWIEŻENIE — nowe role i nowy termin, TA SAMA tożsamość.
+     *
+     * Klucz naprawy R11-2: `sub`, `sid` i dane osoby pochodzą z `$this`,
+     * czyli z tożsamości, która JUŻ była w magazynie. Nie ma parametru,
+     * którym dałoby się je podmienić — odświeżenie z definicji nie zmienia,
+     * KIM jest zalogowany.
+     *
+     * Sprawdzenie „czy IdP zwrócił token tego samego podmiotu" zostaje
+     * u wołającego (`OdswiezanieSesji::przelicz`), bo tam odmowa musi
+     * ZAKOŃCZYĆ sesję — a to decyzja o przepływie, nie o wartości.
+     */
+    public function zOdswiezonymi(RoszczeniaZweryfikowane $access, ?string $refreshToken): self
     {
+        $surowe = Bramki::roleZAccessTokenu($access->wszystkie());
+
+        $zmiany = [
+            'role_surowe' => $surowe,
+            'role' => Bramki::roleAutoryzujace($surowe),
+            'markery' => Bramki::markery($surowe),
+            'access_exp' => $access->liczba('exp'),
+        ];
+
+        if ($refreshToken !== null) {
+            $zmiany['refresh_token'] = $refreshToken;
+        }
+
+        // `array_merge` z `$this->dane` po LEWEJ: pola tożsamości przetrwają,
+        // bo `$zmiany` ich nie zawiera — i zawierać nie może, bo powstają
+        // tu, a nie u wołającego.
         return new self(array_merge($this->dane, $zmiany));
     }
 }

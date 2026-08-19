@@ -376,8 +376,22 @@ it('R9-5: liczba scenariuszy perturbacji w sekcji stanu zgadza się ze SKRYPTEM'
     // Kontrola bez tego rozróżnienia wymuszałaby przepisywanie historii pomiarów
     // przy każdej nowej perturbacji, czyli kasowanie śladu. To ta sama zasada,
     // którą stosuje kontrola liczb bramki poza sekcją stanu.
+    // ⛔ ZNALEZISKO R11-3 — KOTWICA NIE ZWALNIA Z POMIARU, TYLKO PRZENOSI GO
+    //    NA WSKAZANY COMMIT.
+    //
+    // Do 19.08 stało tu `continue`: zdanie z kotwicą było POMIJANE bez
+    // sprawdzenia liczby. Weryfikator wpisał „999 scenariuszy — zmierzone
+    // na `528adc3`" (naprawdę 35) i kontrola przeszła. Kotwica zwalniała
+    // z pomiaru zamiast go umiejscawiać — czyli była ozdobą.
+    //
+    // To był nawrót R9-5 wpuszczony MOJĄ WŁASNĄ poprawką z `ODPOWIEDZ-074` §6.
+    // Poprawka rozwiązywała prawdziwy problem (zdanie o przeszłości nie ma się
+    // starzeć), ale rozwiązała go zwolnieniem, a nie przeniesieniem punktu
+    // odniesienia. Różnica jest cała: zdanie zakotwiczone JEST sprawdzalne —
+    // tylko wobec INNEGO commita, nie wobec dzisiejszego pliku.
     $wiersze = explode(PHP_EOL, $sekcja);
     $trafienia = [[], []];
+    $zakotwiczone = [];
 
     foreach ($wiersze as $nr => $wiersz) {
         if (preg_match('/(\d+)\s+scenariusz/u', $wiersz, $t) !== 1) {
@@ -386,12 +400,69 @@ it('R9-5: liczba scenariuszy perturbacji w sekcji stanu zgadza się ze SKRYPTEM'
 
         $kontekst = $wiersz.(($wiersze[$nr - 1] ?? '').($wiersze[$nr + 1] ?? ''));
 
-        if (preg_match('/zmierzone na `[0-9a-f]{7,40}`/u', $kontekst) === 1) {
-            continue;   // zdanie o PRZESZŁYM pomiarze — ma kotwicę, zostaje
+        if (preg_match('/zmierzone na `([0-9a-f]{7,40})`/u', $kontekst, $k) === 1) {
+            // Zdanie o PRZESZŁYM pomiarze — sprawdzamy je wobec TAMTEGO commita.
+            $zakotwiczone[] = ['liczba' => (int) $t[1], 'sha' => $k[1], 'wiersz' => $wiersz];
+
+            continue;
         }
 
         $trafienia[1][] = $t[1];
     }
+
+    // Liczba przy kotwicy musi zgadzać się z zawartością pliku W TAMTYM commicie.
+    $klamstwa = [];
+
+    foreach ($zakotwiczone as $zapis) {
+        $wyjscie = [];
+        $kod = 0;
+        exec(sprintf(
+            'cd %s && git show %s:skrypty/perturbacje.sh 2>&1',
+            escapeshellarg(base_path('..')),
+            escapeshellarg($zapis['sha'])
+        ), $wyjscie, $kod);
+
+        if ($kod !== 0) {
+            // Nieistniejące SHA łapie kontrola wyżej; tu nie dublujemy oskarżenia.
+            continue;
+        }
+
+        if (preg_match('/^WSZYSTKIE="([^"]+)"/m', implode(PHP_EOL, $wyjscie), $w) !== 1) {
+            $klamstwa[] = sprintf(
+                'w `%s` nie ma listy `WSZYSTKIE=` — nie da się sprawdzić liczby %d',
+                $zapis['sha'],
+                $zapis['liczba']
+            );
+
+            continue;
+        }
+
+        $wtedy = count(array_filter(preg_split('/\s+/', trim($w[1])) ?: []));
+
+        if ($wtedy !== $zapis['liczba']) {
+            $klamstwa[] = sprintf(
+                'zdanie mówi %d scenariuszy „zmierzone na `%s`", a w tamtym commicie było %d',
+                $zapis['liczba'],
+                $zapis['sha'],
+                $wtedy
+            );
+        }
+    }
+
+    expect($klamstwa)->toBe([], sprintf(
+        'ZAKOTWICZONA LICZBA SCENARIUSZY JEST NIEPRAWDZIWA WOBEC SWOJEGO SHA:%s  %s%s'.
+        'Kotwica ma UMIEJSCAWIAĆ pomiar, nie zwalniać z niego. Liczba obok SHA jest '.
+        'sprawdzalna jednym `git show` — jeśli jej nie sprawdzamy, kotwica jest ozdobą (R11-3).',
+        PHP_EOL,
+        implode(PHP_EOL.'  ', $klamstwa),
+        PHP_EOL.PHP_EOL
+    ));
+
+    // Pustka to błąd: gdyby żadne zdanie nie miało kotwicy, powyższa pętla
+    // przeszłaby na zero i nie zmierzyła niczego, wyglądając na zieloną.
+    expect(count($zakotwiczone))->toBeGreaterThan(0,
+        'W sekcji stanu nie ma ANI JEDNEGO zakotwiczonego zdania o liczbie scenariuszy — '.
+        'kontrola zakotwiczonych liczb mierzy pustkę (R11-3).');
 
     expect(count($trafienia[1]))->toBeGreaterThan(0,
         'W sekcji stanu nie ma liczby scenariuszy perturbacji — a jest sprawdzalna (R9-5).');

@@ -1,0 +1,16 @@
+POTWIERDZAM odbiór ODPOWIEDZ-075 (runda 11: 3 znaleziska, F1 otwarta) · 19.08.2026 · architekt.
+
+Werdykt przyjęty bez łagodzenia. Szczególnie: **udana próba obalenia twierdzenia autora**
+(R11-1) — dokładnie po to wystawiliśmy je do obalenia, i dokładnie dlatego runda ma sens.
+Rozróżnienie „`code` uzasadnia CZYTANIE, nie UŻYCIE jako `sub`" jest sednem sprawy.
+
+Wnioski architekta w `ZLECENIE-078`: **zmieniamy rodzaj obrony** — z wykrywania złego
+kształtu kodu na uniemożliwienie złego stanu (typ zamiast skanera). Powód: pięć rund
+z rzędu znajduje kolejne piętro w tym samym miejscu; kontrola oparta na analizie kształtu
+ma brzeg, a brzeg da się przekroczyć.
+
+Odrzucenia po pomiarze (D-5 commit-scoped z dwoma pełnymi SHA, krok [21] zielony,
+brak kodu ponad zamrożeniem) — zweryfikowane niezależnie i zgodne z moimi pomiarami.
+Rozbieżność dwóch form warunku zamrożenia: obowiązuje forma z uzupełnienia
+(z wykluczeniem `.gitleaks.toml` wyłącznie przy imiennej zgodzie) — poprawię brzmienie
+w zleceniu rundy 12, żeby nie zgłaszać tej samej rozbieżności trzeci raz.

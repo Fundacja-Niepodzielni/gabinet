@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tozsamosc;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * JEDYNY pisarz stanu tożsamości sesji (CLAUDE.md §2, D-2026-08-08-24).
@@ -45,11 +46,61 @@ final class SesjaKonta
     /**
      * Zakłada tożsamość. WYŁĄCZNIE ścieżka logowania.
      *
-     * @param  array<string, mixed>  $dane
+     * Przyjmuje ZWERYFIKOWANE ROSZCZENIA, nie tablicę — naprawa R11-1.
+     * Dopóki brała `array $dane`, wolno było napisać
+     * `zaloz($request, ['sub' => $x])` z dowolnym `$x`, a jedyną obroną
+     * był skaner kształtu kodu — który milczał SŁUSZNIE, gdy `$x`
+     * pochodziło z pola KONTRAKTOWEGO (`code`).
+     *
+     * Teraz tablica nie jest tym typem: statyka to widzi, a przy pominięciu
+     * statyki PHP rzuca `TypeError`. To jest różnica między „kontrola
+     * zauważy" a „nie da się wyrazić".
+     *
+     * Mapowanie roszczeń na zawartość sesji stoi TUTAJ, u jedynego pisarza —
+     * wcześniej budował je kontroler, a tablicę w kontrolerze wolno wypełnić
+     * czymkolwiek.
      */
-    public static function zaloz(Request $request, array $dane): void
-    {
-        $request->session()->put(self::KLUCZ, $dane);
+    public static function zaloz(
+        Request $request,
+        RoszczeniaZweryfikowane $id,
+        RoszczeniaZweryfikowane $access,
+        ?string $refreshToken,
+    ): void {
+        $surowe = Bramki::roleZAccessTokenu($access->wszystkie());
+
+        $request->session()->put(self::KLUCZ, [
+            // Wiązanie konta lokalnego po `sub`, NIGDY po e-mailu (CLAUDE.md §2).
+            'sub' => $id->napis('sub'),
+            'sid' => $id->napisAlbo('sid'),
+            'login' => $id->napisAlbo('preferred_username'),
+            'email' => $id->napisAlbo('email'),
+            'email_potwierdzony' => $id->prawda('email_verified'),
+            // Role WYŁĄCZNIE z access tokenu (kontrakt §2b). Zapisujemy obie
+            // listy: surową (do logów i diagnozy) i tę, która realnie
+            // autoryzuje — kompozyty rozwijają się w tokenie, a marker
+            // `wymaga-2fa` przyjeżdża razem z rolą merytoryczną.
+            'role_surowe' => $surowe,
+            'role' => Bramki::roleAutoryzujace($surowe),
+            'markery' => Bramki::markery($surowe),
+            // ID TOKEN SZYFROWANY JAWNIE — niezależnie od `session.encrypt`.
+            //
+            // Refinement B7 z huba: poleganie na jednej fladze konfiguracji to
+            // JEDNA FLAGA OD WYCIEKU. `SESSION_ENCRYPT` może ktoś wyłączyć na
+            // stagingu albo przy debugowaniu — i wtedy e-mail pacjenta (claim
+            // w ID tokenie) leży w Redisie jawnie, w systemie przetwarzającym
+            // dane o zdrowiu (RODO art. 9).
+            //
+            // Napis bierzemy z OBIEKTU, nie z osobnego parametru: dzięki temu
+            // zapisany `id_token_hint` jest z definicji tym tokenem, którego
+            // podpis sprawdziliśmy.
+            'id_token' => Crypt::encryptString($id->tokenSurowy()),
+            // B8: bez refresh tokenu i bez `exp` nie da się przeliczyć ról
+            // przed końcem sesji — a zamrożone role to wada bezpieczeństwa.
+            // @dowod: OdebranieRoliTest — „odbiera dostęp, gdy Keycloak odbierze
+            //         rolę — najpóźniej w oknie access tokenu".
+            'refresh_token' => $refreshToken,
+            'access_exp' => $access->liczba('exp'),
+        ]);
     }
 
     /** Odczyt — `null`, gdy tożsamości NIE MA w magazynie. */

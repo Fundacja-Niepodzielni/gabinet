@@ -129,7 +129,21 @@ NAZWY="$(printf '%s' "$LISTA" | sed 's/^Perturbacje: //')"
 for NAZWA in $NAZWY; do
 	# Nazwa scenariusza nie musi równać się nazwie procedury (jest tabela
 	# rozdzielająca), więc pytamy o WPIS W ROZDZIELACZU i o samą procedurę.
-	PROCEDURA="$(grep -oE "^\s*${NAZWA}\) p_[a-z0-9_]+" skrypty/perturbacje.sh | grep -oE 'p_[a-z0-9_]+' | head -1)"
+	# ⛔ WYDOBYCIE POZYCYJNE, NIE „PIERWSZE p_ W LINII" (znalezione 19.08).
+	#
+	# Poprzednia wersja robiła `grep -oE 'p_[a-z0-9_]+' | head -1` na całej
+	# dopasowanej linii — czyli brała pierwsze wystąpienie `p_` GDZIEKOLWIEK,
+	# także WEWNĄTRZ nazwy scenariusza. Scenariusz `typ_zaloz` zawiera w sobie
+	# napis `p_zaloz` (t-y-**p_z**-aloz), więc kontrola meldowała
+	# „wskazuje na p_zaloz(), której nie ma" — oskarżenie prawdziwe co do
+	# czerwieni, całkowicie fałszywe co do adresu.
+	#
+	# Nazwy scenariusza NIE zmieniam, choć zmiana uciszyłaby objaw: wadą jest
+	# parser, nie nazwa. Zostaje jako trwały przypadek regresyjny — gdyby ktoś
+	# wrócił do wydobycia po `head -1`, ten scenariusz znowu zapali.
+	PROCEDURA="$(grep -oE "^[[:space:]]*${NAZWA}\) p_[a-z0-9_]+" skrypty/perturbacje.sh \
+		| head -1 \
+		| sed -E "s/^[[:space:]]*${NAZWA}\) //")"
 
 	if [ -z "$PROCEDURA" ]; then
 		zle_ "scenariusz '$NAZWA' jest na liście, ale nie ma wpisu w rozdzielaczu — nigdy się nie uruchomi"

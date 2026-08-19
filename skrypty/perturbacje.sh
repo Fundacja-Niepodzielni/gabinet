@@ -1144,13 +1144,22 @@ p_zrodlo_rol() {
 	# TAKŻE przy odczycie ze złego źródła, o ile fixtura każe obu źródłom mówić
 	# to samo. Test ma pytać „Z KTÓREGO ŹRÓDŁA", nie „czy role są" — a tego
 	# dowodzi wyłącznie perturbacja podmieniająca źródło.
-	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	# PLIK ZMIENIONY 19.08 razem z naprawa R11-1: mapowanie roszczen na sesje
+	# przenioslo sie z kontrolera do FASADY. Scenariusz musi zachowywac ten
+	# plik, ktory mutacja naprawde rusza — inaczej „przywrocenie" przywraca
+	# cudzy plik, a zmutowany zostaje w drzewie i przewraca NASTEPNE
+	# scenariusze. Tak wlasnie stalo sie przy pierwszym przebiegu po naprawie.
+	local plik="backend/app/Tozsamosc/SesjaKonta.php"
 	zachowaj "$plik"
 
 	perturbuj role-ze-zlego-zrodla
 
-	dowod_mutacji "wszystkie trzy odczyty ról idą teraz z ID tokenu" \
-		bash -c "[ \"\$(grep -c 'roleZAccessTokenu(\$claimsId)' '$plik')\" = '3' ]"
+	# JEDNO źródło ról zamiast trzech odczytów: po naprawie R11-1 `role`
+	# i `markery` liczą się z `$surowe`, więc jedno podstawienie zmienia
+	# WSZYSTKIE trzy listy. Warunek nie został zluzowany, tylko
+	# PRZELICZONY tym samym zdarzeniem.
+	dowod_mutacji "źródłem ról jest teraz ID token" \
+		grep -q "roleZAccessTokenu(\$id->wszystkie())" "$plik"
 
 	# DŁUG SPŁACONY 12.08 (był R6B-15, doliczony ponownie w R7-8). Pierwsza
 	# asercja testu dostała komunikat, więc wzorzec przestał być nazwą testu.
@@ -1193,13 +1202,18 @@ p_id_token_w_sesji() {
 	# Zapisana wartość różni się od oryginału, więc asercja „nie równa się"
 	# przechodzi, a e-mail jest w pełni odzyskiwalny. Ta noga rozstrzyga, czy
 	# kontrola pyta o ODZYSKIWALNOŚĆ DANYCH, czy tylko o różnicę napisów.
-	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	# PLIK ZMIENIONY 19.08 razem z naprawa R11-1: mapowanie roszczen na sesje
+	# przenioslo sie z kontrolera do FASADY. Scenariusz musi zachowywac ten
+	# plik, ktory mutacja naprawde rusza — inaczej „przywrocenie" przywraca
+	# cudzy plik, a zmutowany zostaje w drzewie i przewraca NASTEPNE
+	# scenariusze. Tak wlasnie stalo sie przy pierwszym przebiegu po naprawie.
+	local plik="backend/app/Tozsamosc/SesjaKonta.php"
 	zachowaj "$plik"
 
 	perturbuj id-token-jawny
 
-	dowod_zniknieciem "kontroler zapisuje ID token bez szyfrowania" \
-		'Crypt::encryptString($idToken)' "$plik"
+	dowod_zniknieciem "fasada zapisuje ID token bez szyfrowania" \
+		'Crypt::encryptString($id->tokenSurowy())' "$plik"
 
 	# ALLOWLISTA = KOMUNIKAT ASERCJI (R6B-15). „ZASZYFROWANY" było NAZWĄ TESTU
 	# i zarazem wartością `--filter`, więc spełniało się przez sam fakt
@@ -1214,8 +1228,8 @@ p_id_token_w_sesji() {
 
 	perturbuj id-token-zakodowany
 
-	dowod_mutacji "kontroler koduje ID token zamiast go szyfrować" \
-		grep -q "base64_encode(\$idToken)" "$plik"
+	dowod_mutacji "fasada koduje ID token zamiast go szyfrować" \
+		grep -q "base64_encode(\$id->tokenSurowy())" "$plik"
 
 	# DŁUG SPŁACONY 12.08 — i spłaciła go naprawa R7-4, nie zmiana tutaj.
 	#
@@ -1754,6 +1768,109 @@ p_callback_metoda() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_typ_zaloz() {
+	naglowek 'sciana typu: pisarz tozsamosci przyjmuje znowu tablice [R11-1]'
+	# Nie przywracam `array $dane` w calosci, bo czerwien przyszlaby wtedy
+	# z bledu wykonania, a nie z badanej przyczyny. Mutacja robi to, co
+	# zrobilby czlowiek „w dobrej wierze": ROZSZERZA typ o tablice.
+	# Legalne wywolania dzialaja dalej, a droga R11-1 wraca.
+	local plik="backend/app/Tozsamosc/SesjaKonta.php"
+	zachowaj "$plik"
+
+	perturbuj typ-zaloz-zluzowany || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "pisarz tozsamosci przyjmuje tablice" \
+		grep -q "array|RoszczeniaZweryfikowane" "$plik"
+
+	oczekuj_czerwone "sciana typu: pisarz tozsamosci przyjmuje znowu tablice [R11-1]" \
+		--przyczyna "przyjmuje typ, który da się WYMYŚLIĆ" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_podmienionymi() {
+	naglowek 'sciana typu: zPodmienionymi z tablica wraca [dokladna droga R11-2]'
+	# Metoda publiczna przyjmujaca DOWOLNE pola zmieniala, KIM jest
+	# tozsamosc. Warstwy 2 i 4 skanowaly wylacznie `zaloz`, wiec bramka
+	# na to milczala.
+	local plik="backend/app/Tozsamosc/TozsamoscSesji.php"
+	zachowaj "$plik"
+
+	perturbuj podmienionymi-wraca || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "metoda podmieniajaca dowolne pola wrocila" \
+		grep -q "function zPodmienionymi" "$plik"
+
+	oczekuj_czerwone "sciana typu: zPodmienionymi z tablica wraca [dokladna droga R11-2]" \
+		--przyczyna "To była droga R11-2" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_roszczenia_ctor() {
+	naglowek 'sciana typu: konstruktor roszczen staje sie publiczny'
+	# Sedno zmiany rodzaju obrony. Gdy konstruktor jest publiczny, dowolny
+	# kod wytwarza roszczenia, ktorych nikt nie weryfikowal — a slowo
+	# „zweryfikowane" zostaje sama nazwa klasy.
+	local plik="backend/app/Tozsamosc/RoszczeniaZweryfikowane.php"
+	zachowaj "$plik"
+
+	perturbuj roszczenia-ctor-publiczny || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "konstruktor obiektu wartosci jest publiczny" \
+		grep -q "public function __construct(private array" "$plik"
+
+	oczekuj_czerwone "sciana typu: konstruktor roszczen staje sie publiczny" \
+		--przyczyna "NIE jest prywatny" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_odswiezanie_sub() {
+	naglowek 'sciana typu: odswiezenie rusza sub INNA droga niz R11-2'
+	# Ta mutacja NIE przywraca `zPodmienionymi`; osiaga ten sam skutek inna
+	# skladnia. Jesli kontrola pyta wylacznie o istnienie metody o tamtej
+	# nazwie, przejdzie tu na zielono — i wtedy wiadomo, ze mierzy NAZWE,
+	# a nie SKUTEK. To jest kontrola samej kontroli.
+	local plik="backend/app/Tozsamosc/TozsamoscSesji.php"
+	zachowaj "$plik"
+
+	perturbuj odswiezanie-podmienia-sub || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "odswiezenie zapisuje sub z roszczen" \
+		grep -q "sub. => .access->napis" "$plik"
+
+	oczekuj_czerwone "sciana typu: odswiezenie rusza sub INNA droga niz R11-2" \
+		--przyczyna "Odświeżenie zmieniło" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/TypTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_kotwica() {
+	naglowek 'kotwica pomiaru: falszywa liczba przy PRAWDZIWYM SHA [R11-3]'
+	# Weryfikator rundy 11 wpisal „999 scenariuszy — zmierzone na 528adc3"
+	# (naprawde 35) i kontrola przeszla, bo kotwica ZWALNIALA z pomiaru
+	# zamiast go umiejscawiac.
+	local plik="PLAN-FAZ.md"
+	zachowaj "$plik"
+
+	perturbuj kotwica-falszywa || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "falszywa zakotwiczona liczba w pliku stanu" \
+		grep -q "999 scenariuszy" "$plik"
+
+	oczekuj_czerwone "kotwica pomiaru: falszywa liczba przy PRAWDZIWYM SHA [R11-3]" \
+		--przyczyna "ZAKOTWICZONA LICZBA SCENARIUSZY JEST NIEPRAWDZIWA" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/JednoZrodloStanuTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
@@ -1777,7 +1894,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda typ_zaloz podmienionymi roszczenia_ctor odswiezanie_sub kotwica zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -1978,6 +2095,29 @@ fi
 
 echo "Środowisko przebiegu potwierdzone: $(basename "$PLIK_ENV") (skrót zgodny z plikiem w kontenerze)." >&2
 
+# ⛔ ODCISK DRZEWA — dowód, że scenariusz posprzątał po sobie.
+#
+# ZNALEZIONE 19.08 przy naprawie R11-1: mapowanie tożsamości przeniosło się
+# z kontrolera do fasady, mutacje poszły za kodem, ale `zachowaj` w dwóch
+# scenariuszach zostało przy STARYM pliku. Skutek: „przywrócenie" przywracało
+# plik, którego nikt nie ruszał, a zmutowany zostawał w drzewie — i przewracał
+# NASTĘPNE scenariusze. Czerwień była prawdziwa, adres całkowicie fałszywy.
+#
+# `git status --porcelain` tu NIE WYSTARCZA: plik już zmieniony względem
+# indeksu ma tę samą linię stanu niezależnie od TREŚCI — a w oknie naprawy
+# całe drzewo jest zmienione. Dlatego liczymy SKRÓTY TREŚCI.
+#
+# Kontrola jest CELOWO po każdym scenariuszu, nie na końcu przebiegu:
+# na końcu wiadomo TYLKO tyle, że ktoś nabrudził — a nie KTO.
+odcisk_drzewa() {
+	{
+		git ls-files -z -- backend skrypty PLAN-FAZ.md | xargs -0 sha256sum
+		git ls-files -o --exclude-standard -- backend skrypty | sort
+	} 2>/dev/null | sha256sum | cut -d" " -f1
+}
+
+ODCISK_BAZOWY="$(odcisk_drzewa)"
+
 for NAZWA in $WYBRANE; do
 	case "$NAZWA" in
 		testy) p_testy ;;
@@ -2018,6 +2158,11 @@ for NAZWA in $WYBRANE; do
 		gardlo_all) p_gardlo_all ;;
 		callback_tablica) p_callback_tablica ;;
 		callback_metoda) p_callback_metoda ;;
+		typ_zaloz) p_typ_zaloz ;;
+		podmienionymi) p_podmienionymi ;;
+		roszczenia_ctor) p_roszczenia_ctor ;;
+		odswiezanie_sub) p_odswiezanie_sub ;;
+		kotwica) p_kotwica ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)
@@ -2030,6 +2175,21 @@ for NAZWA in $WYBRANE; do
 			NIEUDANE=$((NIEUDANE + 1))
 			;;
 	esac
+
+	ODCISK_TERAZ="$(odcisk_drzewa)"
+
+	if [ "$ODCISK_TERAZ" != "$ODCISK_BAZOWY" ]; then
+		printf '    ✗ SCENARIUSZ %s NIE ODDAL DRZEWA W STANIE, W JAKIM JE ZASTAL\n' "$NAZWA"
+		printf '      (mutacja rusza inny plik, niz scenariusz zachowuje — nastepne\n'
+		printf '       scenariusze mierzylyby wtedy CUDZA mutacje)\n'
+		git status --porcelain -- backend skrypty PLAN-FAZ.md | sed "s/^/      /"
+		NIEUDANE=$((NIEUDANE + 1))
+
+		# Sprzatamy ZA nim, zeby nastepne scenariusze mierzyly swoj przedmiot,
+		# a nie skutek cudzego niedbalstwa. Zgloszenie zostaje.
+		przywroc_wszystko
+		ODCISK_BAZOWY="$(odcisk_drzewa)"
+	fi
 done
 
 printf '\n'

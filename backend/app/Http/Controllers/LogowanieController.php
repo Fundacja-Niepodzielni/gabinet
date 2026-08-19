@@ -8,6 +8,7 @@ use App\Tozsamosc\Bramki;
 use App\Tozsamosc\KontaOidc;
 use App\Tozsamosc\OdswiezanieSesji;
 use App\Tozsamosc\RejestrSesji;
+use App\Tozsamosc\RoszczeniaZweryfikowane;
 use App\Tozsamosc\SesjaKonta;
 use App\Tozsamosc\WalidatorTokenu;
 use App\Wsparcie\Typy;
@@ -95,7 +96,7 @@ final class LogowanieController extends Controller
 
         // ID token: dowód TOŻSAMOŚCI. `aud` = client_id, `nonce` z naszej sesji.
         $idToken = Typy::napis($tokeny['body']['id_token'] ?? null);
-        $wynikId = WalidatorTokenu::sprawdz($idToken, [
+        $wynikId = RoszczeniaZweryfikowane::zTokenu($idToken, [
             'issuer' => $this->oidc->issuerPubliczny(),
             'jwks' => $jwks,
             'audience' => $this->oidc->clientId(),
@@ -110,7 +111,7 @@ final class LogowanieController extends Controller
 
         // ACCESS token: dowód UPRAWNIEŃ. Role są WYŁĄCZNIE tutaj (kontrakt §2b).
         $accessToken = Typy::napis($tokeny['body']['access_token'] ?? null);
-        $wynikAccess = WalidatorTokenu::sprawdz($accessToken, [
+        $wynikAccess = RoszczeniaZweryfikowane::zTokenu($accessToken, [
             'issuer' => $this->oidc->issuerPubliczny(),
             'jwks' => $jwks,
             'audience' => $this->oidc->wymaganaAudiencja(),
@@ -122,47 +123,31 @@ final class LogowanieController extends Controller
             return $this->odmowa('access_token', $wynikAccess);
         }
 
-        $claimsId = $wynikId['claims'];
-        $sid = isset($claimsId['sid']) ? Typy::napis($claimsId['sid']) : null;
+        // ⛔ TOŻSAMOŚĆ SKŁADA SIĘ WYŁĄCZNIE ZE ZWERYFIKOWANYCH ROSZCZEŃ.
+        //
+        // Do 19.08 stała tu TABLICA budowana w kontrolerze — i to była
+        // przyczyna R11-1: tablicę wolno wypełnić czymkolwiek, więc
+        // `['sub' => $sub]` z `$sub = $request->query('code')` przechodziło
+        // całą bramkę. Warstwa 3 milczała SŁUSZNIE, bo `code` jest w kontrakcie
+        // OIDC; warstwa 4 nie śledziła zmiennej pośredniej.
+        //
+        // Teraz mapowanie roszczeń na sesję mieszka w `SesjaKonta` — u jedynego
+        // pisarza — a tu zostaje wyłącznie przekazanie dwóch zweryfikowanych
+        // obiektów.
+        // Kontrakt uzasadnia CZYTANIE `code` (do wymiany na tokeny) — nigdy
+        // użycie go jako tożsamości.
+        $roszczeniaId = $wynikId['roszczenia'];
+        $sid = $roszczeniaId->napisAlbo('sid');
 
-        // Wiązanie konta lokalnego po `sub`, NIGDY po e-mailu (CLAUDE.md §2).
         $request->session()->regenerate();
-        SesjaKonta::zaloz($request, [
-            'sub' => Typy::napis($claimsId['sub'] ?? null),
-            'sid' => $sid,
-            'login' => isset($claimsId['preferred_username']) ? Typy::napis($claimsId['preferred_username']) : null,
-            'email' => isset($claimsId['email']) ? Typy::napis($claimsId['email']) : null,
-            'email_potwierdzony' => Typy::prawda($claimsId['email_verified'] ?? null),
-            // Zapisujemy OBIE listy: surową (do logów i diagnozy) i tę, która
-            // realnie autoryzuje. Rozdzielenie jest celowe — kompozyty
-            // rozwijają się w tokenie i marker `wymaga-2fa` przyjeżdża razem
-            // z rolą merytoryczną.
-            'role_surowe' => Bramki::roleZAccessTokenu($wynikAccess['claims']),
-            'role' => Bramki::roleAutoryzujace(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
-            'markery' => Bramki::markery(Bramki::roleZAccessTokenu($wynikAccess['claims'])),
-            // ID TOKEN SZYFROWANY JAWNIE — niezależnie od `session.encrypt`.
-            //
-            // Refinement B7 z huba: poleganie na jednej fladze konfiguracji to
-            // JEDNA FLAGA OD WYCIEKU. `SESSION_ENCRYPT` może ktoś wyłączyć
-            // w środowisku, na stagingu, przy debugowaniu — i wtedy e-mail
-            // pacjenta (claim w ID tokenie) leży w Redisie jawnie, w systemie
-            // przetwarzającym dane o zdrowiu (RODO art. 9).
-            //
-            // Dla Gabinetu ID token jest NIEPRZEZROCZYSTY: służy wyłącznie jako
-            // `id_token_hint` przy wylogowaniu, nigdy do niego nie zaglądamy po
-            // zakończeniu logowania. Nieprzezroczysta wartość, której nie
-            // czytamy, nie ma powodu leżeć w postaci czytelnej.
-            'id_token' => Crypt::encryptString($idToken),
-            // B8: bez refresh tokenu i bez `exp` nie da się przeliczyć ról
-            // @dowod: OdebranieRoliTest — „odbiera dostęp, gdy Keycloak odbierze
-            //         rolę — najpóźniej w oknie access tokenu".
-            // przed końcem sesji — a zamrożone role to wada bezpieczeństwa.
-            // Sesja jest szyfrowana (patrz `config/session.php`).
-            'refresh_token' => isset($tokeny['body']['refresh_token'])
+        SesjaKonta::zaloz(
+            $request,
+            $roszczeniaId,
+            $wynikAccess['roszczenia'],
+            isset($tokeny['body']['refresh_token'])
                 ? Typy::napis($tokeny['body']['refresh_token'])
                 : null,
-            'access_exp' => Typy::liczba($wynikAccess['claims']['exp'] ?? null),
-        ]);
+        );
 
         if ($sid !== null) {
             RejestrSesji::zapamietaj($sid, $request->session()->getId());
@@ -208,7 +193,12 @@ final class LogowanieController extends Controller
      * WYŁĄCZNIE poza produkcją; na produkcji zostaje sam powód ogólny,
      * a komplet idzie do logu.
      *
-     * @param  array{ok: bool, kontrole: array<string, string>, claims: array<string, mixed>, nieudane: list<string>}  $wynik
+     * Żąda WYŁĄCZNIE tego, co loguje — `kontrole` i `nieudane`. Wcześniej
+     * żądała też `claims`, czyli roszczeń, których przy ODMOWIE z definicji
+     * nie ma i których ta metoda nigdy nie czytała. Szerszy wymóg niż użycie
+     * zmusza wołającego do niesienia pola bez powodu.
+     *
+     * @param  array{kontrole: array<string, string>, nieudane: list<string>}  $wynik
      */
     private function odmowa(string $etap, array $wynik): JsonResponse
     {
