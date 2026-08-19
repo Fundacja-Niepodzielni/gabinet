@@ -1,0 +1,25 @@
+# ZAKRES SESJI KOD-F1 — WERSJONOWANY (O-7, ZLECENIE-085 §3).
+#
+# Do 19.08 deklaracje zakresu żyły wyłącznie jako `.zakres-sesji` w `.gitignore`.
+# Skutek zmierzony w oknie scaleniowym: poprawka deklaracji działała na JEDNEJ
+# maszynie i nie podróżowała z repozytorium — czyli ta sama klasa co „mechanizm
+# obecny wyłącznie lokalnie" (S-01). Inna sesja (albo ta sama po odtworzeniu
+# środowiska) zastawała strażnika bez deklaracji.
+#
+# Odtąd deklaracja jest ŚLEDZONA, po jednym pliku na strumień. Lokalny
+# `.zakres-sesji` nadal działa i MA PIERWSZEŃSTWO — jest nadpisaniem na jedną
+# sesję, nie jedynym nośnikiem.
+#
+# Pierwszy wiersz bez `#` to NAZWA REPOZYTORIUM (strażnik porównuje ją
+# z `--git-common-dir`, nie z nazwą katalogu — worktree ma inną nazwę).
+gabinet
+backend/
+skrypty/
+docs/ZLECENIA/
+docs/rundy/
+docs/DECYZJE.md
+docs/GRANICA-R13-1.md
+docs/noc-2026-08-08/
+PLAN-FAZ.md
+.gitleaks.toml
+.gitignore

@@ -37,7 +37,31 @@ if [ -z "$KORZEN" ]; then
 	exit 1
 fi
 
+# --- WYBÓR DEKLARACJI ZAKRESU (O-7, 19.08) ---------------------------------
+#
+# Do 19.08 deklaracja żyła WYŁĄCZNIE jako `.zakres-sesji` w `.gitignore`.
+# Zmierzone w oknie scaleniowym: poprawka deklaracji działała na JEDNEJ
+# maszynie i NIE PODRÓŻOWAŁA z repozytorium — ta sama klasa co „mechanizm
+# obecny wyłącznie lokalnie" (S-01). Każda sesja po odtworzeniu środowiska
+# zastawała strażnika bez deklaracji, a wtedy albo go wyłącza, albo blokuje
+# sobie pracę. Jedno i drugie kończy się strażnikiem, który nie chroni.
+#
+# Odtąd deklaracje są ŚLEDZONE, po jednej na strumień, w `skrypty/zakresy/`.
+# Strumień wskazuje `GABINET_STRUMIEN` (prompt startowy sesji).
+#
+# PIERWSZEŃSTWO MA PLIK LOKALNY: `.zakres-sesji` pozostaje nadpisaniem na jedną
+# sesję (np. gdy ktoś świadomie i tymczasowo rozszerza zakres). Kolejność
+# „lokalny przed wersjonowanym" jest celowa — inaczej wersjonowana deklaracja
+# unieważniałaby jednorazowe rozszerzenie i wypychała ludzi w `GABINET_STRAZNIK=0`.
 ZAKRES="$KORZEN/.zakres-sesji"
+
+if [ ! -f "$ZAKRES" ] && [ -n "${GABINET_STRUMIEN:-}" ]; then
+	ZAKRES_WERSJONOWANY="$KORZEN/skrypty/zakresy/${GABINET_STRUMIEN}.zakres"
+
+	if [ -f "$ZAKRES_WERSJONOWANY" ]; then
+		ZAKRES="$ZAKRES_WERSJONOWANY"
+	fi
+fi
 
 odmowa() {
 	printf '\n' >&2

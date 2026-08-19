@@ -63,7 +63,12 @@ Test deklaruje: *„Produkcja obsługuje każde żądanie w osobnym procesie PHP
 **Dowód 1 — `forgetInstance` NIE sięga do middleware.** Instrumentacja (plik testowy tymczasowy, kod produkcyjny NIETKNIĘTY):
 
 ```
-[R6A] dlugosc sesji w magazynie po destroy: {"3IUriJ2ta8TamJyNlexrSB3JXV7qj09HIFH6M2Qe":0}
+> ⛔ SKROCONE 19.08 (sesja KOD-F1, ZLECENIE-087 §2): identyfikatory sesji
+> testowej mialy KSZTALT TOKENU. Nie sa zywym poswiadczeniem, ale gitleaks
+> ich NIE WIDZI — nie maja ksztaltu przypisania. Wartosc dowodowa raportu
+> nie ucierpiala: dowod polega na ROZNICY dlugosci magazynu, nie na id.
+
+[R6A] dlugosc sesji w magazynie po destroy: {"3IUriJ2t…H6M2Qe":0}
 [R6A] StartSession::manager id=5858 vs app("session") id=3801
 [R6A] status BEZ forgetInstance(StartSession): 200 tresc={"zalogowany":true,"sub":"sub-abc-123",…,"role":["koordynator"],…}
 [R6A] status PO  forgetInstance(StartSession): 401 tresc={"zalogowany":false}
@@ -83,7 +88,7 @@ Czyli mój pierwszy dyskryminator był zgodny z dwoma światami. Zbudowałem prz
 **Dowód 3 — pomiar rozstrzygający, z odczytem bazowym:**
 
 ```
-[R6A-P] id sesji z rejestru: 55wUqZ3PNcXyRByWbhCvY1qyONlSZzHP75tIWcWQ
+[R6A-P] id sesji z rejestru: 55wUqZ3P…tIWcWQ
 [R6A-P] dlugosc w magazynie: 3752
 [R6A-P] BAZA (tozsamosc NIETKNIETA): 200 {"zalogowany":true,"sub":"sub-abc-123",…,"role":["koordynator"],…}
 [R6A-P] po destroy dlugosc: 0

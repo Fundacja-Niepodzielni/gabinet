@@ -1677,3 +1677,56 @@ repozytorium, granica przestaje obowiązywać i wraca jako blokada (`GRANICA-R13
 (`D-2026-08-07-16`) zostaje ZASTĄPIONE dla tej fazy decyzją właściciela z 19.08
 o zamknięciu z granicą. To NIE jest pominięcie reguły — to jej świadome, zapisane
 nadpisanie przez właściciela, z pełnym kosztem opisanym w `GRANICA-R13-1.md`.
+
+---
+
+## D-2026-08-19-05 — KONSOLIDACJA rozstrzygnięć okna scaleniowego F1 (O-5)
+
+**Kto podjął:** rozstrzygnięcia poniżej — architekt/właściciel w cytowanych źródłach;
+**konsolidacja: sesja KOD-F1, 19.08.2026** (`ZLECENIE-084` §2 → `ZLECENIE-085` §5).
+
+Ten wpis ZBIERA rozstrzygnięcia rozproszone po kanale do jednego dziennika, żeby nie
+trzeba było ich szukać po plikach `ODPOWIEDZ-*`. Każda pozycja: wartość + uzasadnienie
++ źródło. Wartości reguł biznesowych są PARAMETRAMI KONFIGURACYJNYMI — spotkanie
+z Fundacją może je zmienić bez zmiany kodu.
+
+### Rozstrzygnięcia pytań otwartych (`ODPOWIEDZ-045` §1)
+
+| # | rozstrzygnięcie | uzasadnienie |
+|---|---|---|
+| **Q-1** | bufor WLICZA się w zakres (09:00–12:59 → 3 sloty) | raster 60 min jako jednostka; „ostatnia wizyta kończy się z buforem w godzinach pracy" jest odczytem bezpieczniejszym dla specjalisty |
+| **Q-3** | powtórzona `02:00` (zmiana czasu) oferowana DWA RAZY; etykieta MUSI je rozróżniać | w bazie to dwa różne UTC — ukrycie jednego to utrata slotu; warunek etykiety jest częścią decyzji |
+| **Q-4** | okno 24 h = 86 400 s ABSOLUTNYCH | reguła nie może zmieniać wartości dwa razy w roku (DST); spójne z Q-19 |
+| **Q-8** | krótka blokada wstępna = 10 min | dolna wartość widełek `D-2026-08-09-08`; parametr konfiguracyjny |
+| **Q-9** | ważność linku = `max(2 dni, otwarcie+10 min)` | otwarcie linku nie SKRACA okna pacjenta; „+10 min po otwarciu" dopełnia, nie zwalnia |
+| **Q-10** | margines najbliższego terminu M = 2 h, parametr | ta sama oś co „najbliższy możliwy termin"; jedna oś = jedna liczba |
+| **Q-12** | limit równoczesnych nieopłaconych blokad = 2, parametr | widełki właściciela 1–2; 2 nie karze pary „wizyta dla mnie i dziecka" |
+| **Q-14** | „wystawiony" (limit podażowy) = OTWARTY, niezależnie od rezerwacji | limit ma ograniczać PODAŻ; odczyt „otwarty i wolny" czyniłby go rosnącym z każdą rezerwacją — obalone celem reguły |
+| **Q-19** | „2 dni" = 48 h ABSOLUTNYCH | spójnie z Q-4 |
+| **Q-16** | ⛔ NIE rozstrzygnięte — WŁAŚCICIEL (spotkanie z Fundacją) | stoi na liście spotkania; `J-02` czeka; NIE zamknięte scaleniem F1 |
+
+### Pozostałe rozstrzygnięcia
+
+- **Q-21/Q-22 → etap B** (`ODPOWIEDZ-045` §1): kontrakt operacji API jest PIERWSZYM
+  zadaniem fazy F2 (prompt KOD-SILNIK). Nie budujemy go w F1.
+- **Q-23** (`ODPOWIEDZ-055` §3): limit puli niskopłatnej liczy WYŁĄCZNIE konsultacje
+  niskopłatne (55 zł). Flaga `fundacja/komercja` to oś ROZLICZENIOWA (które konto
+  Stripe), a licznik puli to oś DOSTĘPOWA — dwie różne osie pomylone w jednym polu.
+  Asystent zdrowienia (0 zł) jest fundacyjny rozliczeniowo, ale NIE zużywa puli:
+  darmowa usługa odbierająca dostęp do dofinansowanej terapii byłaby odwrotnością
+  celu reguły. Parametr konfiguracyjny.
+- **P-08** (`ODPOWIEDZ-059`): rozdzielenie osi `konto` / `pula_niskoplatna` w modelu,
+  z kontrolą „asystent przy pozostałe==0 → przyjęty, pozostałe nadal 0".
+- **R-1 = 10 minut** (`ZLECENIE-049`, decyzja właściciela): trzymanie slotu po otwarciu
+  płatności to 10 min; wycofuje wcześniejsze „~godzinę" z 09.08. Powiązane z Q-8/Q-9.
+
+### Zasady przekrojowe z lekcji F1 (do stosowania w każdej fazie)
+
+- **„Wniosek się broni, choć uzasadnienie zawierało fałsz"** (`ZLECENIE-048` §3): jeśli
+  pomiar obala UZASADNIENIE decyzji, a sama decyzja broni się z innego powodu — decyzja
+  zostaje, a fałszywe uzasadnienie prostuje się JAWNIE przy oryginale. Naprawa właściwej
+  rzeczy z niewłaściwego powodu to nadal naprawa; zatajenie powodu to dług.
+- **„Kontrola warta utrzymania to ta, która łapie AUTORA ZNAJĄCEGO REGUŁĘ"**
+  (`ZLECENIE-054` §5): kontrola, którą omija się przez samą znajomość jej działania,
+  chroni tylko przed przypadkiem. Wartościowa kontrola egzekwuje niezmiennik, nie pamięć
+  — stąd allowlisty przez lekser/runtime, nie denylisty pisowni (R6A-4, R12-1).
