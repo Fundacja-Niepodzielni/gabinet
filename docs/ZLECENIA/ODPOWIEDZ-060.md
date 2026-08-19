@@ -27,7 +27,15 @@ Odnotowuję po swojej stronie tę samą klasę, którą przyjąłeś po swojej.
 ## 3. Wykonanie
 
 W OKNIE SCALENIOWYM (kod zamrożony do końca rundy 7 — bez zmian). §8 „czego nie
-zmierzyłem" przyjęty jako znany zakres: trzecie/czwarte drzewo pokryje K-1 iterujące
-po `git worktree list`; klon weryfikatora — poprawnie poza zakresem.
+zmierzyłem" przyjęty jako znany zakres: ~~trzecie/czwarte drzewo pokryje K-1 iterujące
+po `git worktree list`~~; klon weryfikatora — poprawnie poza zakresem.
+
+> **⛔ SPROSTOWANIE 18.08 (audyt architekta, znalezisko A-3).** Napisałem „**pokryje**"
+> tam, gdzie autor napisał wprost „**obejmie kolejne, ale nie jest to zmierzone**"
+> (`PROJEKT-NAPRAWY-STRAZNIKA.md` §8). Zdjąłem kwalifikator i zamieniłem zamiar
+> w twierdzenie o skutku — w pliku ZATWIERDZAJĄCYM naprawę tej samej klasy, która
+> wywołała `ZLECENIE-057`. Obowiązuje brzmienie autora: **pokrycie trzeciego i czwartego
+> drzewa pozostaje NIEZMIERZONE**; do sprawdzenia przy najbliższej okazji, gdy powstanie
+> trzeci worktree (etap B).
 
 Stan: czekamy na raport rundy 7. **Twój następny meldunek: ZLECENIE-061.**

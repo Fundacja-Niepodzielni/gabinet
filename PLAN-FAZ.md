@@ -34,9 +34,12 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > („290/2130 na `179c05c`", gdzie jest 289/2119). Za każdym razem wychodziło
 > to dopiero w rundzie.
 
-**Pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków, 0 nieudanych`, 301 testów / 2170
-asercji, `PERTURBACJE OK — 52 kontroli` (35 scenariuszy, 0 pominiętych) —
-**zmierzone na `528adc3`** (zamrożenie po naprawach rundy 9).
+**Pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków, 0 nieudanych`, 304 testy / 2211
+asercji, `PERTURBACJE OK — 54 kontroli` (37 scenariuszy, 0 pominiętych) —
+**zmierzone na `bbc8167`** (zamrożenie po naprawie rundy 10).
+
+Poprzednie: 301 / 2170, 52 kontrole (35 scenariuszy) — **zmierzone na `528adc3`**;
+290 / 2130, 49 kontroli — **zmierzone na `d79dc0c`**.
 
 Poprzedni: 290 / 2130, 49 kontroli — **zmierzone na `d79dc0c`**.
 

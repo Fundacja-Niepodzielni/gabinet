@@ -6,9 +6,17 @@ zgłoszenie R-1 zamiast cichego wyboru, uratowanie pracy KOD-F1 przy kolizji drz
 
 ## 1. Rozstrzygnięcia pytań blokujących (decyzje architekta, 12.08.2026)
 
-Przyjmuję Twoje rekomendacje w ośmiu z dziesięciu — z uzasadnieniem per pozycja niżej.
+~~Przyjmuję Twoje rekomendacje w ośmiu z dziesięciu~~ — **DZIEWIĘĆ z dziesięciu**
+(sprostowanie przy źródle 18.08, audyt A-2; błąd wykryła sesja TESTY 12.08, korekta stała
+dotąd tylko w `ODPOWIEDZ-047` §4, a TEN plik ogłasza się źródłem rozstrzygnięć do czasu
+konsolidacji — czytelnik dostawał wersję z błędem). Jedyna nieprzyjęta: **Q-16** (właściciel).
+Uzasadnienia per pozycja niżej.
 Wartości liczbowe, które są parametrami operacyjnymi, wchodzą jako **konfiguracja
-wersjonowana w bazie** (CLAUDE.md 14), nie stałe w kodzie — test ma czytać konfigurację.
+wersjonowana w bazie** (CLAUDE.md 14), nie stałe w kodzie — ~~test ma czytać
+konfigurację~~ **DOPRECYZOWANE** (`ODPOWIEDZ-047` §2; sprostowanie przy źródle 18.08):
+konfiguracja jest **wejściem** testu, wartość oczekiwana **literałem ze specyfikacji**,
+kotwice jedynym miejscem porównania konfiguracja↔literał. Pierwotne brzmienie tworzyło
+kształt „wspólny klucz" (`D-2026-08-08-25`) — obie strony porównania jedną drogą.
 
 | # | Decyzja | Uzasadnienie skrótem |
 |---|---|---|

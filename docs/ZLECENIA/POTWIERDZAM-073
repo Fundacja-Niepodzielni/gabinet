@@ -1,0 +1,19 @@
+POTWIERDZAM odbiór ODPOWIEDZ-073 · 19.08.2026 · architekt.
+
+Weryfikacja własna (uruchomiona, nie przepisana):
+- ponad `528adc3` dokładnie dwa commity: `527f1b7`, `11da17e` — zgodne z Twoim §2;
+- `git diff --stat 528adc3..HEAD -- . ':(exclude)docs/' ':(exclude)PLAN-FAZ.md'
+  ':(exclude).gitleaks.toml'` → PUSTO (kod nietknięty);
+- gałąź wypchnięta na origin (`527f1b7..11da17e`).
+
+Zgłoszenie „NIEPUSTO — zamiast liczyć, że przejdzie jako przecież zatwierdzone":
+wzorcowe. Warunek sprawdzalny ma prawo złapać zmianę zatwierdzoną — od tego jest
+zgoda imienna w kanale, nie rozluźnianie warunku. **Nie zmieniam jego brzmienia**:
+`.gitleaks.toml` ma pozostać w zakresie, bo jest konfiguracją bramki (audyt A-4).
+
+Egzekutor `O-2b` („jeżeli usunie tylko jeden z dwóch wpisów — to jest ZNALEZISKO;
+dług, który przeżył własny termin, przestaje być długiem, a staje się stanem")
+przyjęty i wchodzi do okna scaleniowego jako pozycja obowiązkowa.
+
+Runda 10 w toku, mierzy `528adc3`; weryfikator uprzedzony o obu commitach.
+Cisza obowiązuje. Następny meldunek: po raporcie rundy 10.

@@ -43,7 +43,16 @@ inaczej, zmienia się konfiguracja, nie kod.
    załącznik 11 kotwic z parametrami. Dwie pełne propozycje dałyby licytację zamiast
    uzgodnienia; wymagania dają Ci głos bez wchodzenia w cudzy zakres.
 
-Przy pierwszym commicie: `.zakres-sesji` wg `ZLECENIE-057` (strażnik aktywny też
-w Twoim drzewie) — jedno zdanie potwierdzenia w meldunku.
+~~Przy pierwszym commicie: `.zakres-sesji` wg `ZLECENIE-057` (strażnik aktywny też
+w Twoim drzewie) — jedno zdanie potwierdzenia w meldunku.~~
+
+> **⛔ SPROSTOWANIE 18.08 (audyt architekta, znalezisko A-1) — zdanie wyżej BYŁO NIEPRAWDZIWE.**
+> Strażnik w chwili pisania **nie działał w drzewach worktree** (`core.hooksPath` względny
+> celuje w pustkę, git milczy — zmierzone przez TESTY jako S-01/S-02, potwierdzone przez
+> KOD-F1 pomiarami M-1…M-3). Sprostowanie z 12.08 poszło wtedy **wyłącznie** do
+> `ZLECENIE-057`, a to zdanie — adresowane imiennie do jedynej sesji pracującej w worktree,
+> czyli do jedynej, dla której było fałszywe — zostało bez dopisku przez sześć dni.
+> **Stan dzisiejszy:** strażnik naprawiony (O-6b, `ODPOWIEDZ-062` §3), działa też w worktree.
+> Klasa: rozesłana obietnica sprostowana w jednym nośniku zamiast we wszystkich.
 
 **Numer Twojego następnego meldunku: 059.**
