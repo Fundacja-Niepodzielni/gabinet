@@ -1890,6 +1890,107 @@ p_wymagania_wolajacego() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_r12_sklejenie() {
+	naglowek 'R12-1: sklejenie nazwy deserializatora [wariant §3.1]'
+	# Kontrola ma ZAPALIC: kod produkcyjny dostal narzedzie omijajace
+	# konstruktor. Warianty roznia sie WYLACZNIE pisownia nazwy — stara
+	# denylista widziala tylko trzy z nich, skaner lekserowy widzi wszystkie.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj r12-sklejenie || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "narzedzie omijajace konstruktor w kodzie tozsamosci" \
+		grep -q "if (false)" "$plik"
+
+	oczekuj_czerwone "R12-1: sklejenie nazwy deserializatora [wariant §3.1]" \
+		--przyczyna "narzędzie omijające konstruktory" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_r12_zmienna() {
+	naglowek 'R12-1: nazwa deserializatora w zmiennej [wariant §3.2]'
+	# Kontrola ma ZAPALIC: kod produkcyjny dostal narzedzie omijajace
+	# konstruktor. Warianty roznia sie WYLACZNIE pisownia nazwy — stara
+	# denylista widziala tylko trzy z nich, skaner lekserowy widzi wszystkie.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj r12-zmienna || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "narzedzie omijajace konstruktor w kodzie tozsamosci" \
+		grep -q "if (false)" "$plik"
+
+	oczekuj_czerwone "R12-1: nazwa deserializatora w zmiennej [wariant §3.2]" \
+		--przyczyna "narzędzie omijające konstruktory" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_r12_backslash() {
+	naglowek 'R12-1: new ReflectionClass z backslashem [wariant §3.3]'
+	# Kontrola ma ZAPALIC: kod produkcyjny dostal narzedzie omijajace
+	# konstruktor. Warianty roznia sie WYLACZNIE pisownia nazwy — stara
+	# denylista widziala tylko trzy z nich, skaner lekserowy widzi wszystkie.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj r12-backslash || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "narzedzie omijajace konstruktor w kodzie tozsamosci" \
+		grep -q "if (false)" "$plik"
+
+	oczekuj_czerwone "R12-1: new ReflectionClass z backslashem [wariant §3.3]" \
+		--przyczyna "narzędzie omijające konstruktory" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_r12_refleksja_property() {
+	naglowek 'R12-1: ReflectionProperty spoza starej trojki [wariant §3.4]'
+	# Kontrola ma ZAPALIC: kod produkcyjny dostal narzedzie omijajace
+	# konstruktor. Warianty roznia sie WYLACZNIE pisownia nazwy — stara
+	# denylista widziala tylko trzy z nich, skaner lekserowy widzi wszystkie.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj r12-refleksja-property || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "narzedzie omijajace konstruktor w kodzie tozsamosci" \
+		grep -q "if (false)" "$plik"
+
+	oczekuj_czerwone "R12-1: ReflectionProperty spoza starej trojki [wariant §3.4]" \
+		--przyczyna "narzędzie omijające konstruktory" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_r12_wektor_calosc() {
+	naglowek 'R12-1: WEKTOR RUNDY 12 W CALOSCI [wariant §3.5]'
+	# Kontrola ma ZAPALIC: kod produkcyjny dostal narzedzie omijajace
+	# konstruktor. Warianty roznia sie WYLACZNIE pisownia nazwy — stara
+	# denylista widziala tylko trzy z nich, skaner lekserowy widzi wszystkie.
+	local plik="backend/app/Tozsamosc/OdswiezanieSesji.php"
+	zachowaj "$plik"
+
+	perturbuj r12-wektor-calosc || { echo "    nie udalo sie podlozyc perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "narzedzie omijajace konstruktor w kodzie tozsamosci" \
+		grep -q "if (false)" "$plik"
+
+	oczekuj_czerwone "R12-1: WEKTOR RUNDY 12 W CALOSCI [wariant §3.5]" \
+		--przyczyna "narzędzie omijające konstruktory" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+
 p_roszczenia_final() {
 	naglowek 'podstawa zaufania: klasa roszczen przestaje byc final'
 	# ZLECENIE-079 §3: „final bez pomiaru jest deklaracja". Klasa potomna nie
@@ -1935,7 +2036,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda typ_zaloz podmienionymi roszczenia_ctor odswiezanie_sub kotwica wymagania_wolajacego roszczenia_final zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all callback_tablica callback_metoda typ_zaloz podmienionymi roszczenia_ctor odswiezanie_sub kotwica wymagania_wolajacego roszczenia_final r12_sklejenie r12_zmienna r12_backslash r12_refleksja_property r12_wektor_calosc zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -2206,6 +2307,11 @@ for NAZWA in $WYBRANE; do
 		kotwica) p_kotwica ;;
 		wymagania_wolajacego) p_wymagania_wolajacego ;;
 		roszczenia_final) p_roszczenia_final ;;
+		r12_sklejenie) p_r12_sklejenie ;;
+		r12_zmienna) p_r12_zmienna ;;
+		r12_backslash) p_r12_backslash ;;
+		r12_refleksja_property) p_r12_refleksja_property ;;
+		r12_wektor_calosc) p_r12_wektor_calosc ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)

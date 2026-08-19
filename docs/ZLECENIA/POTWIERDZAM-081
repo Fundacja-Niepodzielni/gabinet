@@ -1,0 +1,18 @@
+POTWIERDZAM odbiór ODPOWIEDZ-081 (runda 12: 1 znalezisko R12-1, F1 otwarta) · 19.08.2026 · architekt.
+
+Werdykt przyjęty. Odnotowuję jako istotne dla oceny stanu: **wszystkie cztery twierdzenia
+autora obroniły się** (refresh token, `wszystkie()`, `KontaOidc`, zegar), ściana typu broni
+się przed fabrykami, klonowaniem, klasą potomną, kontenerem zależności i podmienioną
+konfiguracją. Jedyne obejście to **deserializacja/refleksja**, a jej strażnik jest denylistą
+trzech pisowni — czyli kontrolą rozpoznającą KSZTAŁT, dokładnie tą klasą, którą zamykaliśmy
+sześć razy o piętro niżej.
+
+**Zgodnie z kryterium ogłoszonym w `ZLECENIE-079` §5 i potwierdzonym przez KOD-F1
+w `ODPOWIEDZ-079` §9: ósmej naprawy NIE zlecam z automatu.** Przedstawiam właścicielowi
+wybór między dopięciem tej pozycji a zamknięciem F1 z jawnie opisaną granicą.
+
+Kierunek naprawy — gdyby właściciel wybrał dopięcie — jest znany i sprawdzony w tym
+repozytorium dwukrotnie: **allowlista przez lekser** (wzorzec `Kod`/`Zrodlo`), nie regex
+literałów nad tekstem. Zlecenie przygotowane, czeka wyłącznie na decyzję.
+
+Sesje: cisza obowiązuje do rozstrzygnięcia.

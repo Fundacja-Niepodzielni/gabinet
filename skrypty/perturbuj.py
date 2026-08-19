@@ -778,6 +778,51 @@ def odswiezanie_podmienia_sub() -> None:
     )
 
 
+def r12_sklejenie() -> None:
+    """R12-1 wariant: sklejenie nazwy funkcji deserializujacej."""
+    podmien_jedyne(
+        ODSWIEZANIE,
+        '    public function stanKonta(Request $request): ?array\n    {\n',
+        "    public function stanKonta(Request $request): ?array\n    {\n        if (false) {\n            $odtworz = 'unse'.'rialize';\n            $x = $odtworz('a:0:{}');\n        }\n",
+    )
+
+
+def r12_zmienna() -> None:
+    """R12-1 wariant: nazwa deserializatora w zmiennej."""
+    podmien_jedyne(
+        ODSWIEZANIE,
+        '    public function stanKonta(Request $request): ?array\n    {\n',
+        "    public function stanKonta(Request $request): ?array\n    {\n        if (false) {\n            $f = 'unserialize';\n            $x = $f('a:0:{}');\n        }\n",
+    )
+
+
+def r12_backslash() -> None:
+    """R12-1 wariant: new ReflectionClass z wiodacym backslashem."""
+    podmien_jedyne(
+        ODSWIEZANIE,
+        '    public function stanKonta(Request $request): ?array\n    {\n',
+        '    public function stanKonta(Request $request): ?array\n    {\n        if (false) {\n            $r = new \\ReflectionClass(self::class);\n        }\n',
+    )
+
+
+def r12_refleksja_property() -> None:
+    """R12-1 wariant: ReflectionProperty spoza starej trojki."""
+    podmien_jedyne(
+        ODSWIEZANIE,
+        '    public function stanKonta(Request $request): ?array\n    {\n',
+        "    public function stanKonta(Request $request): ?array\n    {\n        if (false) {\n            $p = new \\ReflectionProperty(self::class, 'oidc');\n            $p->setAccessible(true);\n        }\n",
+    )
+
+
+def r12_wektor_calosc() -> None:
+    """R12-1 wariant: wektor rundy 12 w calosci: deserializacja tozsamosci + zaktualizuj."""
+    podmien_jedyne(
+        ODSWIEZANIE,
+        '    public function stanKonta(Request $request): ?array\n    {\n',
+        '    public function stanKonta(Request $request): ?array\n    {\n        if (false) {\n            $nazwaKlasy = \'App\\\\Tozsamosc\\\\TozsamoscSesji\';\n            $plod = \'O:\'.strlen($nazwaKlasy).\':"\'.$nazwaKlasy.\'":1:{s:4:"dane";a:0:{}}\';\n            $odtworz = \'unse\'.\'rialize\';\n            $fake = $odtworz($plod);\n            if ($fake instanceof TozsamoscSesji) {\n                SesjaKonta::zaktualizuj($request, $fake);\n            }\n        }\n',
+    )
+
+
 def wymagania_od_wolajacego() -> None:
     """Otwiera wejscie skladajace wymagania walidacji — droga „szostego pietra".
 
@@ -886,6 +931,11 @@ POLECENIA = {
     "kotwica-falszywa": kotwica_falszywa,
     "wymagania-od-wolajacego": wymagania_od_wolajacego,
     "roszczenia-bez-final": roszczenia_bez_final,
+    "r12-sklejenie": r12_sklejenie,
+    "r12-zmienna": r12_zmienna,
+    "r12-backslash": r12_backslash,
+    "r12-refleksja-property": r12_refleksja_property,
+    "r12-wektor-calosc": r12_wektor_calosc,
     "gardlo-para": gardlo_para,
     "gardlo-naglowek": gardlo_naglowek,
     "gardlo-all": gardlo_all,

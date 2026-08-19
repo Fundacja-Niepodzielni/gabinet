@@ -1609,3 +1609,32 @@ podstawę zaufania z konfiguracji. Materiał klucza nigdy nie jest parametrem wy
   to nazwana granica, nie pokrycie.
 - Pamięć podręczna JWKS ma osobny warunek utrzymujący (`WzmacniaczZadanTest`:
   „ZATRUTY cache JWKS nie odbudowuje się sam w oknie bramki").
+
+---
+
+## D-2026-08-19-03 — strażnik R6A-3 pyta o NAZWĘ narzędzia (lekser), nie o jej pisownię (tekst)
+
+**Kto podjął:** architekt (`ZLECENIE-082` §2), decyzja właściciela wariant A. **Wykonanie: sesja KOD-F1, 19.08.2026.**
+
+**Decyzja.** Kontrola „warunek utrzymujący R6A-3" (`WaskieGardloTozsamosciTest`) — pilnująca, że kod
+produkcyjny nie odtwarza tożsamości z pominięciem konstruktora — przestaje być regeksem trzech pisowni
+nad tekstem, a staje się skanerem LEKSEROWYM (`Kod::wywolaniaOmijajaceKonstruktor`) pytającym o NAZWĘ
+narzędzia niezależnie od zapisu. Zbiór klas refleksji pochodzi z RUNTIME (`ReflectionExtension`), nie
+z pamięci autora — jak zbiór funkcji w R6A-4.
+
+**Dlaczego.** R12-1 (runda 12): stara denylista widziała `unserialize(`, `newInstanceWithoutConstructor(`,
+`new ReflectionClass(` jako TEKST. Ominęły ją: sklejenie nazwy (`'unse'.'rialize'`), nazwa w zmiennej,
+backslash (`new \ReflectionClass` — w PHP 8 jeden token z backslashem w wartości), klasa refleksji spoza
+trójki (`ReflectionProperty`). Deserializacja odtwarzała `TozsamoscSesji` z pominięciem konstruktora, a cała
+bramka milczała. To ta sama klasa co R6A-4: **denylista nad tekstem przegrywa z wariantem spoza listy.**
+
+**Zmierzone granice (nazwane, nie domysły):**
+
+- **Nazwa funkcji Z ŻĄDANIA** (`$f = $request->query('fn'); $f(...)`) — poza zasięgiem skanera (przepływ
+  danych, nie odczyt tokenów). Odczyt pola spoza kontraktu w callbacku zapala warstwę 3 wąskiego gardła.
+- **`__wakeup`/`__unserialize`** — wołane PRZEZ `unserialize`, które skaner łapie; pokryte pośrednio.
+- **`var_export`+`eval`** — pokryte przez `eval` (własny token `T_EVAL`).
+- **igbinary/msgpack/wddx** — niezainstalowane w tym PHP, ale na liście zawczasu.
+
+**Allowlista wyjątków jest PUSTA i zmierzona:** kod produkcyjny nie używa dziś żadnego z tych narzędzi.
+Legalne użycie (gdyby powstało) wchodzi na jawną listę z powodem — koszt wyjątku równy kosztowi zgodności.

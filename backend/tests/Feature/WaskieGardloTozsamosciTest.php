@@ -295,13 +295,43 @@ it('WARUNEK UTRZYMUJĄCY: kod produkcyjny nie używa Reflection ani unserialize'
     // (`Kod::katalogiWykonywalne()`), wiec dopisanie katalogu zmienia
     // zasieg wszystkich kontroli naraz, a pominiecie jednej nie jest
     // juz mozliwe przez zapomnienie.
+    // ⛔ SKANER LEKSEROWY, NIE REGEX NAD TEKSTEM — naprawa R12-1 (runda 12).
+    //
+    // Do 19.08 stał tu regex trzech pisowni. Weryfikator ominął go
+    // deserializacją o nazwie SKLEJONEJ (`$f='unse'.'rialize'; $f($ładunek)`)
+    // i odtworzył tożsamość z pominięciem konstruktora — cała bramka milczała.
+    // To ta sama klasa co R6A-4: denylista nad tekstem przegrywa z wariantem
+    // spoza listy (backslash, sklejenie, zmienna, klasa refleksji spoza trójki).
+    //
+    // Teraz pytamy o NAZWĘ narzędzia (przez lekser), nie o jej pisownię, a zbiór
+    // klas refleksji bierzemy z RUNTIME — `Kod::wywolaniaOmijajaceKonstruktor()`.
+    //
+    // ALLOWLISTA WYJĄTKÓW jest PUSTA i to jest zmierzone: kod produkcyjny nie
+    // używa dziś żadnego z tych narzędzi (json_decode nie tworzy obiektów PHP,
+    // var_export to tekst). Gdyby któreś było potrzebne, wpis idzie TUTAJ:
+    // klucz `'ścieżka:nazwa'`, wartość to POWÓD — koszt wyjątku równy kosztowi
+    // zgodności, jak przy allowliście funkcji kryptograficznych.
+    //
+    // Typ zadeklarowany jawnie (mapa wyjątków), nie `array{}`: inaczej statyka
+    // słusznie mówi „isset na pustej tablicy zawsze fałszem" i blokuje mechanizm,
+    // który ma ożyć dopiero, gdy pierwszy wyjątek wejdzie.
+    /** @var array<string, string> $dozwolone */
+    $dozwolone = [];
+
     $ryzykowne = [];
 
     foreach (Kod::katalogiWykonywalne() as $katalogWykonywalny) {
-        $ryzykowne = array_merge($ryzykowne, plikiZeWzorcem(
-            $katalogWykonywalny,
-            '/\bunserialize\s*\(|\bnewInstanceWithoutConstructor\s*\(|new\s+ReflectionClass\s*\(/'
-        ));
+        foreach (plikiPhp($katalogWykonywalny) as $wzgledny) {
+            $tokeny = token_get_all((string) file_get_contents(base_path($wzgledny)));
+
+            foreach (Kod::wywolaniaOmijajaceKonstruktor($tokeny) as $trafienie) {
+                $wpis = $wzgledny.':'.$trafienie['nazwa'];
+
+                if (! isset($dozwolone[$wpis])) {
+                    $ryzykowne[] = sprintf('%s (wiersz %d: %s)', $wzgledny, $trafienie['linia'], $trafienie['nazwa']);
+                }
+            }
+        }
     }
 
     $ryzykowne = array_values(array_unique($ryzykowne));
@@ -310,10 +340,106 @@ it('WARUNEK UTRZYMUJĄCY: kod produkcyjny nie używa Reflection ani unserialize'
     expect($ryzykowne)->toBe(
         [],
         sprintf(
-            'W kodzie produkcyjnym pojawiło się narzędzie omijające konstruktory (%s). '.
+            'W kodzie produkcyjnym pojawiło się narzędzie omijające konstruktory:%s  %s%s'.
             'Wąskie gardło tożsamości stoi na tym, że ich TAM NIE MA — to warunek '.
-            'utrzymujący R6A-3, nie zalecenie stylu.',
-            implode(', ', $ryzykowne)
+            'utrzymujący R6A-3, nie zalecenie stylu. Jeśli użycie jest legalne, dopisz '.
+            'je do `$dozwolone` z powodem.',
+            PHP_EOL,
+            implode(PHP_EOL.'  ', $ryzykowne),
+            PHP_EOL
         )
     );
+});
+
+it('KIERUNEK ODWROTNY: skaner widzi KAŻDĄ pisownię narzędzia omijającego konstruktor — na PLIKU pod rękę', function (): void {
+    // ⛔ Sedno naprawy R12-1. Materiał musi być PLIKIEM parsowanym lekserem,
+    // nie napisem w tym teście — forma wadliwa jako literał byłaby dla skanera
+    // (słusznie) zwykłym tekstem. Każda para: wariant → nazwa, którą skaner
+    // MA z niego wydobyć niezależnie od zapisu.
+    $przypadki = [
+        // §3 zlecenia — cztery warianty, które omijały starą denylistę:
+        'sklejenie_funkcji' => ['<?php $f = \'unse\'.\'rialize\'; $f($x);', 'unserialize'],
+        'zmienna_z_literalu' => ['<?php $f = \'unserialize\'; $f($x);', 'unserialize'],
+        'backslash_klasy' => ['<?php $r = new \ReflectionClass($x);', 'ReflectionClass'],
+        'metoda_sklejona' => ['<?php $m = \'newInstance\'.\'WithoutConstructor\'; $r->$m();', 'newInstanceWithoutConstructor'],
+        // klasa refleksji spoza starej trójki — łapana, bo zbiór z runtime:
+        'reflection_property' => ['<?php $p = new ReflectionProperty($o, \'dane\'); $p->setValue($o, $z);', 'ReflectionProperty'],
+        // kanoniczne pisownie — muszą dalej być łapane:
+        'unserialize_wprost' => ['<?php unserialize($plod);', 'unserialize'],
+        'reflection_wprost' => ['<?php new ReflectionClass($x);', 'ReflectionClass'],
+        'eval_wprost' => ['<?php eval($kod);', 'eval'],
+    ];
+
+    foreach ($przypadki as $etykieta => [$kod, $oczekiwanaNazwa]) {
+        $trafienia = Kod::wywolaniaOmijajaceKonstruktor(token_get_all($kod));
+        $nazwy = array_column($trafienia, 'nazwa');
+
+        // Jawny predykat, nie `toContain($igła, $komunikat)` — ten matcher jest
+        // WARIADYCZNY i drugi argument potraktowałby jak kolejną igłę, połykając
+        // komunikat (klasa z rundy 7). Złapał mnie tu własny strażnik.
+        expect(in_array($oczekiwanaNazwa, $nazwy, true))->toBeTrue(
+            "Skaner NIE widzi wariantu `$etykieta` (oczekiwano nazwy `$oczekiwanaNazwa`). ".
+            'To dokładnie ta pisownia, którą omijano starą denylistę — jeśli skaner jej nie '.
+            'wydobywa, R12-1 nie jest naprawione.');
+    }
+
+    // KONTROLA PRZYRZĄDU (POZYTYWNA): kod BEZ tych narzędzi NIE zapala.
+    // Bez tego skaner „widzący wszystko" spełniałby powyższe, będąc bezużyteczny.
+    // `$next($request)` to legalne dynamiczne wywołanie middleware — NIE może zapalać.
+    $niewinny = <<<'PHP'
+    <?php
+    $dane = json_decode($wejscie, true);
+    $wynik = var_export($dane, true);
+    return $next($request);
+    $tekst = 'komunikat: '.$powod.' — koniec';
+    PHP;
+
+    $trafienia = Kod::wywolaniaOmijajaceKonstruktor(token_get_all($niewinny));
+
+    expect($trafienia)->toBe([],
+        'Skaner oskarża NIEWINNY kod (json_decode/var_export/$next/sklejenie komunikatu). '.
+        'Zamieniłby jedną nadgorliwą kontrolę na drugą — a `$next($request)` w middleware '.
+        'jest legalny. Znalezione: '.json_encode(array_column($trafienia, 'nazwa')));
+});
+
+it('KIERUNEK ODWROTNY: WEKTOR RUNDY 12 W CAŁOŚCI zapala kontrolę — na PLIKU zbudowanym pod rękę', function (): void {
+    // Nie fragment, lecz cały mechanizm R12-1: plik produkcyjny (na allowliście
+    // zapisu tożsamości), który deserializacją odtwarza `TozsamoscSesji`
+    // i woła `zaktualizuj`. Zapisujemy go jako PRAWDZIWY plik w tymczasowym
+    // „katalogu produkcyjnym" i skanujemy tak, jak kontrola skanuje `app/`.
+    $mechanizm = <<<'PHP'
+    <?php
+    namespace App\Http\Controllers;
+
+    class Wstrzyk
+    {
+        public function powrot($request): void
+        {
+            $wstrzyk = $request->query('code');
+            $dane = ['sub' => $wstrzyk, 'role' => ['koordynator', 'admin-fundacja']];
+            $nazwaKlasy = 'App\Tozsamosc\TozsamoscSesji';
+            $plod = 'O:' . strlen($nazwaKlasy) . ':"' . $nazwaKlasy . '":1:{s:4:"dane";' . serialize($dane) . '}';
+            $odtworz = 'unse' . 'rialize';
+            $fake = $odtworz($plod);
+            \App\Tozsamosc\SesjaKonta::zaktualizuj($request, $fake);
+        }
+    }
+    PHP;
+
+    $katalog = sys_get_temp_dir().'/gabinet-r12-'.getmypid();
+    @mkdir($katalog, 0777, true);
+    $sciezka = $katalog.'/Wstrzyk.php';
+    file_put_contents($sciezka, $mechanizm);
+
+    try {
+        $trafienia = Kod::wywolaniaOmijajaceKonstruktor(token_get_all((string) file_get_contents($sciezka)));
+    } finally {
+        @unlink($sciezka);
+        @rmdir($katalog);
+    }
+
+    expect(in_array('unserialize', array_column($trafienia, 'nazwa'), true))->toBeTrue(
+        'Skaner NIE złapał wektora rundy 12 w całości. To jest DOKŁADNIE mechanizm, który '.
+        'przeszedł całą bramkę w rundzie 12 — jeśli nowa kontrola go nie zapala, naprawa '.
+        'jest pozorna.');
 });

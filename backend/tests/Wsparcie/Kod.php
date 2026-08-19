@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Wsparcie;
 
 use Illuminate\Support\Facades\File;
+use ReflectionExtension;
 
 /**
  * Czytanie STRUKTURY kodu — funkcje, wywołania, zapisy do sesji.
@@ -212,5 +213,223 @@ final class Kod
         }
 
         return $nazwa;
+    }
+
+    /**
+     * Nazwy narzędzi, które WYTWARZAJĄ obiekt bez konstruktora albo zmieniają
+     * jego stan z pominięciem metod publicznych — zbiór odporny na pisownię.
+     *
+     * ================== DLACZEGO NIE DENYLISTA PISOWNI ==================
+     *
+     * R12-1 (runda 12): stara kontrola była DENYLISTĄ trzech ciągów znaków nad
+     * TEKSTEM (`unserialize(`, `newInstanceWithoutConstructor(`,
+     * `new ReflectionClass(`). Ominęły ją: backslash w nazwie klasy, nazwa
+     * SKLEJONA z literałów (`'unse'.'rialize'`), nazwa w zmiennej i klasa
+     * refleksji spoza trójki (`ReflectionProperty`). Denylista nad tekstem
+     * przegrywa z wariantem spoza listy — ta sama klasa co R6A-4.
+     *
+     * Dwie rzeczy naraz naprawiają tę wadę:
+     *
+     *  1. LEKSER zamiast tekstu — pytamy o NAZWĘ (token), nie o jej pisownię.
+     *     `new \ReflectionClass` i `new ReflectionClass` to dla leksera ta sama
+     *     nazwa `ReflectionClass` (backslash jest osobnym tokenem). Nazwa
+     *     sklejona z literałów jest odtwarzana przez połączenie sąsiadów.
+     *  2. Zbiór klas refleksji pochodzi z RUNTIME (`ReflectionExtension`), nie
+     *     z pamięci autora — jak zbiór funkcji w R6A-4. `ReflectionEnum`,
+     *     `ReflectionFiber` i każda przyszła klasa tego rozszerzenia są objęte
+     *     bez dopisywania ich ręcznie.
+     *
+     * Deserializatory i metody omijające konstruktor są listą JAWNĄ, bo runtime
+     * nie odpowiada na pytanie „które funkcje deserializują". Każda pozycja ma
+     * powód; lista jest krótka i zamknięta co do znaczenia, nie co do pisowni.
+     *
+     * @return array<string, true>
+     */
+    public static function narzedziaOmijajaceKonstruktor(): array
+    {
+        $nazwy = [];
+
+        // Klasy refleksji — z RUNTIME. `new <dowolna z nich>` daje dostęp do
+        // wnętrza obiektu z pominięciem jego API (konstruktora, prywatności).
+        foreach ((new ReflectionExtension('Reflection'))->getClassNames() as $klasa) {
+            $nazwy[$klasa] = true;
+        }
+
+        // Deserializatory — każdy odtwarza obiekt, wołając `__wakeup`/
+        // `__unserialize` albo NIC, z pominięciem konstruktora. `unserialize`
+        // to wektor R12-1; pozostałe to jego odpowiedniki z rozszerzeń, których
+        // obecność sprawdzamy, bo bywają instalowane pod wydajność.
+        foreach (['unserialize', 'igbinary_unserialize', 'msgpack_unpack', 'wddx_deserialize'] as $funkcja) {
+            $nazwy[$funkcja] = true;
+        }
+
+        // Metody refleksji, które SAME wytwarzają/mutują z pominięciem API —
+        // łapane osobno, bo obiekt refleksji może przyjechać parametrem, bez
+        // widocznego tu `new`.
+        foreach ([
+            'newInstanceWithoutConstructor',
+            'newInstanceArgs',
+            'newInstance',
+            'setValue',
+            'setAccessible',
+        ] as $metoda) {
+            $nazwy[$metoda] = true;
+        }
+
+        return $nazwy;
+    }
+
+    /**
+     * Miejsca w pliku, w których pada nazwa narzędzia omijającego konstruktor —
+     * NIEZALEŻNIE od tego, jak ją zapisano.
+     *
+     * Wykrywa trzy postacie tej samej nazwy:
+     *   · goły identyfikator (`unserialize(`, `new ReflectionClass`, także
+     *     `new \ReflectionClass` — backslash jest osobnym tokenem, więc nie
+     *     zmienia nazwy);
+     *   · literał napisowy równy nazwie (`$f = 'unserialize'; $f(...)`);
+     *   · literały SKLEJONE przez `.` dające nazwę (`'unse'.'rialize'`).
+     *
+     * `eval` łapiemy osobno (własny token `T_EVAL`), bo `var_export`+`eval`
+     * odtwarza obiekt tak samo jak deserializacja.
+     *
+     * NAZWANA GRANICA: nazwa zbudowana ze ZMIENNEJ o wartości z żądania
+     * (`$f = $request->query('fn'); $f(...)`) NIE jest tu widoczna — to wymaga
+     * analizy przepływu, nie odczytu tokenów. Pokrycie tej granicy: patrz
+     * „krok dalej" w meldunku. Warianty z §3 zlecenia (sklejenie, zmienna
+     * z literału, backslash, dynamiczna metoda) są objęte.
+     *
+     * @param  list<array{0: int, 1: string, 2: int}|string>  $tokeny
+     * @return list<array{nazwa: string, linia: int}>
+     */
+    public static function wywolaniaOmijajaceKonstruktor(array $tokeny): array
+    {
+        $niebezpieczne = self::narzedziaOmijajaceKonstruktor();
+        $trafienia = [];
+        $ile = count($tokeny);
+
+        for ($i = 0; $i < $ile; $i++) {
+            $t = $tokeny[$i];
+
+            if (! is_array($t)) {
+                continue;
+            }
+
+            // `eval(...)` — konstrukt językowy, własny token.
+            if ($t[0] === T_EVAL) {
+                $trafienia[] = ['nazwa' => 'eval', 'linia' => $t[2]];
+
+                continue;
+            }
+
+            // Goły identyfikator albo nazwa kwalifikowana. W PHP 8 `\ReflectionClass`
+            // to POJEDYNCZY token `T_NAME_FULLY_QUALIFIED` o wartości z backslashem,
+            // a `App\Foo\X` — `T_NAME_QUALIFIED`; nie osobny separator + `T_STRING`.
+            // Dlatego porównujemy OSTATNI SEGMENT nazwy (po ostatnim `\`), a nie
+            // całą wartość — inaczej backslash omija skaner (dziura R12-1, którą
+            // złapał kierunek odwrotny na `new \ReflectionClass`).
+            if (in_array($t[0], [T_STRING, T_NAME_FULLY_QUALIFIED, T_NAME_QUALIFIED, T_NAME_RELATIVE], true)) {
+                $segment = self::ostatniSegment($t[1]);
+
+                if (isset($niebezpieczne[$segment])) {
+                    $trafienia[] = ['nazwa' => $segment, 'linia' => $t[2]];
+
+                    continue;
+                }
+            }
+
+            // Literał napisowy — pojedynczy albo SKLEJONY z sąsiadami przez `.`.
+            // Odtwarzamy pełną nazwę, żeby `'unse'.'rialize'` dało `unserialize`.
+            if ($t[0] === T_CONSTANT_ENCAPSED_STRING) {
+                // Nie zaczynaj sklejania w środku łańcucha — inaczej policzymy
+                // ten sam łańcuch wielokrotnie.
+                $poprzedni = self::poprzedniZnaczacy($tokeny, $i);
+
+                if ($poprzedni === '.') {
+                    continue;
+                }
+
+                $sklejona = self::ostatniSegment(self::sklejLiteraly($tokeny, $i));
+
+                if (isset($niebezpieczne[$sklejona])) {
+                    $trafienia[] = ['nazwa' => $sklejona, 'linia' => $t[2]];
+                }
+            }
+        }
+
+        return $trafienia;
+    }
+
+    /**
+     * Ostatni segment nazwy z przestrzeni nazw — `\App\ReflectionClass` → `ReflectionClass`.
+     *
+     * Sklejona nazwa z literałów też może nieść backslash (`'App\\Tozsamosc\\X'`),
+     * więc ta sama normalizacja działa dla obu źródeł nazwy.
+     */
+    private static function ostatniSegment(string $nazwa): string
+    {
+        $pozycja = strrpos($nazwa, '\\');
+
+        return $pozycja === false ? $nazwa : substr($nazwa, $pozycja + 1);
+    }
+
+    /**
+     * Wartość łańcucha literałów napisowych łączonych `.`, zaczynając od `$i`.
+     *
+     * @param  list<array{0: int, 1: string, 2: int}|string>  $tokeny
+     */
+    private static function sklejLiteraly(array $tokeny, int $i): string
+    {
+        $ile = count($tokeny);
+        $wynik = '';
+        $oczekujNapisu = true;
+
+        for ($j = $i; $j < $ile; $j++) {
+            $x = $tokeny[$j];
+
+            if (is_array($x) && $x[0] === T_WHITESPACE) {
+                continue;
+            }
+
+            if ($oczekujNapisu) {
+                if (! is_array($x) || $x[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                    break;
+                }
+
+                $wynik .= trim($x[1], '\'"');
+                $oczekujNapisu = false;
+
+                continue;
+            }
+
+            if ($x !== '.') {
+                break;
+            }
+
+            $oczekujNapisu = true;
+        }
+
+        return $wynik;
+    }
+
+    /**
+     * Poprzedni token znaczący (pomija białe znaki i komentarze).
+     *
+     * @param  list<array{0: int, 1: string, 2: int}|string>  $tokeny
+     * @return array{0: int, 1: string, 2: int}|string|null
+     */
+    private static function poprzedniZnaczacy(array $tokeny, int $i): array|string|null
+    {
+        for ($j = $i - 1; $j >= 0; $j--) {
+            $x = $tokeny[$j];
+
+            if (is_array($x) && in_array($x[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
+
+            return $x;
+        }
+
+        return null;
     }
 }
