@@ -16,7 +16,7 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Testy: 301 zielonych, 0 czerwonych, 2 POMINIĘTE, 2170 asercji.**
   Podłogi bramki: **301 / 2170** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
   i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
-- **Perturbacje: `PERTURBACJE OK`, kod wyjścia 0.**
+- **Perturbacje: `PERTURBACJE OK — 52 kontroli`, kod wyjścia 0.**
   PEŁNY zestaw 35 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
   ⚠ Liczba SCENARIUSZY opisuje `skrypty/perturbacje.sh` (stan bieżący, pilnuje
   `JednoZrodloStanuTest`); liczba KONTROLI to wynik przebiegu i wymaga kotwicy.
@@ -34,11 +34,11 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 > („290/2130 na `179c05c`", gdzie jest 289/2119). Za każdym razem wychodziło
 > to dopiero w rundzie.
 
-**Ostatni pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków`, 290 testów / 2130 asercji,
-`PERTURBACJE OK — 49 kontroli` — **zmierzone na `d79dc0c`** (zamrożenie rundy 9).
-Liczby wyżej pochodzą z przebiegu po naprawach rundy 9; ich kotwica wchodzi
-commitem dokumentacyjnym zaraz po zamrożeniu — tak jak wymaga tego konwencja,
-bo SHA nie istnieje, dopóki commit nie powstanie.
+**Pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków, 0 nieudanych`, 301 testów / 2170
+asercji, `PERTURBACJE OK — 52 kontroli` (35 scenariuszy, 0 pominiętych) —
+**zmierzone na `528adc3`** (zamrożenie po naprawach rundy 9).
+
+Poprzedni: 290 / 2130, 49 kontroli — **zmierzone na `d79dc0c`**.
 
 ### Co zamknęła sesja KOD-F1 dnia 12.08
 
