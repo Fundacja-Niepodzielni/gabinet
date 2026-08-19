@@ -88,4 +88,4 @@ MINIMUM_TESTOW=326
 # (pominięte wliczały się do podłogi, aż weryfikator pokazał zieloną bramkę
 # przy 151 pominiętych i ZERZE asercji). Asercji nie da się nadmuchać, nie
 # wykonując ich.
-MINIMUM_ASERCJI=2282
+MINIMUM_ASERCJI=2283
