@@ -73,7 +73,7 @@ function maKsztaltSekretu(string $wartosc): bool
 /**
  * Wartości o kształcie sekretu we wszystkich plikach `.md` katalogu `docs/`.
  *
- * @return list<string>  pozycje w postaci `plik:wartość`
+ * @return list<string> pozycje w postaci `plik:wartość`
  */
 function wartosciOKsztalcieSekretu(): array
 {
