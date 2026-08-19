@@ -119,6 +119,12 @@ it('PRÓG POCHODZI Z KONTRAKTU, nie z wartości domyślnej aplikacji', function 
     // Zastrzeżenie ich, przepisane bez łagodzenia: instancji PRODUKCYJNEJ nie ma
     // — to „to samo, co w pliku, z którego produkcja powstanie".
     expect(RejestrSesji::progSprzataniaSekund())->toBe(86400);
+    // EGZEKUTOR D-EKO-004. `config/konta.php` ostrzega, ze prog wyprowadzony
+    // z refresh tokenu jest o 57 600 s ZA MALY i produkuje ten defekt:
+    // sprzataczka usuwa blokady, ktore maja jeszcze obowiazywac. Blad idzie
+    // w strone niebezpieczna i wyglada wiarygodnie, bo liczba pochodzi
+    // z prawdziwego tokenu. Do 18.08 zadne miejsce w `tests/` tego znaleziska
+    // nie NAZYWALO — odslonilo to rozszerzenie zasiegu skanerow (R9-4).
     expect(config('konta.sso_session_max_s'))->toBe(86400, 'Kontrakt i konfiguracja się rozjechały.');
 });
 

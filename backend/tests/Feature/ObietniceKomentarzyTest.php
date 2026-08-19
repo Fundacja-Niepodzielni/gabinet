@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Tests\Wsparcie\Kod;
+
 /**
  * Komentarz też jest przyrządem pomiarowym — i też kłamie.
  *
@@ -94,7 +96,18 @@ function znacznikiZnalezisk(string $katalog): array
 }
 
 it('każde znalezisko powołane w kodzie produkcyjnym ma test, który je NAZYWA', function (): void {
-    $wKodzie = znacznikiZnalezisk(base_path('app'));
+    // ZASIEG: katalogi wykonywalne, nie samo `app/` (R9-4). Zmierzone przez
+    // runde 9: `@dowod:` wskazujacy w prozne miejsce, umieszczony
+    // w `routes/web.php`, dawal `4 passed` — kontrola deklaruje
+    // „kod produkcyjny", a widziala jeden z dwoch katalogow.
+    $wKodzie = [];
+
+    foreach (Kod::katalogiWykonywalne() as $katalogWykonywalny) {
+        foreach (znacznikiZnalezisk($katalogWykonywalny) as $znacznik => $pliki) {
+            $wKodzie[$znacznik] = array_merge($wKodzie[$znacznik] ?? [], $pliki);
+        }
+    }
+
     $wTestach = znacznikiZnalezisk(base_path('tests'));
 
     expect($wKodzie)->not->toBe([], 'Kod nie powołuje się na żadne znalezisko — sprawdź skaner.');

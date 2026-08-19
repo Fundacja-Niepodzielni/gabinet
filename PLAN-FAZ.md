@@ -11,23 +11,34 @@ Fazy wykonywane po kolei; bramka fazy musi być zielona i **niezależnie zweryfi
 - **Gałąź robocza: `faza-1-retencja`** (D-2026-08-08-23: merge do `main` po zielonej rundzie).
   Bez SHA — stan czytaj z `git log`.
 - **Bramka: ZIELONA — `BRAMKA OK — 22 kroków, 0 nieudanych`, kod wyjścia 0.**
-  Zmierzone **18.08 na ZAMROŻONYM SHA `179c05c`**, przebieg OD ZERA, we własnym
-  środowisku efemerycznym
+  Przebieg OD ZERA we własnym środowisku efemerycznym
   (`.env.bramka.gabinet-bramka` budowany z `.env.example` przy każdym przebiegu).
-- **Testy — LICZBA Z DATĄ, NIE STAŁA: 290 zielonych, 0 czerwonych, 2 POMINIĘTE,
-  2130 asercji — zmierzone **18.08** na tym samym przebiegu.**
-  Podłogi bramki: **290 / 2130** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
+- **Testy: 301 zielonych, 0 czerwonych, 2 POMINIĘTE, 2170 asercji.**
+  Podłogi bramki: **301 / 2170** (`skrypty/podlogi.sh` — JEDNO źródło dla bramki
   i perturbacji; liczby tutaj są ODCZYTEM z tego pliku, nie osobnym zapisem).
-  **Nie cytuj liczb przebiegu jako stanu bieżącego — zmierz je.**
-  ⚠ Do 12.08 stało tu „258 / 2008" przy `podlogi.sh` mówiącym 265 / 2024 (R7-6).
-  Zgodności pilnuje odtąd `JednoZrodloStanuTest`, który czyta OBA miejsca.
-- **Perturbacje: `PERTURBACJE OK — 48 kontroli` (18.08), kod wyjścia 0.**
-  PEŁNY zestaw 31 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
-  ⚠ Przebieg z 18.08 obalił DWIE kontrole, które wyglądały na sprawne: `p_puls`
-  celowała w tabelę `sygnaly_zdrowia`, której nie ma (puls jest w PLIKU — trzeci
-  adres tego mechanizmu), a wzorzec przyczyny `p_sesja` różnił się od komunikatu
-  asercji znakami diakrytycznymi. Obie naprawione i przemierzone; szczegóły
-  w `docs/ZLECENIA/ODPOWIEDZ-062.md` §4.
+- **Perturbacje: `PERTURBACJE OK`, kod wyjścia 0.**
+  PEŁNY zestaw 35 scenariuszy na stosie `gabinet-perturbacje`, zero pominiętych.
+  ⚠ Liczba SCENARIUSZY opisuje `skrypty/perturbacje.sh` (stan bieżący, pilnuje
+  `JednoZrodloStanuTest`); liczba KONTROLI to wynik przebiegu i wymaga kotwicy.
+
+> ⛔ **KONWENCJA KOTWIC — wchodzi 18.08 po znalezisku R9-5.**
+>
+> Liczby POMIARU zapisujemy w postaci „**zmierzone na `<SHA>`**", nigdy
+> „zmierzone `<data>`". Powód jest sprawdzalnościowy, nie estetyczny: daty
+> nie da się zweryfikować z wnętrza repozytorium bez wpuszczenia zegara do
+> kontroli, a kontrola zależna od zegara zaczyna padać sama z siebie. SHA
+> weryfikuje się jednym `git cat-file -e`.
+>
+> Ta sekcja trzykrotnie kłamała o własnym pomiarze — R7-6 (trzy twierdzenia
+> nieprawdziwe), 18.08 („zmierzone 12.08" o pomiarze z 18.08) i R9-5
+> („290/2130 na `179c05c`", gdzie jest 289/2119). Za każdym razem wychodziło
+> to dopiero w rundzie.
+
+**Ostatni pomiar Z KOTWICĄ:** `BRAMKA OK — 22 kroków`, 290 testów / 2130 asercji,
+`PERTURBACJE OK — 49 kontroli` — **zmierzone na `d79dc0c`** (zamrożenie rundy 9).
+Liczby wyżej pochodzą z przebiegu po naprawach rundy 9; ich kotwica wchodzi
+commitem dokumentacyjnym zaraz po zamrożeniu — tak jak wymaga tego konwencja,
+bo SHA nie istnieje, dopóki commit nie powstanie.
 
 ### Co zamknęła sesja KOD-F1 dnia 12.08
 

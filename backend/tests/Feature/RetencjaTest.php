@@ -39,6 +39,12 @@ use Illuminate\Support\Facades\Schema;
  */
 
 it('każda tabela w bazie jest albo w rejestrze retencji, albo jawnie uznana za wolną od danych osobowych', function (): void {
+    // EGZEKUTOR D-2026-08-07-20. `config/retencja.php` mowi, ze wpisanie
+    // wartosci domyslnej byloby podjeciem decyzji prawnej przez przeoczenie —
+    // i to takiej, ktora KASUJE dane osobowe (CLAUDE.md zasada 10, RODO art. 9).
+    // Ta kontrola jest tego egzekutorem: kazda tabela musi byc SKLASYFIKOWANA,
+    // wiec nowa tabela bez decyzji zapala bramke zamiast dostac cichy default.
+    // Do 18.08 decyzja nie byla NAZWANA w zadnym tescie (odslonelo R9-4).
     // Sedno kontroli: nowa tabela nie może POWSTAĆ bez decyzji o retencji.
     // Bez tego rekord bez ścieżki usunięcia powstaje przez przeoczenie, a nie
     // przez decyzję — i nikt się o tym nie dowie.

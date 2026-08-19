@@ -297,6 +297,96 @@ it('KONTROLA NEGATYWNA R7-6: skaner sekcji stanu widzi WSZYSTKIE trzy wady', fun
     );
 });
 
+it('R9-5: pomiary w sekcji stanu są ZAKOTWICZONE W SHA, nie w dacie', function (): void {
+    // ⛔ TO JEST DOMKNIĘCIE KLASY, KTÓRA WRACAŁA TRZY RAZY.
+    //
+    // R7-6: sekcja stanu niosła trzy twierdzenia nieprawdziwe wobec repozytorium.
+    // 18.08 (mój własny błąd): mówiła „zmierzone 12.08" o pomiarze z 18.08.
+    // R9-5: mówiła „290/2130 zmierzone na `179c05c`", a na `179c05c` jest
+    //       289/2119 — pomiar przypisany SHA, na którym jest niemożliwy.
+    //
+    // Data nie jest sprawdzalna z wnętrza repozytorium bez wpuszczenia zegara
+    // do kontroli, a kontrola zależna od zegara zaczyna padać sama z siebie.
+    // SHA jest sprawdzalne: albo istnieje w historii, albo nie. Dlatego
+    // konwencja brzmi „zmierzone na <SHA>", a nie „zmierzone <data>".
+    //
+    // To ta poprawka konwencji, którą architekt przyjął w `ODPOWIEDZ-065`
+    // jako kierunek na okno scaleniowe. Runda 9 pokazała, że czekanie było
+    // błędem, więc wchodzi teraz.
+    $sekcja = sekcjaStanu();
+
+    expect($sekcja)->not->toBe('', 'Nie udało się wyciąć sekcji stanu — kontrola mierzy pustkę.');
+
+    preg_match_all('/zmierzone na `([0-9a-f]{7,40})`/u', $sekcja, $kotwice);
+
+    expect(count($kotwice[1]))->toBeGreaterThan(0,
+        'W sekcji stanu NIE MA ani jednej kotwicy `zmierzone na <SHA>`. Liczby przebiegu '.
+        'bez kotwicy są twierdzeniem o TERAZ i starzeją się po cichu (R9-5).');
+
+    // Każda kotwica musi wskazywać commit, który ISTNIEJE. Kotwica do SHA
+    // zmyślonego byłaby gorsza od daty: wygląda na sprawdzalną.
+    $martwe = [];
+
+    foreach (array_unique($kotwice[1]) as $sha) {
+        $kod = 0;
+        $wyjscie = [];
+        exec(sprintf(
+            'cd %s && git cat-file -e %s^{commit} 2>&1',
+            escapeshellarg(base_path('..')),
+            escapeshellarg($sha)
+        ), $wyjscie, $kod);
+
+        if ($kod !== 0) {
+            $martwe[] = $sha;
+        }
+    }
+
+    expect($martwe)->toBe([], sprintf(
+        'Sekcja stanu kotwiczy pomiar w SHA, którego NIE MA w repozytorium: %s. '.
+        'Kotwica do commita, który nie istnieje, wygląda na sprawdzalną i nie jest.',
+        implode(', ', $martwe)
+    ));
+});
+
+it('R9-5: liczba scenariuszy perturbacji w sekcji stanu zgadza się ze SKRYPTEM', function (): void {
+    // Sekcja stanu mówiła „48 kontroli … 31 scenariuszy", gdy skrypt miał 32
+    // i dawał 49. Liczby kontroli nie da się sprawdzić bez uruchomienia —
+    // ale liczbę SCENARIUSZY owszem, bo stoi w `perturbacje.sh` jako lista.
+    //
+    // Sprawdzamy więc to, co sprawdzalne, i wymagamy kotwicy dla reszty.
+    $sekcja = sekcjaStanu();
+    $skrypt = (string) file_get_contents(base_path('../skrypty/perturbacje.sh'));
+
+    expect(preg_match('/^WSZYSTKIE="([^"]+)"/m', $skrypt, $t))->toBe(1,
+        'Nie znalazłem listy scenariuszy w `perturbacje.sh` — kontrola mierzy pustkę.');
+
+    $wSkrypcie = count(array_filter(preg_split('/\s+/', trim((string) ($t[1] ?? ''))) ?: []));
+
+    expect($wSkrypcie)->toBeGreaterThan(10,
+        'Lista scenariuszy wyszła podejrzanie krótka — parser rozjechał się ze skryptem.');
+
+    preg_match_all('/(\d+)\s+scenariusz/u', $sekcja, $trafienia);
+
+    expect(count($trafienia[1]))->toBeGreaterThan(0,
+        'W sekcji stanu nie ma liczby scenariuszy perturbacji — a jest sprawdzalna (R9-5).');
+
+    $rozjazd = [];
+
+    foreach ($trafienia[1] as $deklarowane) {
+        if ((int) $deklarowane !== $wSkrypcie) {
+            $rozjazd[] = sprintf('sekcja stanu mówi %s, skrypt ma %d', $deklarowane, $wSkrypcie);
+        }
+    }
+
+    expect($rozjazd)->toBe([], sprintf(
+        'LICZBA SCENARIUSZY PERTURBACJI ROZJECHAŁA SIĘ ZE SKRYPTEM:%s  %s%s'.
+        'To nie jest pomiar przebiegu, tylko twierdzenie o zawartości pliku obok (R9-5).',
+        PHP_EOL,
+        implode(PHP_EOL.'  ', $rozjazd),
+        PHP_EOL.PHP_EOL
+    ));
+});
+
 it('PLAN-FAZ.md ma DOKŁADNIE JEDNĄ sekcję CURRENT WORK', function (): void {
     $ile = preg_match_all('/^#{1,6}\s+CURRENT WORK/m', planFaz());
 

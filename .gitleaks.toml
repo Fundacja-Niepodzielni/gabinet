@@ -96,10 +96,31 @@ katalog — bo jest odwracalny i nie tworzy precedensu na przyszłość.
 targetRules = ["generic-api-key"]
 paths = ['''docs/noc-2026-08-08/.*''']
 
-# `.env.example` ma same puste przypisania (pilnuje tego test `SekretyTest`),
-# więc nie potrzebuje wyjątku — i celowo go nie dostaje. Gdyby ktoś wpisał tam
-# wartość, MA zapalić skan. Skuteczność tej konfiguracji sprawdza krok bramki
-# „sekrety (gitleaks)" — na obecnym drzewie ORAZ na podstawionej przynęcie.
+# ⛔ SPROSTOWANIE (R9-3, 18.08). Stało tu zdanie: „`.env.example` … nie
+# potrzebuje wyjątku — i celowo go nie dostaje. Gdyby ktoś wpisał tam wartość,
+# MA zapalić skan." To była NIEPRAWDA wobec tego samego pliku: wyjątek na
+# `.env.example` stoi TRZYDZIEŚCI WIERSZY WYŻEJ i wyłącza `generic-api-key`.
+#
+# Runda 9 zmierzyła skutek: `GOOGLE_CALENDAR_CLIENT_SECRET=GOCSPX-…` wpisany
+# do `.env.example` dał `no leaks found`, a ta sama wartość w `docs/` →
+# `leaks found: 1`. Dwa mechanizmy powołujące się na siebie nawzajem
+# (skaner na test, test na skaner) i dziura dokładnie w części wspólnej.
+#
+# STAN FAKTYCZNY, i tak ma zostać:
+#
+#   · wyjątek na `.env.example` ISTNIEJE i jest potrzebny — heurystyka
+#     `generic-api-key` zapala się tam na PUSTYCH przypisaniach, bo `\s`
+#     w jej wzorcu obejmuje znak nowej linii (powód opisany przy wyjątku);
+#   · cztery reguły WŁASNE obowiązują na tym pliku dalej, ale każda jest
+#     przypięta do konkretnej NAZWY zmiennej, więc nie chronią przed nazwą
+#     spoza listy;
+#   · ochroną NIEZALEŻNĄ OD NAZWY jest `SekretyTest` — od 18.08 z ODWRÓCONYM
+#     ciężarem dowodu: każde przypisanie musi być puste albo jawnie stać
+#     na liście wartości nietajnych, a wartość o kształcie sekretu zapala
+#     kontrolę nawet wtedy, gdy ktoś dopisał ją do listy bezmyślnie.
+#
+# Skuteczność całości sprawdza krok bramki „sekrety (gitleaks)" na obecnym
+# drzewie ORAZ na podstawionej przynęcie — i to nadal jest prawda.
 
 [[allowlists]]
 description = """

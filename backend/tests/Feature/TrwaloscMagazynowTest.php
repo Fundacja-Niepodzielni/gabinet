@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Tozsamosc\RejestrSesji;
 use App\Tozsamosc\SladWylogowania;
+use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * KLASA 4 — magazyn niosący asercję bezpieczeństwa musi przeżyć zdarzenia PROZAICZNE.
@@ -38,7 +40,96 @@ use Illuminate\Support\Facades\File;
  * że czyści się szybciej. Gdyby dane nadal mieszkały w cache'u, `Cache::flush()`
  * zabrałby je tak samo w obu sterownikach; to jest właśnie mierzone.
  */
-it('R6B-9: mapa sid → sesje PRZEŻYWA wyczyszczenie cache', function (): void {
+// ---------------------------------------------------------------------------
+// EGZEKUTORY ZNALEZISK POWOŁANYCH W `bootstrap/` I `config/`
+//
+// Te cztery kontrole powstały 18.08, gdy rozszerzenie zasięgu skanerów (R9-4)
+// odsłoniło, że `bootstrap/app.php` i `config/database.php` powołują się na
+// pięć znalezisk, których NIE NAZYWAŁ żaden test. Komentarz cytujący pomiar
+// bez egzekutora starzeje się po cichu — dokładnie klasa, którą pilnuje
+// `ObietniceKomentarzyTest`, tyle że przez osiem rund w niewidzianym katalogu.
+// ---------------------------------------------------------------------------
+
+it('D-2026-08-07-03: JEDEN plik `.env` — w KORZENIU repozytorium, nie w `backend/`', function (): void {
+    // `bootstrap/app.php` woła `useEnvironmentPath(dirname(__DIR__, 2))`
+    // i uzasadnia to decyzją: ten sam plik konfiguruje aplikację i
+    // `docker-compose.yml`. Dwa pliki rozjeżdżają się po pierwszej zmianie
+    // hasła, a objawia się to błędem wyglądającym na awarię Dockera.
+    //
+    // Pytamy APLIKACJI, nie tekstu: skąd REALNIE czyta środowisko.
+    $sciezka = str_replace(chr(92), chr(47), app()->environmentPath());
+    $korzenRepo = str_replace(chr(92), chr(47), dirname(base_path()));
+
+    expect($sciezka)->toBe($korzenRepo, sprintf(
+        "Aplikacja czyta `.env` z `%s`, a decyzja D-2026-08-07-03 mówi: z KORZENIA\n".
+        "repozytorium (`%s`). Dwa pliki środowiska rozjeżdżają się po pierwszej\n".
+        'zmianie hasła i wygląda to jak awaria Dockera, nie jak rozjazd konfiguracji.',
+        $sciezka,
+        $korzenRepo
+    ));
+
+    // Druga strona tej samej decyzji: w `backend/` NIE MA prawa leżeć drugi `.env`.
+    expect(file_exists(base_path('.env')))->toBeFalse(
+        'W `backend/` leży DRUGI plik `.env`. Decyzja D-2026-08-07-03 dopuszcza '.
+        'dokładnie jeden, w korzeniu repozytorium — dwa rozjadą się po cichu.'
+    );
+});
+
+it('N-6 / R6A-8: Redis NIE MOŻE eksmitować — `maxmemory-policy` to `noeviction`', function (): void {
+    // `config/database.php` cytuje pomiar: `maxmemory` = 0, `maxmemory-policy`
+    // = `noeviction`, więc EKSMISJA LRU nie może zajść, a Redis przy braku
+    // pamięci odrzuca ZAPISY błędem OOM. Cały akapit o rozdzieleniu baz stoi
+    // na tym pomiarze — a pomiar zapisany w komentarzu starzeje się bez ostrzeżenia.
+    //
+    // Pytamy ŻYWEGO Redisa, nie konfiguracji: to jest własność INSTANCJI,
+    // nie pliku. Dokładnie dlatego komentarz sam podkreśla słowo INSTANCJI.
+    $odczyt = Typy::mapa(Redis::connection('default')->command('config', ['GET', 'maxmemory*']));
+
+    // Pustka to błąd, nie zero: bez odczytu asercje niżej przechodzą same z siebie.
+    // NIE `toHaveKey($klucz, $komunikat)`: drugi argument tego matchera to
+    // OCZEKIWANA WARTOSC, nie komunikat — ta sama pulapka co przy `toContain`,
+    // przeniesiona o krok na inna rodzine matcherow. Zlapane wlasnym
+    // przebiegiem 18.08: Pest porownal wartosc klucza z trescia mojego zdania
+    // i zameldowal, ze dwa napisy sie roznia.
+    expect(array_key_exists('maxmemory-policy', $odczyt))->toBeTrue(
+        'Redis nie oddał `maxmemory-policy` — kontrola mierzyłaby pustkę (N-6).');
+
+    expect(Typy::napis($odczyt['maxmemory-policy']))->toBe('noeviction', sprintf(
+        'Polityka pamięci Redisa to `%s`, a `config/database.php` opiera swój wywód'.
+        ' na zmierzonym `noeviction` (N-6, R6A-8). Przy polityce eksmitującej klucze'.
+        ' znikają CICHO, a komentarz obok nadal twierdzi, że to niemożliwe.',
+        Typy::napis($odczyt['maxmemory-policy'])
+    ));
+
+    expect(Typy::napis($odczyt['maxmemory'] ?? '0'))->toBe('0',
+        'Redis ma ustawiony limit pamięci, a wywód w `config/database.php` zakłada '.
+        'brak limitu (N-6). Przy limicie zapisy zaczynają padać błędem OOM.');
+});
+
+it('D-2026-08-08-28: cache i połączenie domyślne siedzą w RÓŻNYCH bazach Redisa', function (): void {
+    // Rozdzielenie baz jest w `config/database.php` uzasadnione decyzją
+    // D-2026-08-08-28 (czytelność i rozdział odpowiedzialności, NIE ochrona
+    // przed eksmisją — to sprostowanie R6A-8). Bez egzekutora wystarczy jedna
+    // zmiana w konfiguracji, żeby `cache:clear` zaczęło kasować cudze klucze.
+    $cache = Typy::napis(config('database.redis.cache.database'));
+    $domyslna = Typy::napis(config('database.redis.default.database'));
+
+    expect($cache)->not->toBe('', 'Brak bazy Redisa dla cache — kontrola mierzy pustkę.');
+    expect($domyslna)->not->toBe('', 'Brak bazy domyślnej Redisa — kontrola mierzy pustkę.');
+
+    expect($cache)->not->toBe($domyslna, sprintf(
+        'Cache i połączenie domyślne wskazują TĘ SAMĄ bazę Redisa (%s). '.
+        'Decyzja D-2026-08-08-28 rozdziela je świadomie; przy wspólnej bazie '.
+        '`cache:clear` czyści także to, co cache-em nie jest.',
+        $cache
+    ));
+});
+
+it('R6B-9 / D-2026-08-08-26: mapa sid → sesje PRZEŻYWA wyczyszczenie cache', function (): void {
+    // D-2026-08-08-26 to decyzja o przeniesieniu mapy z cache do PostgreSQL.
+    // Ta kontrola JEST jej egzekutorem — nazywamy ją tu wprost, bo do 18.08
+    // decyzja była powołana w `config/database.php` i nie wskazywał jej
+    // żaden test (odsłonięte przez rozszerzenie zasięgu R9-4).
     $sid = 'sid-trwalosc-'.bin2hex(random_bytes(4));
 
     RejestrSesji::zapamietaj($sid, 'sesja-lokalna-1');

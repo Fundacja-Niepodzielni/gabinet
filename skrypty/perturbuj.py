@@ -23,6 +23,7 @@ KORZEN = Path(__file__).resolve().parent.parent
 
 MIGRACJA = KORZEN / "backend/database/migrations/0001_01_01_000000_create_users_table.php"
 TRASY = KORZEN / "backend/routes/web.php"
+KONTROLER_LOGOWANIA = KORZEN / "backend/app/Http/Controllers/LogowanieController.php"
 MODEL = KORZEN / "backend/app/Models/Personel.php"
 WALIDATOR = KORZEN / "backend/app/Tozsamosc/WalidatorTokenu.php"
 OIDC = KORZEN / "backend/app/Tozsamosc/KontaOidc.php"
@@ -285,6 +286,74 @@ def d1b_podloz_zaklecie() -> None:
     tylko zgaduje nazwe wejscia.
     """
     _d1b_podloz('zaklecie')
+
+
+def _gardlo_podloz(odczyt: str, etykieta: str) -> None:
+    """Mechanizm wlasnych hasel W PLIKU Z ALLOWLISTY — trzy wektory rundy 9.
+
+    Weryfikator rundy 9 postawil go dokladnie tutaj i to nie byl przypadek:
+    `LogowanieController` ma zgode na dotykanie tozsamosci, wiec allowlista
+    PLIKOW jest wobec niego bezradna z konstrukcji. Zmierzone wtedy:
+    `WaskieGardlo` + `BrakWlasnychHasel` = 14 passed, pelna suita 290 passed.
+
+    Trzy warianty roznia sie WYLACZNIE sposobem dostarczenia sekretu:
+
+      para      — dwa pola o roznych wartosciach (kanoniczny formularz)
+      naglowek  — sekret w naglowku HTTP
+      all       — `$request->all()[...]`, czyli odczyt, ktorego parser
+                  nazw pol nie widzial
+
+    Kazdy z nich konczy sie TYM SAMYM zapisem tozsamosci — i o to chodzi:
+    waskie gardlo mierzy MIEJSCE ZAPISU, wiec ma zapalic na wszystkich trzech
+    jednakowo, nie zgadujac sposobu.
+    """
+    podmien_jedyne(
+        KONTROLER_LOGOWANIA,
+        "    public function zaloguj(Request $request): RedirectResponse" + chr(10)
+        + "    {" + chr(10),
+        "    public function zaloguj(Request $request): RedirectResponse" + chr(10)
+        + "    {" + chr(10)
+        + "        // PERTURBACJA " + etykieta + chr(10)
+        + odczyt
+        + "        if (is_string($sekretPerturbacji) && $sekretPerturbacji !== '') {" + chr(10)
+        + "            $kontoPerturbacji = DB::table('users')->where('nazwa_wyswietlana', $sekretPerturbacji)->first();" + chr(10)
+        + "            if ($kontoPerturbacji !== null) {" + chr(10)
+        + "                $request->session()->put('konta', ['sub' => 'sub-lokalne', 'role' => ['pacjent']]);" + chr(10)
+        + "            }" + chr(10)
+        + "        }" + chr(10),
+    )
+
+    podmien_jedyne(
+        KONTROLER_LOGOWANIA,
+        "use Illuminate\\Support\\Facades\\Crypt;",
+        "use Illuminate\\Support\\Facades\\Crypt;" + chr(10) + "use Illuminate\\Support\\Facades\\DB;",
+    )
+
+
+def gardlo_para() -> None:
+    """WEKTOR A rundy 9: dwa pola o roznych wartosciach — formularz logowania."""
+    _gardlo_podloz(
+        "        $loginPerturbacji = $request->input('email');" + chr(10)
+        + "        $sekretPerturbacji = $request->input('haslo');" + chr(10),
+        'para pol email+haslo',
+    )
+
+
+def gardlo_naglowek() -> None:
+    """WEKTOR H rundy 9: sekret w NAGLOWKU HTTP."""
+    _gardlo_podloz(
+        "        $sekretPerturbacji = $request->header('X-Zaklecie');" + chr(10),
+        'sekret w naglowku',
+    )
+
+
+def gardlo_all() -> None:
+    """WEKTOR ALL rundy 9: odczyt przez `all()`, niewidoczny dla parsera nazw."""
+    _gardlo_podloz(
+        "        $wszystkoPerturbacji = $request->all();" + chr(10)
+        + "        $sekretPerturbacji = $wszystkoPerturbacji['zaklecie'] ?? null;" + chr(10),
+        'odczyt przez all()',
+    )
 
 
 def lockfile_rozjazd() -> None:
@@ -635,6 +704,9 @@ def biala_lista_zdjeta() -> None:
 
 
 POLECENIA = {
+    "gardlo-para": gardlo_para,
+    "gardlo-naglowek": gardlo_naglowek,
+    "gardlo-all": gardlo_all,
     "d1b-podloz": d1b_podloz,
     "d1b-podloz-zaklecie": d1b_podloz_zaklecie,
     "hasla-podloz": hasla_podloz,

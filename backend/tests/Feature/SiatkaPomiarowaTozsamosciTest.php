@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Tozsamosc\TozsamoscSesji;
 use App\Wsparcie\Typy;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Tests\Wsparcie\Kod;
 use Tests\Wsparcie\Trasy;
 
 /**
@@ -54,7 +54,24 @@ use Tests\Wsparcie\Trasy;
  *      Mechanizm piszacy do INNEGO magazynu (np. wprost do tabeli sesji)
  *      nie zalogowalby nikogo w tym srodowisku — to nie jest przeoczenie
  *      siatki, tylko rzecz niemierzalna ta droga.
- *   3. Naglowki HTTP nie sa sondowane; ladunek idzie parametrami.
+ *   3. Naglowki HTTP sa od 18.08 WYSYLANE, ale ta droga NIE JEST
+ *      potwierdzona pomiarem. Zmierzone: przy mechanizmie czytajacym
+ *      `header('X-Zaklecie')` naglowek DOCHODZI z wlasciwa wartoscia
+ *      (zweryfikowane zrzutem), a mimo to sonda nie wykrywa zapisu.
+ *      Przyczyny nie ustalilem i NIE UDAJE, ze granica zostala zdjeta —
+ *      sondowanie zostaje, bo nic nie kosztuje, ale liczyc na nie nie wolno.
+ *      Ten wektor zamyka STRUKTURALNIE `WaskieGardloZapisuTozsamosciTest`
+ *      (perturbacja `gardlo_naglowek` — czerwien z wlasciwej przyczyny).
+ *   4. Parowanie pol: ladunek „dopasowany" dobiera wartosc KSZTALTEM nazwy
+ *      (mail/sub/reszta). Mechanizm wymagajacy pary nazw o nieprzewidzianym
+ *      ksztalcie nadal sie wymknie — i to jest heurystyka, nie dowod.
+ *
+ * ⚠ NAJWAZNIEJSZE O TYCH GRANICACH: od 18.08 siatka NIE JEST juz jedynym
+ * detektorem §2. Zapis tozsamosci poza fasada lapie STRUKTURALNIE
+ * `WaskieGardloZapisuTozsamosciTest` — niezaleznie od tego, ilu i jakimi
+ * polami sekret przyjechal. Siatka jest odtad WZMOCNIENIEM, ktore pokrywa
+ * wektor niedostepny analizie statycznej (klucz sesji budowany w czasie
+ * dzialania), a nie jedyna linia obrony.
  *
  * `CLAUDE.md` §2 mówi: „Logowanie wyłącznie przez Konta Niepodzielni". Zdanie
  * to ma dokładnie jedno maszynowe znaczenie: JEDYNĄ trasą, po której w sesji
@@ -132,71 +149,40 @@ function trasyDoObejrzenia(): array
  */
 function nazwyPolWejsciowych(): array
 {
-    // Metody czytające żądanie. `get` i `header` wpuszczają szum (np.
-    // `Route::get('/auth/ja')`), i to jest kierunek BEZPIECZNY: nadmiarowe
-    // pole w ładunku niczego nie psuje, a pominięte oznaczałoby ślepotę.
-    $czytajace = [
-        'input', 'get', 'query', 'post', 'string', 'integer', 'boolean', 'float',
-        'date', 'enum', 'has', 'hasAny', 'filled', 'missing', 'whenFilled',
-        'header', 'cookie', 'old', 'request',
-    ];
-
+    // ⛔ ŻADNEJ LISTY METOD — R9-2.
+    //
+    // Poprzednia wersja miała ZAMKNIĘTĄ listę metod czytających żądanie
+    // i nie znała `all`, `only`, `except`, `json`, `collect`, `validate`
+    // ani dostępu tablicowego. Runda 9 zmierzyła skalę: na czystym drzewie
+    // parser znajdował **cztery nazwy z całej aplikacji**, a asercja
+    // broniąca („> 2 nazwy") tego nie odróżniała od zdrowia.
+    //
+    // Lista metod jest tą samą klasą wady co lista nazw pól, którą
+    // naprawiała runda 8 — tylko piętro wyżej. Trzecia lista byłaby
+    // trzecim krokiem tej samej klasy, więc listy nie ma wcale:
+    // bierzemy KAŻDY literał napisowy o kształcie nazwy pola.
+    //
+    // Nadmiar niczego nie kosztuje (dodatkowe pole w ładunku jest
+    // obojętne), a pominięcie oznacza ślepotę — autor zapisał tę
+    // asymetrię już przy `get`/`header` i tu obowiązuje tak samo.
     $nazwy = [];
-    $pliki = [];
 
-    foreach (File::allFiles(base_path('app')) as $plik) {
-        if ($plik->getExtension() === 'php') {
-            $pliki[] = $plik->getPathname();
-        }
-    }
-    foreach (File::files(base_path('routes')) as $plik) {
-        if ($plik->getExtension() === 'php') {
-            $pliki[] = $plik->getPathname();
-        }
-    }
-
-    foreach ($pliki as $sciezka) {
-        $tokeny = token_get_all((string) file_get_contents($sciezka));
-        $ile = count($tokeny);
-
-        for ($i = 0; $i < $ile; $i++) {
-            $t = $tokeny[$i];
-
-            // (a) `->input('nazwa')`, `request('nazwa')` itd.
-            if (is_array($t) && $t[0] === T_STRING && in_array($t[1], $czytajace, true)
-                && ($tokeny[$i + 1] ?? null) === '(') {
-                $j = $i + 2;
-
-                while (is_array($tokeny[$j] ?? null) && $tokeny[$j][0] === T_WHITESPACE) {
-                    $j++;
-                }
-
-                $arg = $tokeny[$j] ?? null;
-
-                if (is_array($arg) && $arg[0] === T_CONSTANT_ENCAPSED_STRING) {
-                    $nazwy[] = trim($arg[1], "'\"");
-                }
+    foreach (Kod::plikiWykonywalne() as $sciezka) {
+        foreach (token_get_all((string) file_get_contents($sciezka)) as $token) {
+            if (! is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) {
+                continue;
             }
 
-            // (b) `$request->nazwa` — odczyt właściwości, nie wywołanie.
-            if ($i > 0 && is_array($t) && $t[0] === T_OBJECT_OPERATOR) {
-                $poprzedni = $tokeny[$i - 1];
-                $nastepny = $tokeny[$i + 1] ?? null;
-
-                if (is_array($poprzedni) && $poprzedni[0] === T_VARIABLE && $poprzedni[1] === '$request'
-                    && is_array($nastepny) && $nastepny[0] === T_STRING
-                    && ($tokeny[$i + 2] ?? null) !== '(') {
-                    $nazwy[] = $nastepny[1];
-                }
-            }
+            $nazwy[] = trim($token[1], "'\"");
         }
     }
 
-    // Ścieżki tras (`'/auth/ja'`) nie są nazwami pól — odsiewamy je kształtem,
-    // nie listą wyjątków, żeby filtr nie wymagał utrzymania.
+    // Kształt nazwy pola formularza. Odsiewa ścieżki (`/auth/ja`), zdania
+    // z komunikatów i wyrażenia regularne — nie listą wyjątków, tylko
+    // kształtem, żeby filtr nie wymagał utrzymania.
     $nazwy = array_values(array_unique(array_filter(
         $nazwy,
-        static fn (string $n): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_.-]*$/', $n) === 1
+        static fn (string $n): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_.-]{0,60}$/', $n) === 1
     )));
 
     sort($nazwy);
@@ -263,12 +249,44 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
     // nie wyzwoli — a dowolne pole niosące sekret owszem.
     $odkryte = nazwyPolWejsciowych();
 
-    expect(count($odkryte))->toBeGreaterThan(2, sprintf(
-        "Skaner pól wejściowych znalazł %d nazw w `app/` i `routes/`.\n".
-        "Przy tak ubogim odczycie ładunek wraca do samej baterii, czyli do stanu,\n".
-        'który runda 8 obaliła (R8-1). Znalezione: %s',
+    // ⛔ PRÓG PORÓWNYWANY Z DRUGIM ODCZYTEM, NIE ZE STAŁĄ (R9-2).
+    //
+    // Stara asercja brzmiała „> 2 nazwy" i przechodziła przy CZTERECH
+    // nazwach z całej aplikacji — czyli „4" i „40" były dla niej tym samym.
+    // Próg wzięty z sufitu nie odróżnia „parser czyta źródła" od „parser
+    // czyta ich ułamek", a to jest cała różnica między siatką a atrapą.
+    //
+    // Drugi odczyt jest CELOWO prymitywny i CELOWO inną drogą: zwykły
+    // `preg_match_all` po treści plików, bez leksera. Ma prawo znaleźć
+    // więcej (łapie też literały w komentarzach), ale nie ma prawa
+    // znaleźć DUŻO więcej — rozjazd rzędu wielkości znaczy, że parser
+    // przestał widzieć źródła.
+    $drugiOdczyt = [];
+
+    foreach (Kod::plikiWykonywalne() as $sciezka) {
+        preg_match_all(
+            '/[\'"]([A-Za-z_][A-Za-z0-9_.-]{0,60})[\'"]/',
+            (string) file_get_contents($sciezka),
+            $trafienia
+        );
+        foreach ($trafienia[1] as $nazwa) {
+            $drugiOdczyt[$nazwa] = true;
+        }
+    }
+
+    $drugi = count($drugiOdczyt);
+
+    expect($drugi)->toBeGreaterThan(20,
+        'Drugi, niezależny odczyt też znalazł prawie nic — rozjechały się OBA, '.
+        'więc porównanie ich ze sobą niczego nie dowodzi.');
+
+    expect(count($odkryte))->toBeGreaterThan((int) ($drugi / 2), sprintf(
+        "PARSER NAZW PÓL WIDZI UŁAMEK ŹRÓDEŁ: %d nazw, gdy drugi, niezależny\n".
+        "odczyt tych samych plików daje %d. Ładunek wraca wtedy po cichu do samej\n".
+        "baterii — czyli do stanu, który obaliła runda 8 (R8-1), a rozjazd parsera\n".
+        'ze źródłami jest znaleziskiem R9-2.',
         count($odkryte),
-        implode(', ', $odkryte)
+        $drugi
     ));
 
     // Kontrola ŚRODKA, nie samej liczby: `code` i `state` czyta callback OIDC.
@@ -308,6 +326,36 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
         $ladunki[] = $ladunek;
     }
 
+    // ⛔ ŁADUNEK ROZDZIELAJĄCY WARTOŚCI — R9-1.
+    //
+    // Powyższe przebiegi dają WSZYSTKIM polom TĘ SAMĄ wartość, i to była
+    // ślepa plama: kanoniczny formularz logowania potrzebuje DWÓCH pól
+    // o RÓŻNYCH wartościach naraz (`email` = adres, `hasło` = sekret).
+    // Runda 9 przeszła tędy przez całą bramkę.
+    //
+    // Iloczyn kartezjański (nazwa × wartość) byłby poprawny i za drogi:
+    // przy kilkuset nazwach to setki żądań na trasę. Zamiast tego jeden
+    // przebieg, w którym wartość dobiera KSZTAŁT NAZWY — pola „mailowe"
+    // dostają adres, „subowe" identyfikator, reszta sekret.
+    //
+    // To jest heurystyka i mówię to wprost: mechanizm wymagający pary
+    // nazw, których kształtu nie przewidziałem, nadal się tędy wymknie.
+    // Nie jest to jednak jedyna linia obrony — od 18.08 zapis tożsamości
+    // poza fasadą łapie STRUKTURALNIE `WaskieGardloZapisuTozsamosciTest`,
+    // niezależnie od tego, ilu i jakimi polami sekret przyjechał.
+    $dopasowany = [];
+
+    foreach ($nazwy as $nazwa) {
+        $dopasowany[$nazwa] = match (true) {
+            str_contains(mb_strtolower($nazwa), 'mail') => $wartosci['email'],
+            str_contains(mb_strtolower($nazwa), 'sub') => $wartosci['sub'],
+            str_contains(mb_strtolower($nazwa), 'keycloak') => $wartosci['sub'],
+            default => $wartosci['nazwa'],
+        };
+    }
+
+    $ladunki[] = $dopasowany;
+
     // Atrapa HTTP: bez niej przeglad wszystkich tras probuje realnie siegnac
     // do IdP (odkrycie OIDC na `/auth/login`) i czeka na limity czasu — 32 s
     // zmierzone. Siatka nie pyta o IdP, tylko o ZAPIS DO SESJI, wiec sieci tu
@@ -329,8 +377,38 @@ it('D-1b: ŻADNA trasa poza callbackiem OIDC nie ustanawia tożsamości w sesji'
         foreach ($ladunki as $ladunek) {
             session()->flush();
 
+            // NAGŁÓWKI obok parametrów — trzecia z nazwanych granic siatki,
+            // wykorzystana przez rundę 9 (`X-Zaklecie`). Wysyłamy te same
+            // nazwy dwiema drogami: wprost i z przedrostkiem `X-`, bo tak
+            // wygląda konwencja nagłówków własnych.
+            // ⛔ NAGŁÓWKI PROTOKOŁU WYŁĄCZONE — i to nie jest ostrożność,
+            // tylko warunek działania sondy.
+            //
+            // Nazwy pochodzą ze ŹRÓDEŁ, więc trafiają się wśród nich `Host`,
+            // `Cookie`, `Accept` i inne nagłówki, którymi steruje protokół.
+            // Ustawienie ich rozbija żądanie ZANIM dojdzie do trasy —
+            // zmierzone: sonda z nagłówkami nie wykrywała mechanizmu, który
+            // przy jednym nagłówku wykrywa (`X-Zaklecie` → tożsamość w sesji).
+            // Nie było to więc „nagłówki nie działają", tylko „sonda strzelała
+            // sobie w stopę nagłówkiem `Host`".
+            $protokolowe = [
+                'host', 'cookie', 'authorization', 'accept', 'accept-encoding',
+                'accept-language', 'content-type', 'content-length', 'connection',
+                'referer', 'origin', 'user-agent', 'expect', 'range', 'te', 'upgrade',
+            ];
+
+            $naglowki = [];
+
+            foreach ($ladunek as $nazwa => $wartosc) {
+                if (! in_array(mb_strtolower($nazwa), $protokolowe, true)) {
+                    $naglowki[$nazwa] = $wartosc;
+                }
+
+                $naglowki['X-'.$nazwa] = $wartosc;
+            }
+
             try {
-                test()->call($metoda, $uri, $ladunek);
+                test()->withHeaders($naglowki)->call($metoda, $uri, $ladunek);
             } catch (Throwable) {
                 // Wyjątek trasy nie jest przedmiotem pomiaru. Przedmiotem jest
                 // to, co ZOSTAŁO w sesji — a to sprawdzamy niezależnie od tego,

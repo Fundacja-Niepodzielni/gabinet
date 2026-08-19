@@ -358,7 +358,18 @@ it('ZAPADKA: sufit jest CIASNY — nie wolno go zostawić z zapasem', function (
  */
 function polknieteKomunikaty(string $sciezka): array
 {
-    $wariadyczne = ['toContain', 'toContainEqual', 'toContainOnlyInstancesOf'];
+    // LISTA POSZERZONA 18.08 — klasa przeniosla sie o krok na `toHaveKey`.
+    //
+    // Napisalem `toHaveKey(klucz, komunikat)` i dostalem czerwien
+    // o porownaniu dwoch napisow, bo drugi argument tego matchera to
+    // OCZEKIWANA WARTOSC. Ta kontrola tego nie widziala, choc powstala
+    // dokladnie po to: znala trzy matchery z rodziny toContain* i ani
+    // jednego z rodziny toHave*.
+    //
+    // Wspolna cecha nie siedzi w nazwie, tylko w SYGNATURZE: drugi argument
+    // niesie wartosc, wiec zdanie w tym miejscu ginie bez sladu.
+    $wariadyczne = ['toContain', 'toContainEqual', 'toContainOnlyInstancesOf',
+        'toHaveKey', 'toHaveProperty', 'toHaveKeys'];
     $trafienia = [];
 
     $tokeny = token_get_all((string) file_get_contents($sciezka));

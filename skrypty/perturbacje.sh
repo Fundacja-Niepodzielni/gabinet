@@ -1642,6 +1642,78 @@ p_d1b_zaklecie() {
 	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
 }
 
+p_gardlo_para() {
+	naglowek "wąskie gardło tożsamości — dwa pola o RÓŻNYCH wartościach (kanoniczny formularz email+hasło)"
+	# WEKTOR RUNDY 9. Wszystkie trzy przeszły wtedy przez CAŁĄ bramkę,
+	# bo detektorem była SONDA, która musi zgadnąć sposób dostarczenia
+	# sekretu. Wąskie gardło pyta o MIEJSCE ZAPISU, więc ma zapalić na
+	# każdym z nich jednakowo — i to jest cały sens przeprojektowania.
+	#
+	# Mechanizm siedzi w `LogowanieController`, czyli w pliku Z ALLOWLISTY —
+	# tam, gdzie postawił go weryfikator i gdzie lista PLIKÓW jest bezradna.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj gardlo-para || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "kontroler ustanawia tożsamość poza callbackiem" \
+		grep -q "session()->put('konta'" "$plik"
+
+	oczekuj_czerwone "wąskie gardło wykrywa zapis tożsamości poza fasadą (para)" \
+		--przyczyna "ZAPIS TOŻSAMOŚCI POZA WĄSKIM GARDŁEM" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloZapisuTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_gardlo_naglowek() {
+	naglowek "wąskie gardło tożsamości — sekret w NAGŁÓWKU HTTP (X-Zaklecie)"
+	# WEKTOR RUNDY 9. Wszystkie trzy przeszły wtedy przez CAŁĄ bramkę,
+	# bo detektorem była SONDA, która musi zgadnąć sposób dostarczenia
+	# sekretu. Wąskie gardło pyta o MIEJSCE ZAPISU, więc ma zapalić na
+	# każdym z nich jednakowo — i to jest cały sens przeprojektowania.
+	#
+	# Mechanizm siedzi w `LogowanieController`, czyli w pliku Z ALLOWLISTY —
+	# tam, gdzie postawił go weryfikator i gdzie lista PLIKÓW jest bezradna.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj gardlo-naglowek || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "kontroler ustanawia tożsamość poza callbackiem" \
+		grep -q "session()->put('konta'" "$plik"
+
+	oczekuj_czerwone "wąskie gardło wykrywa zapis tożsamości poza fasadą (naglowek)" \
+		--przyczyna "ZAPIS TOŻSAMOŚCI POZA WĄSKIM GARDŁEM" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloZapisuTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
+p_gardlo_all() {
+	naglowek 'wąskie gardło tożsamości — odczyt przez $request->all() — poza zasięgiem parsera nazw pól'
+	# WEKTOR RUNDY 9. Wszystkie trzy przeszły wtedy przez CAŁĄ bramkę,
+	# bo detektorem była SONDA, która musi zgadnąć sposób dostarczenia
+	# sekretu. Wąskie gardło pyta o MIEJSCE ZAPISU, więc ma zapalić na
+	# każdym z nich jednakowo — i to jest cały sens przeprojektowania.
+	#
+	# Mechanizm siedzi w `LogowanieController`, czyli w pliku Z ALLOWLISTY —
+	# tam, gdzie postawił go weryfikator i gdzie lista PLIKÓW jest bezradna.
+	local plik="backend/app/Http/Controllers/LogowanieController.php"
+	zachowaj "$plik"
+
+	perturbuj gardlo-all || { echo "    nie udało się podłożyć perturbacji"; NIEUDANE=$((NIEUDANE + 1)); return; }
+
+	dowod_mutacji "kontroler ustanawia tożsamość poza callbackiem" \
+		grep -q "session()->put('konta'" "$plik"
+
+	oczekuj_czerwone "wąskie gardło wykrywa zapis tożsamości poza fasadą (all)" \
+		--przyczyna "ZAPIS TOŻSAMOŚCI POZA WĄSKIM GARDŁEM" \
+		dc exec -T app ./vendor/bin/pest tests/Feature/WaskieGardloZapisuTozsamosciTest.php
+
+	cp "$KOPIE/$(printf '%s' "$plik" | tr '/' '_')" "$plik"
+}
+
 p_zamrozenie() {
 	naglowek "zamrażanie reguł — reguła czytana z bieżącej konfiguracji"
 	local plik="backend/app/Reguly/OcenaAnulacji.php"
@@ -1665,7 +1737,7 @@ p_zamrozenie() {
 
 # ===========================================================================
 
-WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
+WSZYSTKIE="testy pusta_suita licznik pominiete statyka format sekrety hasla hasla_v2 nonce wzmacniacz lockfile vendor zamek sonda_bazy zdrowie tozsamosc puls d1b d1b_zaklecie gardlo_para gardlo_naglowek gardlo_all zamrozenie biala_lista retencja retencja_wykonanie obietnica sesja role_zamrozone logout_failsafe zrodlo_rol wymuszone_wylogowanie uniewaznienie_sid id_token_sesja"
 
 # `--lista` ODPOWIADA PRZED STRAZNIKIEM MUTACJI — bo NICZEGO NIE MUTUJE.
 #
@@ -1901,6 +1973,9 @@ for NAZWA in $WYBRANE; do
 		puls) p_puls ;;
 		d1b) p_d1b ;;
 		d1b_zaklecie) p_d1b_zaklecie ;;
+		gardlo_para) p_gardlo_para ;;
+		gardlo_naglowek) p_gardlo_naglowek ;;
+		gardlo_all) p_gardlo_all ;;
 		zamrozenie) p_zamrozenie ;;
 		biala_lista) p_biala_lista ;;
 		*)

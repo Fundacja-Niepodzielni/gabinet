@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Tozsamosc\SesjaKonta;
 use App\Tozsamosc\TozsamoscSesji;
 use Illuminate\Http\Request;
+use Tests\Wsparcie\Kod;
 use Tests\Wsparcie\Zrodlo;
 
 /**
@@ -282,10 +283,29 @@ it('WARUNEK UTRZYMUJĄCY: kod produkcyjny nie używa Reflection ani unserialize'
     // To jest jawny zapis granicy naprawy, a nie jej ukrycie: gdyby ktoś
     // potrzebował `unserialize`, ma dopisać wyjątek z powodem — i wtedy
     // R6A-3 wraca do rejestru jako otwarte dla tej ścieżki.
-    $ryzykowne = plikiZeWzorcem(
-        base_path('app'),
-        '/\bunserialize\s*\(|\bnewInstanceWithoutConstructor\s*\(|new\s+ReflectionClass\s*\(/'
-    );
+    // ZASIEG: WSZYSTKIE katalogi wykonywalne, nie samo `app/` (R9-4).
+    //
+    // Naprawa zasiegu po rundzie 8 objela JEDNA asercje w tym pliku —
+    // te wyzej. Ta zostala przy `app/`, i runda 9 zmierzyla skutek:
+    // `unserialize` oraz `Reflection` zywe w `routes/web.php` dawaly
+    // `5 passed`, a kontrola pozytywna w `app/` — czerwien.
+    //
+    // To nie byl blad tamtej naprawy, tylko skutek tego, ze KAZDY skaner
+    // trzymal wlasna liste katalogow. Odtad lista jest JEDNA
+    // (`Kod::katalogiWykonywalne()`), wiec dopisanie katalogu zmienia
+    // zasieg wszystkich kontroli naraz, a pominiecie jednej nie jest
+    // juz mozliwe przez zapomnienie.
+    $ryzykowne = [];
+
+    foreach (Kod::katalogiWykonywalne() as $katalogWykonywalny) {
+        $ryzykowne = array_merge($ryzykowne, plikiZeWzorcem(
+            $katalogWykonywalny,
+            '/\bunserialize\s*\(|\bnewInstanceWithoutConstructor\s*\(|new\s+ReflectionClass\s*\(/'
+        ));
+    }
+
+    $ryzykowne = array_values(array_unique($ryzykowne));
+    sort($ryzykowne);
 
     expect($ryzykowne)->toBe(
         [],

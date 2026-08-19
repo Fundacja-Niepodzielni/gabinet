@@ -69,6 +69,8 @@
 # PODNIESIENIE 12.08 (egzekutor N-3 dla magazynu pulsu): 286/2108 -> 287/2112.
 # PODNIESIENIE 18.08 (podwojone uchwyty trap w bramce): 287/2112 -> 289/2119.
 # PODNIESIENIE 18.08 (naprawy rundy 8: R8-1 skaner pol + R8-2 realny start): 289/2119 -> 290/2130.
+# PODNIESIENIE 18.08 (naprawy rundy 9: waskie gardlo tozsamosci, .env.example,
+# kotwice SHA, egzekutory z bootstrap/ i config/): 290/2130 -> 301/2170.
 # Powod: siatka POMIAROWA tozsamosci (D-1b, 3 kontrole), egzekutor wpiecia
 # blokady wysylki (R7-3, 2), kontrole rejestru narzedzi compose i odmowy
 # na projekcie dewelopera (R7-7, 4), egzekutor WNETRZA sekcji stanu (R7-6, 4),
@@ -78,11 +80,11 @@
 # Podniesienie ich bez uruchomienia perturbacji jest bezpieczne (perturbacje
 # porównują z nimi PEŁNY przebieg suity), ale podniesienie POWYŻEJ stanu
 # bieżącego wywali i bramkę, i perturbacje — i to jest zamierzone.
-MINIMUM_TESTOW=290
+MINIMUM_TESTOW=301
 
 # Drugi, niezależny sygnał (W-4): suita bez asercji niczego nie dowiodła,
 # choćby liczba testów wyglądała dobrze. Liczbę testów da się nadmuchać
 # (pominięte wliczały się do podłogi, aż weryfikator pokazał zieloną bramkę
 # przy 151 pominiętych i ZERZE asercji). Asercji nie da się nadmuchać, nie
 # wykonując ich.
-MINIMUM_ASERCJI=2130
+MINIMUM_ASERCJI=2170
